@@ -14,10 +14,18 @@ private fun Project.configureCommon() {
     extensions.getByType<ApplicationExtension>().apply {
         signingConfigs {
             create("release") {
-                storeFile = file(System.getenv("STORE_FILE") ?: "placeholder")
-                storePassword = System.getenv("STORE_PASSWORD") ?: ""
-                keyAlias = System.getenv("KEY_ALIAS") ?: ""
-                keyPassword = System.getenv("KEY_PASSWORD") ?: ""
+                // 优先从本地 keystore.properties 读签名信息（该文件不进 git，密钥保留本地）；
+                // 没有该文件时回退到环境变量（CI 场景）。
+                val props = java.util.Properties()
+                val propsFile = rootProject.file("keystore.properties")
+                if (propsFile.exists()) {
+                    propsFile.inputStream().use { props.load(it) }
+                }
+                fun prop(key: String): String = props.getProperty(key) ?: System.getenv(key) ?: ""
+                storeFile = file(prop("STORE_FILE").ifEmpty { "placeholder" })
+                storePassword = prop("STORE_PASSWORD")
+                keyAlias = prop("KEY_ALIAS")
+                keyPassword = prop("KEY_PASSWORD")
             }
         }
 

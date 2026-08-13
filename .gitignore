@@ -1,5 +1,6 @@
 # ===== Gradle / Android 构建产物 =====
 .gradle/
+.kotlin/
 source/**/build/
 source-next/**/build/
 dex/**/build/
@@ -23,3 +24,8 @@ Thumbs.db
 
 # ===== 原项目自带 =====
 **/docs/superpowers
+
+# ===== 签名密钥（本地专属，绝不提交）=====
+keystore.properties
+*.jks
+*.keystore

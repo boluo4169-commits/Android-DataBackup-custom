@@ -2,6 +2,7 @@ package com.xayah.core.service.packages.restore
 
 import android.annotation.SuppressLint
 import com.xayah.core.datastore.readKillAppOption
+import com.xayah.core.datastore.readRandomizeSsaid
 import com.xayah.core.datastore.readResetRestoreList
 import com.xayah.core.datastore.readRestorePermissions
 import com.xayah.core.datastore.readRestoreSsaid
@@ -21,6 +22,7 @@ import com.xayah.core.service.R
 import com.xayah.core.service.packages.AbstractPackagesService
 import com.xayah.core.service.util.ChecksumConfirmation
 import com.xayah.core.service.util.PackagesRestoreUtil
+import com.xayah.core.service.util.SsaidRestoreReminder
 import com.xayah.core.util.DateUtil
 import com.xayah.core.util.NotificationUtil
 import com.xayah.core.util.command.PreparationUtil
@@ -108,6 +110,18 @@ internal abstract class AbstractRestoreService : AbstractPackagesService() {
 
     override suspend fun onProcessing() {
         ChecksumConfirmation.reset()
+
+        // 恢复前提醒：开启了「恢复 Android id」或「随机化 Android id」时弹确认框
+        val randomizeSsaid = mContext.readRandomizeSsaid().first()
+        val restoreSsaidEnabled = mContext.readRestoreSsaid().first()
+        if (randomizeSsaid || restoreSsaidEnabled) {
+            val message = if (randomizeSsaid) mContext.getString(R.string.randomize_ssaid_reminder) else mContext.getString(R.string.restore_ssaid_reminder)
+            if (SsaidRestoreReminder.awaitConfirm(message).not()) {
+                log { "Restore cancelled by user: ssaid reminder." }
+                return
+            }
+        }
+
         mTaskEntity.update(rawBytes = mTaskRepo.getRawBytes(TaskType.PACKAGE), availableBytes = mTaskRepo.getAvailableBytes(OpType.RESTORE), totalBytes = mTaskRepo.getTotalBytes(OpType.RESTORE), totalCount = mPkgEntities.size)
         log { "Task count: ${mPkgEntities.size}." }
 
@@ -141,7 +155,7 @@ internal abstract class AbstractRestoreService : AbstractPackagesService() {
                 if (mContext.readRestorePermissions().first()) {
                     mPackagesRestoreUtil.restorePermissions(userId = userId, p = p)
                 }
-                if (mContext.readRestoreSsaid().first()) {
+                if (restoreSsaidEnabled || randomizeSsaid) {
                     mPackagesRestoreUtil.restoreSsaid(userId = userId, p = p)
                 }
 

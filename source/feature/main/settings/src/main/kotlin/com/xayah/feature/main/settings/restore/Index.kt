@@ -15,16 +15,20 @@ import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xayah.core.datastore.KeyCleanRestoring
+import com.xayah.core.datastore.KeyRandomizeSsaid
 import com.xayah.core.datastore.KeyRestorePermissions
 import com.xayah.core.datastore.KeyRestoreSsaid
 import com.xayah.core.datastore.readKillAppOption
 import com.xayah.core.datastore.saveKillAppOption
+import com.xayah.core.datastore.saveRandomizeSsaid
+import com.xayah.core.datastore.saveRestoreSsaid
 import com.xayah.core.model.KillAppOption
 import com.xayah.core.model.util.indexOf
 import com.xayah.core.ui.component.InnerBottomSpacer
@@ -35,6 +39,7 @@ import com.xayah.core.ui.component.select
 import com.xayah.core.ui.model.DialogRadioItem
 import com.xayah.core.ui.token.SizeTokens
 import com.xayah.feature.main.settings.R
+import kotlinx.coroutines.launch
 import com.xayah.feature.main.settings.SettingsScaffold
 
 @ExperimentalLayoutApi
@@ -43,6 +48,7 @@ import com.xayah.feature.main.settings.SettingsScaffold
 @Composable
 fun PageRestoreSettings() {
     val context = LocalContext.current
+    val scope = rememberCoroutineScope()
     val dialogState = LocalSlotScope.current!!.dialogSlot
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
@@ -99,6 +105,21 @@ fun PageRestoreSettings() {
                     defValue = true,
                     title = stringResource(id = R.string.restore_ssaid),
                     checkedText = stringResource(id = R.string.restore_ssaid_desc),
+                    onCheckedChange = { checked ->
+                        // 与「随机化 Android id」互斥：开启本项则关闭随机化
+                        if (checked) scope.launch { context.saveRandomizeSsaid(false) }
+                    }
+                )
+
+                Switchable(
+                    key = KeyRandomizeSsaid,
+                    defValue = false,
+                    title = stringResource(id = R.string.randomize_ssaid),
+                    checkedText = stringResource(id = R.string.randomize_ssaid_desc),
+                    onCheckedChange = { checked ->
+                        // 与「恢复 Android id」互斥：开启本项则关闭恢复旧值
+                        if (checked) scope.launch { context.saveRestoreSsaid(false) }
+                    }
                 )
             }
             InnerBottomSpacer(innerPadding = it)

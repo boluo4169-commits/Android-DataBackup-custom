@@ -13,6 +13,7 @@ import com.xayah.core.ui.component.AnimatedNavHost
 import com.xayah.core.ui.route.MainRoutes
 import com.xayah.feature.main.processing.PageProcessing
 import com.xayah.feature.main.processing.R
+import com.xayah.feature.main.settings.restore.PageRestoreSettings
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 @ExperimentalCoroutinesApi
@@ -46,6 +47,9 @@ fun PackagesRestoreProcessingGraph() {
         }
         composable(MainRoutes.PackagesRestoreProcessingSetup.route) {
             PagePackagesRestoreProcessingSetup(localNavController = localNavController, viewModel = viewModel)
+        }
+        composable(MainRoutes.RestoreSettings.route) {
+            PageRestoreSettings()
         }
     }
 }

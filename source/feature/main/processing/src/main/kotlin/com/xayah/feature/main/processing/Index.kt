@@ -108,6 +108,7 @@ fun PageProcessing(
     }
     val screenOffCountDown by viewModel.screenOffCountDown.collectAsStateWithLifecycle()
     val checksumRequest by viewModel.checksumRequest.collectAsStateWithLifecycle()
+    val ssaidReminder by viewModel.ssaidReminder.collectAsStateWithLifecycle()
 
     LaunchedEffect(null) {
         viewModel.emitIntentOnIO(ProcessingUiIntent.Initialize)
@@ -120,6 +121,16 @@ fun PageProcessing(
                 text = context.getString(R.string.checksum_mismatch_text, request.archivePath)
             )
             viewModel.decideChecksum(forceRestore)
+        }
+    }
+
+    LaunchedEffect(ssaidReminder) {
+        ssaidReminder?.let { message ->
+            val confirmed = dialogState.confirm(
+                title = context.getString(R.string.prompt),
+                text = message
+            )
+            viewModel.decideSsaidReminder(confirmed)
         }
     }
 

@@ -9,6 +9,7 @@ import com.xayah.core.data.repository.PackageRepository
 import com.xayah.core.data.util.srcDir
 import com.xayah.core.database.dao.TaskDao
 import com.xayah.core.datastore.readCleanRestoring
+import com.xayah.core.datastore.readRandomizeSsaid
 import com.xayah.core.datastore.readSelectionType
 import com.xayah.core.model.DataType
 import com.xayah.core.model.OperationState
@@ -45,6 +46,16 @@ class PackagesRestoreUtil @Inject constructor(
 ) {
     companion object {
         private const val TAG = "PackagesRestoreUtil"
+
+        /**
+         * 生成一个全新的随机 SSAID（Android ID，64 位 = 16 个十六进制字符）。
+         * 用于「随机化 Android id」功能，给恢复的应用一个全新身份。
+         */
+        private fun generateRandomSsaid(): String {
+            val hex = "0123456789abcdef"
+            val random = java.security.SecureRandom()
+            return (0 until 16).joinToString(separator = "") { hex[random.nextInt(16)].toString() }
+        }
     }
 
     private fun log(onMsg: () -> String): String = run {
@@ -458,7 +469,16 @@ class PackagesRestoreUtil @Inject constructor(
         val uid = rootService.getPackageUid(packageName = packageName, userId = userId)
         val ssaid = p.extraInfo.ssaid
 
-        if (p.ssaidSelected) {
+        if (context.readRandomizeSsaid().first()) {
+            // 随机化：生成一个全新的随机 SSAID 写入，不沿用旧值（给应用一个全新身份）
+            if (uid != -1) {
+                val randomSsaid = generateRandomSsaid()
+                log { "Randomize Ssaid: $randomSsaid" }
+                rootService.setPackageSsaidAsUser(packageName, uid, userId, randomSsaid)
+            } else {
+                log { "Failed to get uid of $packageName." }
+            }
+        } else if (p.ssaidSelected) {
             if (uid != -1) {
                 if (ssaid.isNotEmpty()) {
                     log { "Ssaid: $ssaid" }

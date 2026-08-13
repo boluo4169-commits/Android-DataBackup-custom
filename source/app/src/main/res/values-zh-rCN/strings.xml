@@ -69,6 +69,8 @@
     <string name="restore_list">恢复列表</string>
     <string name="date">日期</string>
     <string name="restoring">恢复中</string>
+    <string name="restore_ssaid_reminder">你已开启「恢复Android ID」，恢复后的应用会恢复原来的Android ID，需要在恢复后重启以生效。是否继续？</string>
+    <string name="randomize_ssaid_reminder">你已开启「随机化Android ID」，恢复后的应用会获得一个全新的随机Android ID，需要在恢复后重启以生效。是否继续？</string>
     <string name="prompt">提示</string>
     <string name="processing_exit_confirmation">确定退出吗？这将会中断操作。</string>
     <string name="reload">重载</string>
@@ -391,8 +393,10 @@
     <string name="backup_configs_desc">将配置文件导出到备份目录</string>
     <string name="restore_permissions">恢复权限</string>
     <string name="restore_permissions_desc">恢复应用权限</string>
-    <string name="restore_ssaid">恢复Android id</string>
-    <string name="restore_ssaid_desc">恢复应用Android id，需要在恢复后立即重启以生效</string>
+    <string name="restore_ssaid">恢复Android ID</string>
+    <string name="restore_ssaid_desc">恢复应用Android ID，需要在恢复后立即重启以生效</string>
+    <string name="randomize_ssaid">随机化Android ID</string>
+    <string name="randomize_ssaid_desc">生成一个随机的新Android ID（不恢复旧值），需要在恢复后立即重启以生效</string>
     <string name="compression_level">压缩等级</string>
     <string name="compression_level_desc">数字越小，压缩速度越快，数字越大，压缩率越高</string>
     <string name="args_current_level">当前等级：%1$s</string>

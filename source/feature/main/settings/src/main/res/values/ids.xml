@@ -68,6 +68,8 @@
     <item name="restore_permissions_desc" type="string" />
     <item name="restore_ssaid" type="string" />
     <item name="restore_ssaid_desc" type="string" />
+    <item name="randomize_ssaid" type="string" />
+    <item name="randomize_ssaid_desc" type="string" />
     <item name="compression_level" type="string" />
     <item name="compression_level_desc" type="string" />
     <item name="args_current_level" type="string" />

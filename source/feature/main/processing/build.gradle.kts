@@ -21,6 +21,7 @@ dependencies {
     compileOnly(project(":core:hiddenapi"))
     implementation(project(":core:service"))
     implementation(project(":core:network"))
+    implementation(project(":feature:main:settings"))
 
     // Hilt navigation
     implementation(libs.androidx.hilt.navigation.compose)

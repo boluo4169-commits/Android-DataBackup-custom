@@ -14,6 +14,7 @@ import com.xayah.core.rootservice.service.RemoteRootService
 import com.xayah.core.service.AbstractProcessingServiceProxy
 import com.xayah.core.service.util.ChecksumConfirmation
 import com.xayah.core.service.util.ChecksumMismatch
+import com.xayah.core.service.util.SsaidRestoreReminder
 import com.xayah.core.ui.model.ProcessingCardItem
 import com.xayah.core.ui.model.ProcessingDataCardItem
 import com.xayah.core.ui.util.addInfo
@@ -165,4 +166,15 @@ abstract class AbstractProcessingViewModel(
      * 用户在「校验失败」弹窗上选择后调用。
      */
     fun decideChecksum(forceRestore: Boolean) = ChecksumConfirmation.decide(forceRestore)
+
+    /**
+     * 恢复前 SSAID（Android id）相关提醒（由 service 层挂起等待，UI 层弹窗后回传决定）。
+     * 值为提醒文本，非空表示需要弹窗。
+     */
+    val ssaidReminder: StateFlow<String?> = SsaidRestoreReminder.message
+
+    /**
+     * 用户在 SSAID 提醒弹窗上选择后调用。
+     */
+    fun decideSsaidReminder(confirmed: Boolean) = SsaidRestoreReminder.decide(confirmed)
 }

@@ -43,7 +43,9 @@ import com.xayah.core.ui.component.paddingHorizontal
 import com.xayah.core.ui.component.paddingTop
 import com.xayah.core.ui.component.paddingVertical
 import com.xayah.core.ui.component.select
+import com.xayah.core.ui.route.MainRoutes
 import com.xayah.core.ui.token.SizeTokens
+import com.xayah.core.util.navigateSingle
 import com.xayah.feature.main.processing.FinishSetup
 import com.xayah.feature.main.processing.GetUsers
 import com.xayah.feature.main.processing.ProcessingSetupScaffold
@@ -111,6 +113,11 @@ fun PagePackagesRestoreProcessingSetup(localNavController: NavHostController, vi
                 )
             }
             Title(title = stringResource(id = R.string.settings)) {
+                Clickable(
+                    title = stringResource(id = R.string.restore_settings),
+                ) {
+                    localNavController.navigateSingle(MainRoutes.RestoreSettings.route)
+                }
                 val dialogState = LocalSlotScope.current!!.dialogSlot
                 val context = LocalContext.current
                 var currentIndex by remember { mutableIntStateOf(0) }

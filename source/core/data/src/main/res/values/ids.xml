@@ -1,0 +1,24 @@
+<resources>
+    <item name="internal_storage" type="string" />
+    <item name="external_storage" type="string" />
+    <item name="backup_list" type="string" />
+    <item name="restore_list" type="string" />
+    <item name="select_target_directory" type="string" />
+    <item name="cloud" type="string" />
+    <item name="local" type="string" />
+    <item name="ic_rounded_database" type="drawable" />
+    <item name="ic_rounded_stadia_controller" type="drawable" />
+    <item name="succeed" type="string" />
+    <item name="failed" type="string" />
+    <item name="recommend" type="string" />
+    <item name="limited_4gb" type="string" />
+    <item name="outdated_fs_warning" type="string" />
+    <item name="custom_directory" type="string" />
+    <item name="args_loading_from_user" type="string" />
+    <item name="args_backup" type="string"/>
+    <item name="args_restore" type="string"/>
+    <item name="backup_dir_as_media_error" type="string"/>
+    <item name="user" type="string"/>
+    <item name="app_is_frozen" type="string" />
+    <item name="no_activities_found" type="string" />
+</resources>

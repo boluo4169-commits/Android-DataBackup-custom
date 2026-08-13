@@ -1,0 +1,34 @@
+<resources>
+    <string-array name="backup_sort_type_items_apps">
+        <item>@string/alphabet</item>
+        <item>@string/installation_time</item>
+        <item>@string/data_size</item>
+    </string-array>
+    <string-array name="backup_sort_type_items_files">
+        <item>@string/alphabet</item>
+        <item>@string/data_size</item>
+    </string-array>
+    <string-array name="flag_type_items">
+        <item>@string/both</item>
+        <item>@string/third_party</item>
+        <item>@string/system</item>
+    </string-array>
+    <string-array name="ftp_auth_mode">
+        <item>@string/password</item>
+        <item>@string/anonymous</item>
+    </string-array>
+    <string-array name="smb_auth_mode">
+        <item>@string/password</item>
+        <item>@string/guest</item>
+        <item>@string/anonymous</item>
+    </string-array>
+    <string-array name="sftp_auth_mode">
+        <item>@string/password</item>
+        <item>@string/public_key</item>
+    </string-array>
+    <string-array name="kill_app_options">
+        <item>@string/disabled</item>
+        <item>@string/option_i</item>
+        <item>@string/option_ii</item>
+    </string-array>
+</resources>

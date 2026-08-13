@@ -1,0 +1,18 @@
+<resources>
+    <item name="backing_up" type="string"/>
+    <item name="preprocessing" type="string"/>
+    <item name="backup_completed" type="string"/>
+    <item name="wait_for_remaining_data_processing" type="string"/>
+    <item name="succeed" type="string"/>
+    <item name="failed" type="string"/>
+    <item name="restoring" type="string"/>
+    <item name="restore_completed" type="string"/>
+    <item name="necessary_preparations" type="string"/>
+    <item name="necessary_remaining_data_processing" type="string"/>
+    <item name="backup_itself" type="string"/>
+    <item name="save_icons" type="string"/>
+    <item name="set_up_inst_env" type="string"/>
+    <item name="args_backup" type="string"/>
+    <item name="args_restore" type="string"/>
+    <item name="exported" type="string"/>
+</resources>

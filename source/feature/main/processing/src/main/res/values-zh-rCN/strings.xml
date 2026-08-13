@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="checksum_mismatch_title">校验失败</string>
+    <string name="checksum_mismatch_text">归档 %1$s 的 MD5 校验失败，文件可能已损坏。是否强制恢复？</string>
+</resources>

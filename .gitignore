@@ -1,0 +1,25 @@
+# ===== Gradle / Android 构建产物 =====
+.gradle/
+source/**/build/
+source-next/**/build/
+dex/**/build/
+local.properties
+*.apk
+*.aab
+captures/
+.externalNativeBuild/
+.cxx/
+
+# ===== IDE =====
+.idea/
+*.iml
+
+# ===== WorkBuddy 项目数据（本地专属，不提交）=====
+.workbuddy/
+
+# ===== 系统文件 =====
+.DS_Store
+Thumbs.db
+
+# ===== 原项目自带 =====
+**/docs/superpowers

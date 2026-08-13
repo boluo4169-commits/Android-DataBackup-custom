@@ -323,11 +323,20 @@ class PackagesRestoreUtil @Inject constructor(
 
                     log { "Original SELinux context: $pathContext." }
 
+                    // 干净恢复：解压前清空目标目录（排除 lib/cache 等系统目录，避免误删 native 库）。
+                    // 不再用 tar --recursive-unlink（它会递归删除整个目录，包括 lib）。
+                    if (context.readCleanRestoring().first()) {
+                        SELinux.cleanRestore(dst = dst).also { result ->
+                            isSuccess = isSuccess && result.isSuccess
+                            out.addAll(result.out)
+                        }
+                    }
+
                     // Decompress the archive.
                     // m = false → 恢复原始 mtime，减少恢复后文件时间戳残留（避免触发游戏反作弊的 mtime 异常检测）。
                     Tar.decompress(
                         exclusionList = exclusionList,
-                        clear = if (context.readCleanRestoring().first()) "--recursive-unlink" else "",
+                        clear = "",
                         m = false,
                         src = src,
                         dst = dstDir,

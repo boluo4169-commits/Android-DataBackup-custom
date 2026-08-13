@@ -52,4 +52,23 @@ object SELinux {
             "$QUOTE$path/$QUOTE",
         )
     }
+
+    /**
+     * 干净恢复：清空目标目录的第一层内容，但保留 lib/cache/code_cache/no_backup/.ota 等
+     * 系统/临时目录。替代原来的 tar `--recursive-unlink`（它会递归删除整个目录，包括安装时
+     * 提取到 lib 的 native 库，导致依赖 .so 的应用恢复后崩溃）。
+     */
+    suspend fun cleanRestore(dst: String): ShellResult = run {
+        // find "$dst" -mindepth 1 -maxdepth 1 -not -name lib -not -name cache ... -exec rm -rf {} +
+        execute(
+            "find", "$QUOTE$dst$QUOTE",
+            "-mindepth", "1", "-maxdepth", "1",
+            "-not", "-name", "lib",
+            "-not", "-name", "cache",
+            "-not", "-name", "code_cache",
+            "-not", "-name", "no_backup",
+            "-not", "-name", ".ota",
+            "-exec", "rm", "-rf", "{}", "+",
+        )
+    }
 }

@@ -4,7 +4,6 @@ import android.content.Context
 import androidx.compose.material3.ExperimentalMaterial3Api
 import com.xayah.core.common.util.BuildConfigUtil
 import com.xayah.core.data.repository.DirectoryRepository
-import com.xayah.core.datastore.ConstantUtil
 import com.xayah.core.datastore.readLastBackupTime
 import com.xayah.core.model.database.DirectoryEntity
 import com.xayah.core.network.model.Release
@@ -41,15 +40,13 @@ class IndexViewModel @Inject constructor(
             is IndexUiIntent.Update -> {
                 directoryRepo.updateSelected()
 
-                if (BuildConfigUtil.FLAVOR_feature == ConstantUtil.FLAVOR_PREMIUM) {
-                    // Premium only
-                    runCatching {
-                        val release = githubRepo.getLatestRelease()
-                        if (release.name != BuildConfigUtil.VERSION_NAME) {
-                            emitState(state.copy(latestRelease = release))
-                        } else {
-                            emitState(state.copy(latestRelease = null))
-                        }
+                runCatching {
+                    val release = githubRepo.getLatestRelease()
+                    // tag 形如 "v3.0.0"，versionName 形如 "3.0.0"，去掉 v 前缀后对比
+                    if (release.tagName.removePrefix("v") != BuildConfigUtil.VERSION_NAME) {
+                        emitState(state.copy(latestRelease = release))
+                    } else {
+                        emitState(state.copy(latestRelease = null))
                     }
                 }
             }

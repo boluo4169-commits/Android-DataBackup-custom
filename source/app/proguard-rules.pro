@@ -73,3 +73,6 @@
 -keep class org.bouncycastle.jcajce.provider.** { *; }
 -keep class org.bouncycastle.jce.provider.** { *; }
 -keep class org.bouncycastle.crypto.** { *; }
+
+# BuildConfig（反射读取 FLAVOR_abi 等字段；改包名后 com.xayah.** 不再覆盖 com.databackup.**）
+-keep class com.databackup.version.BuildConfig { *; }

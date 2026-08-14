@@ -27,10 +27,13 @@ import com.xayah.core.datastore.KeyBackupItself
 import com.xayah.core.datastore.KeyCheckKeystore
 import com.xayah.core.datastore.KeyCompressionTest
 import com.xayah.core.datastore.KeyFollowSymlinks
+import com.xayah.core.datastore.KeyPreserveBackups
 import com.xayah.core.datastore.readCompressionLevel
 import com.xayah.core.datastore.readKillAppOption
+import com.xayah.core.datastore.readMaxPreserveCount
 import com.xayah.core.datastore.saveCompressionLevel
 import com.xayah.core.datastore.saveKillAppOption
+import com.xayah.core.datastore.saveMaxPreserveCount
 import com.xayah.core.model.KillAppOption
 import com.xayah.core.model.util.indexOf
 import com.xayah.core.ui.component.InnerBottomSpacer
@@ -79,6 +82,26 @@ fun PageBackupSettings() {
                 ) {
                     scope.launch {
                         context.saveCompressionLevel(it.roundToInt())
+                    }
+                }
+
+                Switchable(
+                    key = KeyPreserveBackups,
+                    defValue = false,
+                    title = stringResource(id = R.string.preserve_backups),
+                    checkedText = stringResource(id = R.string.preserve_backups_desc),
+                )
+
+                val maxPreserveCount by context.readMaxPreserveCount().collectAsStateWithLifecycle(initialValue = 3)
+                Slideable(
+                    title = stringResource(id = R.string.max_preserve_count),
+                    value = maxPreserveCount.toFloat(),
+                    valueRange = 1F..10F,
+                    steps = 8,
+                    desc = remember(maxPreserveCount) { "${context.getString(R.string.args_current_count, maxPreserveCount)}\n${context.getString(R.string.max_preserve_count_desc)}" }
+                ) {
+                    scope.launch {
+                        context.saveMaxPreserveCount(it.roundToInt())
                     }
                 }
 

@@ -74,6 +74,7 @@
     <string name="restoring">Restoring</string>
     <string name="restore_ssaid_reminder">You have enabled \u201CRestore Android ID\u201D. The restored apps will get their original Android ID back. A reboot is needed after restoring to take effect. Continue?</string>
     <string name="randomize_ssaid_reminder">You have enabled \u201CRandomize Android ID\u201D. The restored apps will get a brand-new random Android ID. A reboot is needed after restoring to take effect. Continue?</string>
+    <string name="duplicate_version_reminder">You selected multiple versions of the same app (%1$s). Restoring them together will overwrite each other, only the last restored version will remain. Continue?</string>
     <string name="prompt">Prompt</string>
     <string name="processing_exit_confirmation">Exit the app and interrupt ongoing operation\?</string>
     <string name="reload">Reload</string>
@@ -411,6 +412,11 @@
     <string name="compression_level">Compression level</string>
     <string name="compression_level_desc">Lower numbers provide faster compression, higher numbers yield better compression ratios</string>
     <string name="args_current_level">Current level: %1$s</string>
+    <string name="preserve_backups">Preserve backup history</string>
+    <string name="preserve_backups_desc">Keep a new version for every backup instead of overwriting the previous one</string>
+    <string name="max_preserve_count">Max preserved versions</string>
+    <string name="max_preserve_count_desc">Maximum number of preserved versions to keep, the oldest ones will be deleted automatically</string>
+    <string name="args_current_count">Current: %1$s</string>
     <string name="last_update">Last update</string>
     <string name="welcome_screen_app_desc">Enjoy hassle-free backups with DataBackup. It’s simple to use and completely FOSS. Keep your data safe without the stress</string>
     <string name="get_started">Get started</string>

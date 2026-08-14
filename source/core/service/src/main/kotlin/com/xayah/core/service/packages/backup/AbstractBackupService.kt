@@ -5,6 +5,8 @@ import com.xayah.core.common.util.toLineString
 import com.xayah.core.datastore.readBackupConfigs
 import com.xayah.core.datastore.readBackupItself
 import com.xayah.core.datastore.readKillAppOption
+import com.xayah.core.datastore.readMaxPreserveCount
+import com.xayah.core.datastore.readPreserveBackups
 import com.xayah.core.datastore.readResetBackupList
 import com.xayah.core.datastore.saveLastBackupTime
 import com.xayah.core.model.DataType
@@ -141,6 +143,9 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
         val killAppOption = mContext.readKillAppOption().first()
         log { "Kill app option: $killAppOption" }
 
+        val preserveBackups = mContext.readPreserveBackups().first()
+        log { "Preserve backups: $preserveBackups" }
+
         mPkgEntities.forEachIndexed { index, pkg ->
             executeAtLeast {
                 NotificationUtil.notify(
@@ -156,8 +161,34 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
                 killApp(killAppOption, pkg)
 
                 pkg.update(state = OperationState.PROCESSING)
-                val p = pkg.packageEntity
+                // BACKUP 实体 preserveId 恒为 0；新备份始终作为「正常版本」（preserveId=0，无盾牌）
+                val cleanP = pkg.packageEntity.copy(indexInfo = pkg.packageEntity.indexInfo.copy(preserveId = 0L))
+                val p = cleanP
                 val dstDir = "${mAppsDir}/${p.archivesRelativeDir}"
+
+                // 保留历史备份：备份前，把已有的主备份（RESTORE preserveId=0）归档成保护版本（带盾牌序号）
+                if (preserveBackups) {
+                    val existingMain = mPackageDao.query(p.packageName, OpType.RESTORE, p.userId, 0L, p.indexInfo.compressionType, mTaskEntity.cloud, mTaskEntity.backupDir)
+                    if (existingMain != null) {
+                        val srcNew = "${mAppsDir}/${existingMain.archivesRelativeDir}"
+                        val src = if (mRootService.exists(srcNew)) srcNew else "${mAppsDir}/${existingMain.legacyArchivesRelativeDir}"
+                        if (mRootService.exists(src)) {
+                            // 生成唯一 preserveId（秒级时间戳，若同秒冲突则递增直到不冲突）
+                            var preserveId = DateUtil.getPreserveTimestamp()
+                            var archived = existingMain.copy(indexInfo = existingMain.indexInfo.copy(preserveId = preserveId))
+                            var dst = "${mAppsDir}/${archived.archivesRelativeDir}"
+                            while (mRootService.exists(dst)) {
+                                preserveId++
+                                archived = existingMain.copy(indexInfo = existingMain.indexInfo.copy(preserveId = preserveId))
+                                dst = "${mAppsDir}/${archived.archivesRelativeDir}"
+                            }
+                            mRootService.writeJson(data = archived, dst = PathUtil.getPackageRestoreConfigDst(src))
+                            mRootService.renameTo(src, dst)
+                            mPackageDao.upsert(archived)
+                        }
+                    }
+                }
+
                 var restoreEntity = mPackageDao.query(p.packageName, OpType.RESTORE, p.userId, p.preserveId, p.indexInfo.compressionType, mTaskEntity.cloud, mTaskEntity.backupDir)
                 mRootService.mkdirs(dstDir)
                 if (onAppDirCreated(archivesRelativeDir = p.archivesRelativeDir)) {
@@ -183,8 +214,8 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
                         mRootService.writeJson(data = restoreEntity, dst = configDst)
                         onConfigSaved(path = configDst, archivesRelativeDir = p.archivesRelativeDir)
                         mPackageDao.upsert(restoreEntity)
-                        mPackageDao.upsert(p)
-                        pkg.update(packageEntity = p)
+                        mPackageDao.upsert(cleanP)
+                        pkg.update(packageEntity = cleanP)
                         mTaskEntity.update(successCount = mTaskEntity.successCount + 1)
                     } else {
                         mTaskEntity.update(failureCount = mTaskEntity.failureCount + 1)
@@ -293,6 +324,26 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
     }
 
     override suspend fun afterPostProcessing() {
+        // 保留历史备份：清理超出最大版本数的旧版本
+        if (mContext.readPreserveBackups().first()) {
+            val maxPreserveCount = mContext.readMaxPreserveCount().first().coerceAtLeast(1)
+            mPkgEntities.forEach { pkg ->
+                val p = pkg.packageEntity
+                runCatching {
+                    val allVersions = mPackageDao.query(p.packageName, OpType.RESTORE, p.userId, mTaskEntity.cloud, mTaskEntity.backupDir)
+                    val preserved = allVersions.filter { it.preserveId != 0L }.sortedByDescending { it.preserveId }
+                    if (preserved.size > maxPreserveCount) {
+                        preserved.drop(maxPreserveCount).forEach { old ->
+                            log { "Cleaning old preserved backup: ${old.archivesRelativeDir}" }
+                            mPackageDao.delete(old.id)
+                            val dirNew = "${mAppsDir}/${old.archivesRelativeDir}"
+                            val dir = if (mRootService.exists(dirNew)) dirNew else "${mAppsDir}/${old.legacyArchivesRelativeDir}"
+                            mRootService.deleteRecursively(dir)
+                        }
+                    }
+                }
+            }
+        }
         mContext.saveLastBackupTime(mEndTimestamp)
         val time = DateUtil.getShortRelativeTimeSpanString(context = mContext, time1 = mStartTimestamp, time2 = mEndTimestamp)
         NotificationUtil.notify(

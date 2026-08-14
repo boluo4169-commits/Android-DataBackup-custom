@@ -121,7 +121,17 @@ class AppsRepo @Inject constructor(
             .filter { if (lLabels.isNotEmpty()) lRefs.find { ref -> it.packageName == ref.packageName && it.userId == ref.userId && it.preserveId == ref.preserveId } != null else true }
             .sortedWith(packageRepo.getSortComparatorNew(sortIndex = data.sortIndex, sortType = data.sortType))
             .sortedByDescending { p -> p.extraInfo.activated }.toList()
-            .map(PackageEntity::asExternalModel)
+            .let { list ->
+                // 计算每个应用的保护版本序号（按 preserveId 升序，最旧的 = 1）
+                val indexMap = list.groupBy { it.packageName to it.userId }
+                    .flatMap { (_, entities) ->
+                        entities.filter { it.preserveId != 0L }
+                            .sortedBy { it.preserveId }
+                            .mapIndexed { index, entity -> entity.id to (index + 1) }
+                    }
+                    .toMap()
+                list.map { it.asExternalModel(preserveIndex = indexMap[it.id] ?: 0) }
+            }
     }.flowOn(defaultDispatcher)
 
     fun countApps(opType: OpType) = appsDao.countPackagesFlow(opType = opType, blocked = false)
@@ -498,7 +508,8 @@ class AppsRepo @Inject constructor(
         rootService.clearEmptyDirectoriesRecursively(path)
         appsDao.queryPackages(OpType.RESTORE, "", context.localBackupSaveDir()).forEach {
             val src = "${path}/${it.archivesRelativeDir}"
-            if (rootService.exists(src).not()) {
+            val legacySrc = "${path}/${it.legacyArchivesRelativeDir}"
+            if (rootService.exists(src).not() && rootService.exists(legacySrc).not()) {
                 appsDao.delete(it.id)
             }
         }
@@ -621,6 +632,11 @@ class AppsRepo @Inject constructor(
         appsDao.upsert(app)
     }
 
+    private suspend fun resolveLocalArchiveDir(app: PackageEntity, appsDir: String): String {
+        val newDir = "${appsDir}/${app.archivesRelativeDir}"
+        return if (rootService.exists(newDir)) newDir else "${appsDir}/${app.legacyArchivesRelativeDir}"
+    }
+
     suspend fun protectApp(cloudName: String?, app: PackageEntity) {
         if (cloudName.isNullOrEmpty().not()) {
             cloudName?.apply {
@@ -634,7 +650,7 @@ class AppsRepo @Inject constructor(
     private suspend fun protectLocalApp(app: PackageEntity) {
         val protectedApp = app.copy(indexInfo = app.indexInfo.copy(preserveId = DateUtil.getTimestamp()))
         val appsDir = pathUtil.getLocalBackupAppsDir()
-        val src = "${appsDir}/${app.archivesRelativeDir}"
+        val src = resolveLocalArchiveDir(app, appsDir)
         val dst = "${appsDir}/${protectedApp.archivesRelativeDir}"
         rootService.writeJson(data = protectedApp, dst = PathUtil.getPackageRestoreConfigDst(src))
         rootService.renameTo(src, dst)
@@ -669,7 +685,7 @@ class AppsRepo @Inject constructor(
 
     private suspend fun deleteLocalApp(app: PackageEntity) {
         val appsDir = pathUtil.getLocalBackupAppsDir()
-        val src = "${appsDir}/${app.archivesRelativeDir}"
+        val src = resolveLocalArchiveDir(app, appsDir)
         if (rootService.deleteRecursively(src)) {
             appsDao.delete(app.id)
         }

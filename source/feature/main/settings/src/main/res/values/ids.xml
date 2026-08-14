@@ -73,6 +73,11 @@
     <item name="compression_level" type="string" />
     <item name="compression_level_desc" type="string" />
     <item name="args_current_level" type="string" />
+    <item name="preserve_backups" type="string" />
+    <item name="preserve_backups_desc" type="string" />
+    <item name="max_preserve_count" type="string" />
+    <item name="max_preserve_count_desc" type="string" />
+    <item name="args_current_count" type="string" />
 
     <item name="ic_rounded_acute" type="drawable" />
     <item name="ic_rounded_history" type="drawable" />

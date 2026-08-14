@@ -28,6 +28,26 @@ object DateUtil {
     fun getTimestamp(): Long = System.currentTimeMillis()
 
     /**
+     * 生成可读的 preserveId（yyyyMMddHHmmss，如 20250813234526），用于备份目录名。
+     * 秒级精度，避免同一分钟内多次备份导致目录名冲突。
+     */
+    fun getPreserveTimestamp(): Long = runCatching {
+        SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault()).format(Date()).toLong()
+    }.getOrDefault(getTimestamp())
+
+    /**
+     * 把 preserveId 格式化成可读时间。兼容 yyyyMMddHHmmss（秒）、yyyyMMddHHmm（分钟，旧）和毫秒时间戳（旧备份）。
+     */
+    fun formatPreserveTimestamp(preserveId: Long): String = runCatching {
+        val s = preserveId.toString()
+        when (s.length) {
+            14 -> "${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)} ${s.substring(8, 10)}:${s.substring(10, 12)}:${s.substring(12, 14)}"
+            12 -> "${s.substring(0, 4)}-${s.substring(4, 6)}-${s.substring(6, 8)} ${s.substring(8, 10)}:${s.substring(10, 12)}"
+            else -> formatTimestamp(preserveId, PATTERN_YMD_HMS)
+        }
+    }.getOrDefault(preserveId.toString())
+
+    /**
      * Format given [timestamp] as date.
      */
     fun formatTimestamp(timestamp: Long?, pattern: String = PATTERN_DEFAULT): String = runCatching {

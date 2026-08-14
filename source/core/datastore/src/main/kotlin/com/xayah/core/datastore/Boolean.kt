@@ -19,6 +19,7 @@ val KeyBackupConfigs = booleanPreferencesKey("backup_configs")
 val KeyRestorePermissions = booleanPreferencesKey("restore_permissions")
 val KeyRestoreSsaid = booleanPreferencesKey("restore_ssaid")
 val KeyRandomizeSsaid = booleanPreferencesKey("randomize_ssaid")
+val KeyPreserveBackups = booleanPreferencesKey("preserve_backups")
 
 // -----------------------------------------Read-----------------------------------------
 fun Context.readMonet() = readStoreBoolean(key = KeyMonet, defValue = true)
@@ -36,6 +37,7 @@ fun Context.readBackupConfigs() = readStoreBoolean(key = KeyBackupConfigs, defVa
 fun Context.readRestorePermissions() = readStoreBoolean(key = KeyRestorePermissions, defValue = true)
 fun Context.readRestoreSsaid() = readStoreBoolean(key = KeyRestoreSsaid, defValue = true)
 fun Context.readRandomizeSsaid() = readStoreBoolean(key = KeyRandomizeSsaid, defValue = false)
+fun Context.readPreserveBackups() = readStoreBoolean(key = KeyPreserveBackups, defValue = false)
 
 // -----------------------------------------Write-----------------------------------------
 suspend fun Context.saveMonet(value: Boolean) = saveStoreBoolean(key = KeyMonet, value = value)
@@ -53,3 +55,4 @@ suspend fun Context.saveBackupConfigs(value: Boolean) = saveStoreBoolean(key = K
 suspend fun Context.saveRestorePermissions(value: Boolean) = saveStoreBoolean(key = KeyRestorePermissions, value = value)
 suspend fun Context.saveRestoreSsaid(value: Boolean) = saveStoreBoolean(key = KeyRestoreSsaid, value = value)
 suspend fun Context.saveRandomizeSsaid(value: Boolean) = saveStoreBoolean(key = KeyRandomizeSsaid, value = value)
+suspend fun Context.savePreserveBackups(value: Boolean) = saveStoreBoolean(key = KeyPreserveBackups, value = value)

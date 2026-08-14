@@ -258,18 +258,27 @@ data class PackageEntity(
         get() = (packageInfo.flags and ApplicationInfo.FLAG_SYSTEM) != 0
 
     val archivesRelativeDir: String
+        get() = "${if (sanitizedLabel.isEmpty()) "" else "${sanitizedLabel}_"}${packageName}/user_${userId}${if (preserveId == 0L) "" else "@$preserveId"}"
+
+    // 旧格式（纯包名）目录，用于兼容历史备份
+    val legacyArchivesRelativeDir: String
         get() = "${packageName}/user_${userId}${if (preserveId == 0L) "" else "@$preserveId"}"
+
+    // 清洗应用名用于目录名：删除特殊字符，只保留中文/英文/数字/下划线
+    private val sanitizedLabel: String
+        get() = packageInfo.label.replace(Regex("[^\\u4e00-\\u9fa5A-Za-z0-9_]"), "").trim('_')
 
     val pkgUserKey: String
         get() = "${packageName}-${userId}"
 }
 
 
-fun PackageEntity.asExternalModel() = App(
+fun PackageEntity.asExternalModel(preserveIndex: Int = 0) = App(
     id = id,
     packageName = packageName,
     label = packageInfo.label,
     preserveId = preserveId,
+    preserveIndex = preserveIndex,
     isSystemApp = isSystemApp,
     selectionFlag = selectionFlag,
     selected = extraInfo.activated

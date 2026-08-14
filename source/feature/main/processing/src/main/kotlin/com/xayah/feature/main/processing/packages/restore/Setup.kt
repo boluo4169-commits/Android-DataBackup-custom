@@ -114,6 +114,7 @@ fun PagePackagesRestoreProcessingSetup(localNavController: NavHostController, vi
             }
             Title(title = stringResource(id = R.string.settings)) {
                 Clickable(
+                    icon = ImageVector.vectorResource(id = R.drawable.ic_rounded_history),
                     title = stringResource(id = R.string.restore_settings),
                 ) {
                     localNavController.navigateSingle(MainRoutes.RestoreSettings.route)

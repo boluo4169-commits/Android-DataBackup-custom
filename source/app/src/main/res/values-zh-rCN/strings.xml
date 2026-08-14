@@ -71,6 +71,7 @@
     <string name="restoring">恢复中</string>
     <string name="restore_ssaid_reminder">你已开启「恢复Android ID」，恢复后的应用会恢复原来的Android ID，需要在恢复后重启以生效。是否继续？</string>
     <string name="randomize_ssaid_reminder">你已开启「随机化Android ID」，恢复后的应用会获得一个全新的随机Android ID，需要在恢复后重启以生效。是否继续？</string>
+    <string name="duplicate_version_reminder">检测到同一应用（%1$s）勾选了多个备份版本，一起恢复会互相覆盖，最终只保留最后一个版本。是否继续？</string>
     <string name="prompt">提示</string>
     <string name="processing_exit_confirmation">确定退出吗？这将会中断操作。</string>
     <string name="reload">重载</string>
@@ -400,6 +401,11 @@
     <string name="compression_level">压缩等级</string>
     <string name="compression_level_desc">数字越小，压缩速度越快，数字越大，压缩率越高</string>
     <string name="args_current_level">当前等级：%1$s</string>
+    <string name="preserve_backups">保留历史备份</string>
+    <string name="preserve_backups_desc">开启后每次备份自动保留历史版本，不覆盖之前的备份</string>
+    <string name="max_preserve_count">最大保留版本数</string>
+    <string name="max_preserve_count_desc">保留历史备份时最多保留的版本数量，超出后自动删除最旧的版本</string>
+    <string name="args_current_count">当前：%1$s 个</string>
     <string name="last_update">最近更新</string>
     <string name="welcome_screen_app_desc">享受无忧备份，使用简单，完全免费，轻松保护您的数据安全</string>
     <string name="get_started">立刻开始</string>

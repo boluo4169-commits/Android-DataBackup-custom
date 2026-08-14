@@ -3,6 +3,7 @@ package com.xayah.feature.main.list
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.Row
@@ -32,6 +33,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
@@ -52,6 +55,7 @@ import com.xayah.core.ui.theme.value
 import com.xayah.core.ui.token.AnimationTokens
 import com.xayah.core.ui.token.SizeTokens
 import com.xayah.core.ui.util.LocalNavController
+import com.xayah.core.util.DateUtil
 import com.xayah.core.util.navigateSingle
 
 @Composable
@@ -93,6 +97,7 @@ fun LazyListScope.listItems(
                         packageName = item.packageName,
                         label = item.label,
                         preserveId = item.preserveId,
+                        preserveIndex = item.preserveIndex,
                         flag = item.selectionFlag,
                         selected = item.selected,
                         onClick = {
@@ -136,6 +141,7 @@ fun AppItem(
     packageName: String,
     label: String,
     preserveId: Long,
+    preserveIndex: Int,
     flag: Int,
     selected: Boolean,
     onChangeFlag: (Long, Int) -> Unit,
@@ -155,11 +161,31 @@ fun AppItem(
             Column(modifier = Modifier.weight(1f)) {
                 TitleLargeText(text = label.ifEmpty { stringResource(id = R.string.unknown) }, maxLines = 1)
                 BodyMediumText(text = packageName, color = ThemedColorSchemeKeyTokens.Outline.value, maxLines = 1)
+                if (preserveId != 0L && opType == OpType.RESTORE) {
+                    BodyMediumText(
+                        text = DateUtil.formatPreserveTimestamp(preserveId),
+                        color = ThemedColorSchemeKeyTokens.YellowPrimary.value,
+                        maxLines = 1,
+                    )
+                }
             }
 
             Row(modifier = Modifier.height(IntrinsicSize.Min)) {
-                if (preserveId != 0L) {
-                    Icon(modifier = Modifier.fillMaxHeight(), imageVector = Icons.Outlined.Shield, contentDescription = null)
+                if (preserveId != 0L && opType == OpType.RESTORE) {
+                    Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
+                        Icon(
+                            modifier = Modifier.fillMaxHeight(),
+                            imageVector = Icons.Outlined.Shield,
+                            contentDescription = null,
+                            tint = ThemedColorSchemeKeyTokens.YellowPrimary.value,
+                        )
+                        Text(
+                            text = preserveIndex.toString(),
+                            color = ThemedColorSchemeKeyTokens.YellowPrimary.value,
+                            fontSize = 10.sp,
+                            fontWeight = FontWeight.Bold,
+                        )
+                    }
                 }
                 AnimatedDataIndicator(flag) {
                     onChangeFlag(id, flag)

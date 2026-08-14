@@ -98,6 +98,7 @@ fun PageProcessing(
     val dataItems by viewModel.dataItems.collectAsStateWithLifecycle()
     val navController = LocalNavController.current!!
     val dialogState = LocalSlotScope.current!!.dialogSlot
+    val randomizeIcon = ImageVector.vectorResource(id = R.drawable.ic_rounded_android)
     val progress: Float by remember(task?.processingIndex, dataItems.size) {
         mutableFloatStateOf(
             if (task != null)
@@ -126,10 +127,12 @@ fun PageProcessing(
 
     LaunchedEffect(ssaidReminder) {
         ssaidReminder?.let { message ->
-            val confirmed = dialogState.confirm(
-                title = context.getString(R.string.prompt),
-                text = message
-            )
+            val confirmed = dialogState.open(
+                initialState = false,
+                title = context.getString(R.string.randomize_ssaid),
+                icon = randomizeIcon,
+                block = { _ -> Text(text = message) }
+            ).first.isConfirm
             viewModel.decideSsaidReminder(confirmed)
         }
     }

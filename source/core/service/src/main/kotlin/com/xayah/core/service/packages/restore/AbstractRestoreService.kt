@@ -111,13 +111,23 @@ internal abstract class AbstractRestoreService : AbstractPackagesService() {
     override suspend fun onProcessing() {
         ChecksumConfirmation.reset()
 
-        // 恢复前提醒：开启了「恢复 Android id」或「随机化 Android id」时弹确认框
+        // 恢复前提醒：仅「随机化 Android id」弹确认框（「恢复 Android id」不弹）
         val randomizeSsaid = mContext.readRandomizeSsaid().first()
         val restoreSsaidEnabled = mContext.readRestoreSsaid().first()
-        if (randomizeSsaid || restoreSsaidEnabled) {
-            val message = if (randomizeSsaid) mContext.getString(R.string.randomize_ssaid_reminder) else mContext.getString(R.string.restore_ssaid_reminder)
-            if (SsaidRestoreReminder.awaitConfirm(message).not()) {
+        if (randomizeSsaid) {
+            if (SsaidRestoreReminder.awaitConfirm(mContext.getString(R.string.randomize_ssaid_reminder)).not()) {
                 log { "Restore cancelled by user: ssaid reminder." }
+                return
+            }
+        }
+
+        // 多版本覆盖提醒：同一应用（同包名+同用户）勾选了多个备份版本，一起恢复会互相覆盖
+        val duplicatedApps = mPkgEntities.groupBy { it.packageEntity.packageName to it.packageEntity.userId }
+            .filterValues { it.size > 1 }
+        if (duplicatedApps.isNotEmpty()) {
+            val names = duplicatedApps.keys.map { it.first }.distinct().joinToString(", ")
+            if (SsaidRestoreReminder.awaitConfirm(mContext.getString(R.string.duplicate_version_reminder, names)).not()) {
+                log { "Restore cancelled by user: duplicate versions." }
                 return
             }
         }
@@ -144,7 +154,9 @@ internal abstract class AbstractRestoreService : AbstractPackagesService() {
 
                 pkg.update(state = OperationState.PROCESSING)
                 val p = pkg.packageEntity
-                val srcDir = "${mAppsDir}/${p.archivesRelativeDir}"
+                // 兼容旧目录：新格式（应用名_包名）不存在则回退纯包名
+                val newSrcDir = "${mAppsDir}/${p.archivesRelativeDir}"
+                val srcDir = if (mRootService.exists(newSrcDir)) newSrcDir else "${mAppsDir}/${p.legacyArchivesRelativeDir}"
                 val userId = if (restoreUser == -1) p.userId else restoreUser
                 restore(type = DataType.PACKAGE_APK, userId = userId, p = p, t = pkg, srcDir = srcDir)
                 restore(type = DataType.PACKAGE_USER, userId = userId, p = p, t = pkg, srcDir = srcDir)

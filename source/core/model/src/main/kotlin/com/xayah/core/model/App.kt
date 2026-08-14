@@ -5,6 +5,7 @@ data class App(
     val packageName: String,
     val label: String,
     val preserveId: Long,
+    val preserveIndex: Int,
     val isSystemApp: Boolean,
     val selectionFlag: Int,
     val selected: Boolean,

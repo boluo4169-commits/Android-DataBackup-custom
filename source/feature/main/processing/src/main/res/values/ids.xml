@@ -38,6 +38,7 @@
     <item name="confirm_delete" type="string" />
     <item name="setup" type="string" />
     <item name="restore_settings" type="string" />
+    <item name="randomize_ssaid" type="string" />
     <item name="_continue" type="string" />
     <item name="finish" type="string" />
     <item name="storage" type="string" />

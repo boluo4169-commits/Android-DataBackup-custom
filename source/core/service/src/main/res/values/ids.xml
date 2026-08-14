@@ -8,6 +8,7 @@
     <item name="restoring" type="string"/>
     <item name="restore_ssaid_reminder" type="string"/>
     <item name="randomize_ssaid_reminder" type="string"/>
+    <item name="duplicate_version_reminder" type="string"/>
     <item name="restore_completed" type="string"/>
     <item name="necessary_preparations" type="string"/>
     <item name="necessary_remaining_data_processing" type="string"/>

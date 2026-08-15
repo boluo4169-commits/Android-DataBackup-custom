@@ -11,6 +11,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Block
+import androidx.compose.material.icons.outlined.Description
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
@@ -33,6 +34,7 @@ import com.xayah.core.ui.route.MainRoutes
 import com.xayah.core.ui.token.SizeTokens
 import com.xayah.core.ui.util.LocalNavController
 import com.xayah.core.util.LanguageUtil
+import com.xayah.core.util.LogUtil
 import com.xayah.core.util.getActivity
 import com.xayah.core.util.navigateSingle
 import com.xayah.core.util.readMappedLanguage
@@ -122,6 +124,13 @@ fun PageSettings() {
                     title = stringResource(id = R.string.auto_screen_off),
                     checkedText = stringResource(id = R.string.auto_screen_off_desc),
                 )
+                Clickable(
+                    icon = Icons.Outlined.Description,
+                    title = stringResource(id = R.string.export_log),
+                    value = stringResource(id = R.string.export_log_desc),
+                ) {
+                    LogUtil.shareLog(context)
+                }
                 Clickable(
                     title = stringResource(id = R.string.configurations),
                     value = stringResource(id = R.string.configurations_desc),

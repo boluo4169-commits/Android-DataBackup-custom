@@ -247,5 +247,6 @@ fun TaskEntity.set(
 
 fun CompressionType.getCompressPara(level: Int): String = when (this) {
     CompressionType.TAR -> compressPara
-    CompressionType.ZSTD, CompressionType.LZ4 -> "$compressPara -$level"
+    // zstd 的 --ultra 只对 level 20~22 生效，1~19 加了也是冗余，故仅在 >=20 时拼上
+    CompressionType.ZSTD, CompressionType.LZ4 -> "$compressPara${if (level >= 20) " --ultra" else ""} -$level"
 }

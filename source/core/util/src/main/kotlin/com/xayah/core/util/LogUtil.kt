@@ -75,6 +75,8 @@ object LogUtil {
         appendWithTimestamp(tag = TAG_COMMON, msg = msg)
     }
 
+    fun shareLog(context: Context) = shareLog(context, getLogFileName())
+
     fun shareLog(context: Context, name: String) {
         val sharingLog = File(cacheDir, name)
         val sharingUri =

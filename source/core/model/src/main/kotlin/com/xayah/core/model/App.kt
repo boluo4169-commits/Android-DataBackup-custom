@@ -6,6 +6,7 @@ data class App(
     val label: String,
     val preserveId: Long,
     val preserveIndex: Int,
+    val lastBackupTime: Long,
     val isSystemApp: Boolean,
     val selectionFlag: Int,
     val selected: Boolean,

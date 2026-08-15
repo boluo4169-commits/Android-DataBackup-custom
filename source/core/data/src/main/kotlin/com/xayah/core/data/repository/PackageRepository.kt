@@ -150,7 +150,7 @@ class PackageRepository @Inject constructor(
     suspend fun upsert(items: List<PackageEntity>) = packageDao.upsert(items)
 
     suspend fun preserve(p: PackageEntity) {
-        val pkgEntity = p.copy(id = 0, indexInfo = p.indexInfo.copy(preserveId = DateUtil.getTimestamp()))
+        val pkgEntity = p.copy(id = 0, indexInfo = p.indexInfo.copy(preserveId = DateUtil.getPreserveTimestamp()))
         val appsDir = pathUtil.getLocalBackupAppsDir()
         val isSuccess = if (pkgEntity.indexInfo.cloud.isEmpty()) {
             val src = "${appsDir}/${p.archivesRelativeDir}"

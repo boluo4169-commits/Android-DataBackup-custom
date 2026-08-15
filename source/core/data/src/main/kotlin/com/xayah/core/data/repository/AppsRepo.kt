@@ -119,14 +119,15 @@ class AppsRepo @Inject constructor(
             .filter(packageRepo.getNotInstalledPredicate(value = data.filters.notInstalledApps, pkgUserSet = pSet))
             .filter(packageRepo.getUserIdPredicateNew(userId = data.userList.getOrNull(data.userIndex)?.id))
             .filter { if (lLabels.isNotEmpty()) lRefs.find { ref -> it.packageName == ref.packageName && it.userId == ref.userId && it.preserveId == ref.preserveId } != null else true }
+            .sortedBy { it.extraInfo.lastBackupTime }
             .sortedWith(packageRepo.getSortComparatorNew(sortIndex = data.sortIndex, sortType = data.sortType))
             .sortedByDescending { p -> p.extraInfo.activated }.toList()
             .let { list ->
-                // 计算每个应用的保护版本序号（按 preserveId 升序，最旧的 = 1）
+                // 计算每个应用的保护版本序号（按 lastBackupTime 降序，最新被覆盖的 = 护盾 1）
                 val indexMap = list.groupBy { it.packageName to it.userId }
                     .flatMap { (_, entities) ->
                         entities.filter { it.preserveId != 0L }
-                            .sortedBy { it.preserveId }
+                            .sortedByDescending { it.extraInfo.lastBackupTime }
                             .mapIndexed { index, entity -> entity.id to (index + 1) }
                     }
                     .toMap()

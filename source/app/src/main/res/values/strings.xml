@@ -40,6 +40,8 @@
     <string name="external_storage">External storage</string>
     <string name="directory_structure">Directory structure</string>
     <string name="copy">Copy</string>
+    <string name="file_path">File path</string>
+    <string name="copied">Copied</string>
     <string name="save">Save</string>
     <string name="succeed">Success</string>
     <string name="failed">Failed</string>
@@ -341,6 +343,8 @@
     <string name="protect_desc">Prevent this backup from being overwritten</string>
     <string name="about">About</string>
     <string name="about_app">About application</string>
+    <string name="export_log">Export log</string>
+    <string name="export_log_desc">Share the current log file to help diagnose issues</string>
     <string name="donate">Donate</string>
     <string name="buymeacoffee" translatable="false">Buy me a coffee</string>
     <string name="paypal" translatable="false">PayPal</string>
@@ -351,8 +355,8 @@
     <string name="translators">Translators</string>
     <string name="translators_desc">We appreciate their efforts</string>
     <string name="no_root_directory">Please do not select the root directory</string>
-    <string name="option_i">Option One</string>
-    <string name="option_ii">Option II</string>
+    <string name="option_i">Force stop via shell</string>
+    <string name="option_ii">Force stop via system API (recommended)</string>
     <string name="disabled">Disabled</string>
     <string name="kill_app_options">Killing app options</string>
     <string name="kill_app_options_desc">Behavior before backup</string>
@@ -411,9 +415,12 @@
     <string name="randomize_ssaid_desc">Generate a random new Android ID instead of restoring the old one, needs immediate reboot after restoring to take effect</string>
     <string name="compression_level">Compression level</string>
     <string name="compression_level_desc">Lower numbers provide faster compression, higher numbers yield better compression ratios</string>
+    <string name="compression_level_tar_disabled">Compression type is TAR (no compression), so this level has no effect</string>
     <string name="args_current_level">Current level: %1$s</string>
     <string name="preserve_backups">Preserve backup history</string>
     <string name="preserve_backups_desc">Keep a new version for every backup instead of overwriting the previous one</string>
+    <string name="preserve_backups_help">When enabled, every backup keeps a history:\n\n• The latest backup is the normal version (no shield)\n• Older backups become protected, with a shield numbered from 1 (the most recently replaced), larger numbers mean older\n• Versions beyond the max count are deleted automatically</string>
+    <string name="got_it">Got it</string>
     <string name="max_preserve_count">Max preserved versions</string>
     <string name="max_preserve_count_desc">Maximum number of preserved versions to keep, the oldest ones will be deleted automatically</string>
     <string name="args_current_count">Current: %1$s</string>

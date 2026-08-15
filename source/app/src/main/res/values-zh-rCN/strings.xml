@@ -37,6 +37,8 @@
     <string name="external_storage">外部存储</string>
     <string name="directory_structure">目录结构</string>
     <string name="copy">复制</string>
+    <string name="file_path">文件路径</string>
+    <string name="copied">已复制</string>
     <string name="save">保存</string>
     <string name="succeed">成功</string>
     <string name="failed">失败</string>
@@ -333,6 +335,8 @@
     <string name="protect_desc">防止此备份被覆盖</string>
     <string name="about">关于</string>
     <string name="about_app">关于应用</string>
+    <string name="export_log">导出日志</string>
+    <string name="export_log_desc">分享当前日志文件，用于提交问题分析</string>
     <string name="donate">捐赠</string>
     <string name="afdian">爱发电</string>
     <string name="contact">联系</string>
@@ -340,8 +344,8 @@
     <string name="translators">翻译者</string>
     <string name="translators_desc">感谢他们的付出</string>
     <string name="no_root_directory">请勿选择根目录</string>
-    <string name="option_i">方案I</string>
-    <string name="option_ii">方案II</string>
+    <string name="option_i">命令行强制结束</string>
+    <string name="option_ii">系统强制停止（推荐）</string>
     <string name="disabled">禁用</string>
     <string name="kill_app_options">杀死应用选项</string>
     <string name="kill_app_options_desc">备份应用前行为</string>
@@ -400,9 +404,12 @@
     <string name="randomize_ssaid_desc">生成一个随机的新Android ID（不恢复旧值），需要在恢复后立即重启以生效</string>
     <string name="compression_level">压缩等级</string>
     <string name="compression_level_desc">数字越小，压缩速度越快，数字越大，压缩率越高</string>
+    <string name="compression_level_tar_disabled">当前压缩方式为 TAR（不压缩），此等级不生效</string>
     <string name="args_current_level">当前等级：%1$s</string>
     <string name="preserve_backups">保留历史备份</string>
     <string name="preserve_backups_desc">开启后每次备份自动保留历史版本，不覆盖之前的备份</string>
+    <string name="preserve_backups_help">开启后，每次备份都会保留历史版本：\n\n• 最新一次备份 = 正常版本（无护盾标记）\n• 之前的备份 = 受保护版本，护盾内显示序号，护盾 1 是最近一次被覆盖的版本，数字越大越旧\n• 超过「最大保留版本数」时，最旧的版本会自动删除</string>
+    <string name="got_it">知道了</string>
     <string name="max_preserve_count">最大保留版本数</string>
     <string name="max_preserve_count_desc">保留历史备份时最多保留的版本数量，超出后自动删除最旧的版本</string>
     <string name="args_current_count">当前：%1$s 个</string>

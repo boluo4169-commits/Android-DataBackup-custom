@@ -103,6 +103,7 @@ fun Clickable(
     value: String? = null,
     desc: String? = null,
     leadingContent: (@Composable RowScope.() -> Unit)? = null,
+    titleTrailingContent: (@Composable RowScope.() -> Unit)? = null,
     trailingContent: (@Composable RowScope.() -> Unit)? = null,
     onClick: () -> Unit = {}
 ) {
@@ -110,8 +111,11 @@ fun Clickable(
         Row(modifier = Modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(SizeTokens.Level16)) {
             if (leadingContent != null) leadingContent()
             Column(modifier = Modifier.weight(1f)) {
-                AnimatedTextContainer(targetState = title) { text ->
-                    TitleLargeText(enabled = enabled, text = text, color = ThemedColorSchemeKeyTokens.OnSurface.value.withState(enabled), fontWeight = FontWeight.Normal)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(SizeTokens.Level8)) {
+                    AnimatedTextContainer(targetState = title) { text ->
+                        TitleLargeText(enabled = enabled, text = text, color = ThemedColorSchemeKeyTokens.OnSurface.value.withState(enabled), fontWeight = FontWeight.Normal)
+                    }
+                    if (titleTrailingContent != null) titleTrailingContent()
                 }
                 if (value != null) AnimatedTextContainer(targetState = value) { text ->
                     TitleSmallText(enabled = enabled, text = text, color = ThemedColorSchemeKeyTokens.Outline.value.withState(enabled), fontWeight = FontWeight.Normal)
@@ -247,6 +251,9 @@ fun Switchable(
     checkedText: String,
     notCheckedText: String = checkedText,
     desc: String? = null,
+    leadingContent: (@Composable RowScope.() -> Unit)? = null,
+    titleTrailingContent: (@Composable RowScope.() -> Unit)? = null,
+    trailingContent: (@Composable RowScope.() -> Unit)? = null,
     onCheckedChange: (Boolean) -> Unit = {}
 ) {
     Clickable(
@@ -254,8 +261,10 @@ fun Switchable(
         title = title,
         value = if (checked) checkedText else notCheckedText,
         desc = desc,
+        titleTrailingContent = titleTrailingContent,
         leadingContent = {
             if (icon != null) Icon(imageVector = icon, contentDescription = null)
+            if (leadingContent != null) leadingContent()
         },
         trailingContent = {
             Divider(
@@ -270,6 +279,7 @@ fun Switchable(
                 checked = checked,
                 onCheckedChange = { onCheckedChange.invoke(checked) }
             )
+            if (trailingContent != null) trailingContent()
         },
         onClick = {
             onCheckedChange.invoke(checked)
@@ -288,6 +298,9 @@ fun Switchable(
     checkedText: String,
     notCheckedText: String = checkedText,
     desc: String? = null,
+    leadingContent: (@Composable RowScope.() -> Unit)? = null,
+    titleTrailingContent: (@Composable RowScope.() -> Unit)? = null,
+    trailingContent: (@Composable RowScope.() -> Unit)? = null,
     onCheckedChange: (Boolean) -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -306,6 +319,9 @@ fun Switchable(
         checkedText = checkedText,
         notCheckedText = notCheckedText,
         desc = desc,
+        leadingContent = leadingContent,
+        titleTrailingContent = titleTrailingContent,
+        trailingContent = trailingContent,
         onCheckedChange = {
             scope.launch {
                 onClick(stored)
@@ -340,7 +356,8 @@ fun Slideable(
                     value = value,
                     onValueChange = onValueChange,
                     steps = steps,
-                    valueRange = valueRange
+                    valueRange = valueRange,
+                    enabled = enabled,
                 )
             }
             if (trailingContent != null) trailingContent()

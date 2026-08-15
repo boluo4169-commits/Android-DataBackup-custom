@@ -1,5 +1,8 @@
 package com.xayah.feature.main.details
 
+import android.content.ClipData
+import android.content.ClipboardManager
+import android.widget.Toast
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.combinedClickable
@@ -84,6 +87,7 @@ import com.xayah.core.ui.theme.value
 import com.xayah.core.ui.theme.withState
 import com.xayah.core.ui.token.SizeTokens
 import com.xayah.core.util.DateUtil
+import com.xayah.core.util.localBackupSaveDir
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -461,6 +465,11 @@ private fun BackupParts(app: PackageEntity, isCalculating: Boolean, onSetDataSta
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
 private fun Info(app: PackageEntity) {
+    val context = LocalContext.current
+    val path = remember(app) {
+        val dir = app.indexInfo.backupDir.ifEmpty { context.localBackupSaveDir() }
+        "$dir/apps/${app.archivesRelativeDir}"
+    }
     Title(title = stringResource(id = R.string.info)) {
         Clickable(
             icon = ImageVector.vectorResource(id = R.drawable.ic_rounded_person),
@@ -505,6 +514,16 @@ private fun Info(app: PackageEntity) {
                 value = app.extraInfo.ssaid,
             )
         }
+        Clickable(
+            icon = ImageVector.vectorResource(id = R.drawable.ic_rounded_folder_open),
+            title = stringResource(id = R.string.file_path),
+            value = path,
+            onClick = {
+                val clipboard = context.getSystemService(ClipboardManager::class.java)
+                clipboard.setPrimaryClip(ClipData.newPlainText("path", path))
+                Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
+            },
+        )
         if (app.preserveId != 0L) {
             Clickable(
                 icon = Icons.Outlined.Shield,

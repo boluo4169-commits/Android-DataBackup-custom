@@ -98,6 +98,7 @@ fun LazyListScope.listItems(
                         label = item.label,
                         preserveId = item.preserveId,
                         preserveIndex = item.preserveIndex,
+                        lastBackupTime = item.lastBackupTime,
                         flag = item.selectionFlag,
                         selected = item.selected,
                         onClick = {
@@ -142,6 +143,7 @@ fun AppItem(
     label: String,
     preserveId: Long,
     preserveIndex: Int,
+    lastBackupTime: Long,
     flag: Int,
     selected: Boolean,
     onChangeFlag: (Long, Int) -> Unit,
@@ -163,7 +165,7 @@ fun AppItem(
                 BodyMediumText(text = packageName, color = ThemedColorSchemeKeyTokens.Outline.value, maxLines = 1)
                 if (preserveId != 0L && opType == OpType.RESTORE) {
                     BodyMediumText(
-                        text = DateUtil.formatPreserveTimestamp(preserveId),
+                        text = DateUtil.formatTimestamp(lastBackupTime, DateUtil.PATTERN_YMD_HMS),
                         color = ThemedColorSchemeKeyTokens.YellowPrimary.value,
                         maxLines = 1,
                     )

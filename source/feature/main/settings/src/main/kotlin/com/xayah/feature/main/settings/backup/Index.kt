@@ -1,14 +1,25 @@
 package com.xayah.feature.main.settings.backup
 
 import android.annotation.SuppressLint
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.animation.expandVertically
+import androidx.compose.animation.fadeIn
+import androidx.compose.animation.fadeOut
+import androidx.compose.animation.shrinkVertically
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
@@ -29,11 +40,14 @@ import com.xayah.core.datastore.KeyCompressionTest
 import com.xayah.core.datastore.KeyFollowSymlinks
 import com.xayah.core.datastore.KeyPreserveBackups
 import com.xayah.core.datastore.readCompressionLevel
+import com.xayah.core.datastore.readCompressionType
 import com.xayah.core.datastore.readKillAppOption
 import com.xayah.core.datastore.readMaxPreserveCount
+import com.xayah.core.datastore.readPreserveBackups
 import com.xayah.core.datastore.saveCompressionLevel
 import com.xayah.core.datastore.saveKillAppOption
 import com.xayah.core.datastore.saveMaxPreserveCount
+import com.xayah.core.model.CompressionType
 import com.xayah.core.model.KillAppOption
 import com.xayah.core.model.util.indexOf
 import com.xayah.core.ui.component.InnerBottomSpacer
@@ -72,36 +86,71 @@ fun PageBackupSettings() {
         ) {
             Column {
                 val scope = rememberCoroutineScope()
+                val compressionType by context.readCompressionType().collectAsStateWithLifecycle(initialValue = CompressionType.ZSTD)
                 val level by context.readCompressionLevel().collectAsStateWithLifecycle(initialValue = 1)
                 Slideable(
+                    enabled = compressionType != CompressionType.TAR,
                     title = stringResource(id = R.string.compression_level),
                     value = level.toFloat(),
                     valueRange = 1F..22F,
                     steps = 20,
-                    desc = remember(level) { "${context.getString(R.string.args_current_level, level)}\n${context.getString(R.string.compression_level_desc)}" }
+                    desc = remember(level, compressionType) {
+                        if (compressionType == CompressionType.TAR) context.getString(R.string.compression_level_tar_disabled)
+                        else "${context.getString(R.string.args_current_level, level)}\n${context.getString(R.string.compression_level_desc)}"
+                    }
                 ) {
-                    scope.launch {
-                        context.saveCompressionLevel(it.roundToInt())
+                    if (compressionType != CompressionType.TAR) {
+                        scope.launch {
+                            context.saveCompressionLevel(it.roundToInt())
+                        }
                     }
                 }
 
+                val preserveBackups by context.readPreserveBackups().collectAsStateWithLifecycle(initialValue = false)
                 Switchable(
                     key = KeyPreserveBackups,
                     defValue = false,
                     title = stringResource(id = R.string.preserve_backups),
                     checkedText = stringResource(id = R.string.preserve_backups_desc),
+                    titleTrailingContent = {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(SizeTokens.Level16)
+                                .clickable {
+                                    scope.launch {
+                                        dialogState.open(
+                                            initialState = Unit,
+                                            title = context.getString(R.string.preserve_backups),
+                                            icon = Icons.Outlined.Info,
+                                            confirmText = context.getString(R.string.got_it),
+                                            dismissText = context.getString(R.string.cancel),
+                                        ) { _ ->
+                                            Text(text = context.getString(R.string.preserve_backups_help))
+                                        }
+                                    }
+                                },
+                        )
+                    },
                 )
 
-                val maxPreserveCount by context.readMaxPreserveCount().collectAsStateWithLifecycle(initialValue = 3)
-                Slideable(
-                    title = stringResource(id = R.string.max_preserve_count),
-                    value = maxPreserveCount.toFloat(),
-                    valueRange = 1F..10F,
-                    steps = 8,
-                    desc = remember(maxPreserveCount) { "${context.getString(R.string.args_current_count, maxPreserveCount)}\n${context.getString(R.string.max_preserve_count_desc)}" }
+                AnimatedVisibility(
+                    visible = preserveBackups,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut(),
                 ) {
-                    scope.launch {
-                        context.saveMaxPreserveCount(it.roundToInt())
+                    val maxPreserveCount by context.readMaxPreserveCount().collectAsStateWithLifecycle(initialValue = 3)
+                    Slideable(
+                        title = stringResource(id = R.string.max_preserve_count),
+                        value = maxPreserveCount.toFloat(),
+                        valueRange = 1F..10F,
+                        steps = 8,
+                        desc = remember(maxPreserveCount) { "${context.getString(R.string.args_current_count, maxPreserveCount)}\n${context.getString(R.string.max_preserve_count_desc)}" }
+                    ) {
+                        scope.launch {
+                            context.saveMaxPreserveCount(it.roundToInt())
+                        }
                     }
                 }
 

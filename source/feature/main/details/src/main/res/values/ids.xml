@@ -37,7 +37,10 @@
     <item name="no_labels_here" type="string" />
     <item name="last_backup" type="string" />
     <item name="last_update" type="string" />
+    <item name="file_path" type="string" />
+    <item name="copied" type="string" />
 
     <item name="ic_rounded_person" type="drawable" />
     <item name="ic_rounded_acute" type="drawable" />
+    <item name="ic_rounded_folder_open" type="drawable" />
 </resources>

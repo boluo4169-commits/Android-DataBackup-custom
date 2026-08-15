@@ -279,6 +279,7 @@ fun PackageEntity.asExternalModel(preserveIndex: Int = 0) = App(
     label = packageInfo.label,
     preserveId = preserveId,
     preserveIndex = preserveIndex,
+    lastBackupTime = extraInfo.lastBackupTime,
     isSystemApp = isSystemApp,
     selectionFlag = selectionFlag,
     selected = extraInfo.activated

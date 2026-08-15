@@ -8,7 +8,10 @@ namespace NativeNS {
     thread_local size_t total_size{0};
 
     int on_walking(const char *path, const struct stat *p_stat, int flag) {
-        total_size += p_stat->st_size;
+        // stat 失败（如权限不足、FTW_NS）时 p_stat 可能为空，避免解引用空指针导致段错误。
+        if (p_stat != nullptr) {
+            total_size += p_stat->st_size;
+        }
         return 0;
     }
 }

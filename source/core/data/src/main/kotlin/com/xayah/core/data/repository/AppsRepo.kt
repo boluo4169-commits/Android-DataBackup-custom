@@ -57,11 +57,15 @@ import com.xayah.core.util.withLog
 import com.xayah.core.util.withMainContext
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineDispatcher
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 
 class AppsRepo @Inject constructor(
@@ -322,7 +326,7 @@ class AppsRepo @Inject constructor(
 
             apps.forEachIndexed { index, pkg ->
                 onUpdate(index, apps.size, pkg.packageName)
-                val updateEntity = updateApp(pm, pkg, userId, userHandle)
+                val updateEntity = updateApp(pm, pkg, userId, userHandle, queryStats = false)
                 if (updateEntity != null) {
                     updateList.add(updateEntity)
                 }
@@ -340,7 +344,7 @@ class AppsRepo @Inject constructor(
             onUpdate(index, apps.size, pkg.packageName)
             val userId = pkg.userId
             val userHandle = rootService.getUserHandle(userId)
-            val updateEntity = updateApp(pm, pkg, userId, userHandle)
+            val updateEntity = updateApp(pm, pkg, userId, userHandle, queryStats = false)
             if (updateEntity != null) {
                 updateList.add(updateEntity)
             }
@@ -357,7 +361,7 @@ class AppsRepo @Inject constructor(
         }
     }
 
-    private suspend fun updateApp(pm: PackageManager, pkg: PackageEntity, userId: Int, userHandle: UserHandle?): PackageUpdateEntity? {
+    private suspend fun updateApp(pm: PackageManager, pkg: PackageEntity, userId: Int, userHandle: UserHandle?, queryStats: Boolean = true): PackageUpdateEntity? {
         val info = rootService.getPackageInfoAsUser(pkg.packageName, PackageManager.GET_PERMISSIONS, userId)
         val updateEntity = PackageUpdateEntity(pkg.id, pkg.packageInfo, pkg.extraInfo, pkg.storageStats)
         if (info != null) {
@@ -396,7 +400,7 @@ class AppsRepo @Inject constructor(
             updateEntity.extraInfo.ssaid = rootService.getPackageSsaidAsUser(packageName = info.packageName, uid = uid, userId = userId)
             updateEntity.extraInfo.enabled = info.applicationInfo?.enabled ?: false
 
-            if (userHandle != null) {
+            if (queryStats && userHandle != null) {
                 rootService.queryStatsForPackage(info, userHandle).also { stats ->
                     if (stats != null) {
                         updateEntity.storageStats.appBytes = stats.appBytes
@@ -560,18 +564,34 @@ class AppsRepo @Inject constructor(
     }.withLog()
 
     suspend fun calculateLocalAppSize(app: PackageEntity) {
-        app.displayStats.apkBytes = calculateLocalAppDataSize(app, DataType.PACKAGE_APK)
-        app.displayStats.userBytes = calculateLocalAppDataSize(app, DataType.PACKAGE_USER)
-        app.displayStats.userDeBytes = calculateLocalAppDataSize(app, DataType.PACKAGE_USER_DE)
-        app.displayStats.dataBytes = calculateLocalAppDataSize(app, DataType.PACKAGE_DATA)
-        app.displayStats.obbBytes = calculateLocalAppDataSize(app, DataType.PACKAGE_OBB)
-        app.displayStats.mediaBytes = calculateLocalAppDataSize(app, DataType.PACKAGE_MEDIA)
+        val dataTypes = listOf(
+            DataType.PACKAGE_APK,
+            DataType.PACKAGE_USER,
+            DataType.PACKAGE_USER_DE,
+            DataType.PACKAGE_DATA,
+            DataType.PACKAGE_OBB,
+            DataType.PACKAGE_MEDIA,
+        )
+        val sizes = coroutineScope {
+            dataTypes.map { dt -> async { dt to calculateLocalAppDataSize(app, dt) } }.awaitAll()
+        }
+        sizes.forEach { (dt, size) ->
+            when (dt) {
+                DataType.PACKAGE_APK -> app.displayStats.apkBytes = size
+                DataType.PACKAGE_USER -> app.displayStats.userBytes = size
+                DataType.PACKAGE_USER_DE -> app.displayStats.userDeBytes = size
+                DataType.PACKAGE_DATA -> app.displayStats.dataBytes = size
+                DataType.PACKAGE_OBB -> app.displayStats.obbBytes = size
+                DataType.PACKAGE_MEDIA -> app.displayStats.mediaBytes = size
+                else -> {}
+            }
+        }
         appsDao.upsert(app)
     }
 
     private suspend fun calculateLocalAppDataSize(p: PackageEntity, dataType: DataType): Long {
         val src = getLocalAppDataSrcDir(p, dataType)
-        return if (rootService.exists(src)) rootService.calculateSize(src) else 0
+        return if (rootService.exists(src)) withTimeoutOrNull(5_000) { rootService.calculateSize(src) } ?: 0 else 0
     }
 
     private fun getDataSrcDir(dataType: DataType, userId: Int) = dataType.srcDir(userId)
@@ -619,17 +639,33 @@ class AppsRepo @Inject constructor(
 
     private fun getArchiveSrc(dstDir: String, dataType: DataType, ct: CompressionType) = "${dstDir}/${dataType.type}.${ct.suffix}"
 
-    private suspend fun calculateLocalAppArchiveSize(p: PackageEntity, dataType: DataType) = rootService.calculateSize(
-        getArchiveSrc("${pathUtil.getLocalBackupAppsDir()}/${p.archivesRelativeDir}", dataType, p.indexInfo.compressionType)
-    )
+    private suspend fun calculateArchiveDataSize(p: PackageEntity, dataType: DataType): Long = withTimeoutOrNull(5_000) {
+        rootService.calculateSize(getArchiveSrc("${pathUtil.getLocalBackupAppsDir()}/${p.archivesRelativeDir}", dataType, p.indexInfo.compressionType))
+    } ?: 0
 
     suspend fun calculateLocalAppArchiveSize(app: PackageEntity) {
-        app.displayStats.apkBytes = calculateLocalAppArchiveSize(app, DataType.PACKAGE_APK)
-        app.displayStats.userBytes = calculateLocalAppArchiveSize(app, DataType.PACKAGE_USER)
-        app.displayStats.userDeBytes = calculateLocalAppArchiveSize(app, DataType.PACKAGE_USER_DE)
-        app.displayStats.dataBytes = calculateLocalAppArchiveSize(app, DataType.PACKAGE_DATA)
-        app.displayStats.obbBytes = calculateLocalAppArchiveSize(app, DataType.PACKAGE_OBB)
-        app.displayStats.mediaBytes = calculateLocalAppArchiveSize(app, DataType.PACKAGE_MEDIA)
+        val dataTypes = listOf(
+            DataType.PACKAGE_APK,
+            DataType.PACKAGE_USER,
+            DataType.PACKAGE_USER_DE,
+            DataType.PACKAGE_DATA,
+            DataType.PACKAGE_OBB,
+            DataType.PACKAGE_MEDIA,
+        )
+        val sizes = coroutineScope {
+            dataTypes.map { dt -> async { dt to calculateArchiveDataSize(app, dt) } }.awaitAll()
+        }
+        sizes.forEach { (dt, size) ->
+            when (dt) {
+                DataType.PACKAGE_APK -> app.displayStats.apkBytes = size
+                DataType.PACKAGE_USER -> app.displayStats.userBytes = size
+                DataType.PACKAGE_USER_DE -> app.displayStats.userDeBytes = size
+                DataType.PACKAGE_DATA -> app.displayStats.dataBytes = size
+                DataType.PACKAGE_OBB -> app.displayStats.obbBytes = size
+                DataType.PACKAGE_MEDIA -> app.displayStats.mediaBytes = size
+                else -> {}
+            }
+        }
         appsDao.upsert(app)
     }
 

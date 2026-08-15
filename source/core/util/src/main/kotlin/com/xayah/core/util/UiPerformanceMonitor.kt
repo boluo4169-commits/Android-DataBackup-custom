@@ -1,32 +1,55 @@
 package com.xayah.core.util
 
-import android.view.Choreographer
+import android.os.Looper
+import android.os.SystemClock
 
 /**
- * 主线程卡顿检测：用 Choreographer 监控帧间隔，主线程被阻塞超过阈值时记一条日志。
- * 用于定位「列表滑动卡顿」这类 UI 性能问题（此类问题不产生异常，只能靠帧间隔探测）。
+ * 主线程卡顿检测 + 堆栈采样（BlockCanary 原理）。
+ * 用 Looper 监控每个 Message 的处理时长，卡顿超阈值时由看门狗线程 dump 主线程堆栈，
+ * 从而定位「主线程被阻塞的 4~5 秒到底在干什么」。
  */
 object UiPerformanceMonitor {
-    private const val FREEZE_THRESHOLD_MS = 300L
+    private const val FREEZE_THRESHOLD_MS = 500L
+    private const val WATCHDOG_INTERVAL_MS = 100L
     private var installed = false
+
+    @Volatile
+    private var dispatchingStartTime = 0L
 
     fun install() {
         if (installed) return
         installed = true
 
-        var lastFrameTimeNanos = 0L
-        val callback = object : Choreographer.FrameCallback {
-            override fun doFrame(frameTimeNanos: Long) {
-                if (lastFrameTimeNanos > 0) {
-                    val diffMs = (frameTimeNanos - lastFrameTimeNanos) / 1_000_000
-                    if (diffMs > FREEZE_THRESHOLD_MS) {
-                        LogUtil.log("UI freeze: main thread blocked ${diffMs}ms")
-                    }
-                }
-                lastFrameTimeNanos = frameTimeNanos
-                Choreographer.getInstance().postFrameCallback(this)
+        val mainThread = Looper.getMainLooper().thread
+
+        Looper.getMainLooper().setMessageLogging { msg ->
+            if (msg?.startsWith(">>>>> Dispatching") == true) {
+                dispatchingStartTime = SystemClock.elapsedRealtime()
+            } else if (msg?.startsWith("<<<<< Finished") == true) {
+                dispatchingStartTime = 0L
             }
         }
-        Choreographer.getInstance().postFrameCallback(callback)
+
+        Thread {
+            var lastDumpTime = 0L
+            while (true) {
+                Thread.sleep(WATCHDOG_INTERVAL_MS)
+                val start = dispatchingStartTime
+                if (start > 0) {
+                    val cost = SystemClock.elapsedRealtime() - start
+                    if (cost > FREEZE_THRESHOLD_MS) {
+                        val now = SystemClock.elapsedRealtime()
+                        if (now - lastDumpTime > 1000) {
+                            lastDumpTime = now
+                            val stack = mainThread.stackTrace.joinToString("\n") { "    at $it" }
+                            LogUtil.log("UI freeze: main thread blocked ${cost}ms\n$stack")
+                        }
+                    }
+                }
+            }
+        }.apply {
+            isDaemon = true
+            name = "UiFreezeWatchdog"
+        }.start()
     }
 }

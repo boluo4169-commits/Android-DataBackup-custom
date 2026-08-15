@@ -2,6 +2,8 @@ package com.xayah.feature.main.settings
 
 import android.content.Intent
 import android.os.Build
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -11,12 +13,13 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Block
-import androidx.compose.material.icons.outlined.Description
+import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -24,6 +27,8 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.launch
 import com.xayah.core.datastore.KeyAutoScreenOff
 import com.xayah.core.datastore.KeyMonet
 import com.xayah.core.ui.component.Clickable
@@ -33,6 +38,7 @@ import com.xayah.core.ui.component.Title
 import com.xayah.core.ui.route.MainRoutes
 import com.xayah.core.ui.token.SizeTokens
 import com.xayah.core.ui.util.LocalNavController
+import com.xayah.core.util.DateUtil
 import com.xayah.core.util.LanguageUtil
 import com.xayah.core.util.LogUtil
 import com.xayah.core.util.getActivity
@@ -50,6 +56,22 @@ fun PageSettings() {
     val viewModel = hiltViewModel<IndexViewModel>()
     val directoryState by viewModel.directoryState.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+
+    val scope = rememberCoroutineScope()
+    val exportLogLauncher = rememberLauncherForActivityResult(ActivityResultContracts.CreateDocument("application/zip")) { uri ->
+        uri?.let {
+            scope.launch(Dispatchers.IO) {
+                LogUtil.createLogsZip()?.let { zip ->
+                    runCatching {
+                        context.contentResolver.openOutputStream(uri)?.use { out ->
+                            zip.inputStream().use { it.copyTo(out) }
+                        }
+                    }
+                    zip.delete()
+                }
+            }
+        }
+    }
 
     SettingsScaffold(
         scrollBehavior = scrollBehavior,
@@ -125,11 +147,11 @@ fun PageSettings() {
                     checkedText = stringResource(id = R.string.auto_screen_off_desc),
                 )
                 Clickable(
-                    icon = Icons.Outlined.Description,
+                    icon = Icons.Rounded.Inventory2,
                     title = stringResource(id = R.string.export_log),
                     value = stringResource(id = R.string.export_log_desc),
                 ) {
-                    LogUtil.shareLog(context)
+                    exportLogLauncher.launch("DataBackup_logs_${DateUtil.formatTimestamp(DateUtil.getTimestamp(), "yyyyMMdd_HHmmss")}.zip")
                 }
                 Clickable(
                     title = stringResource(id = R.string.configurations),

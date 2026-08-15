@@ -15,6 +15,7 @@ import com.xayah.core.ui.component.AnimatedNavHost
 import com.xayah.core.ui.route.MainRoutes
 import com.xayah.core.ui.theme.DataBackupTheme
 import com.xayah.core.ui.util.LocalNavController
+import com.xayah.core.util.UiPerformanceMonitor
 import com.xayah.core.util.command.BaseUtil
 import com.xayah.feature.main.cloud.PageCloud
 import com.xayah.feature.main.cloud.add.PageCloudAddAccount
@@ -62,6 +63,8 @@ class MainActivity : AppCompatActivity() {
                 BaseUtil.initializeEnvironment(context = this@MainActivity)
             }
         }
+
+        UiPerformanceMonitor.install()
 
         setContent {
             DataBackupTheme {

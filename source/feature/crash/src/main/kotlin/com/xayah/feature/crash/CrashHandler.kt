@@ -8,6 +8,7 @@ import androidx.compose.material3.ExperimentalMaterial3Api
 import com.xayah.core.common.util.BuildConfigUtil
 import com.xayah.core.common.util.toLineString
 import com.xayah.core.util.DateUtil
+import com.xayah.core.util.LogUtil
 import java.io.PrintWriter
 import java.io.StringWriter
 import kotlin.system.exitProcess
@@ -70,6 +71,8 @@ class CrashHandler(private val mContext: Context) : Thread.UncaughtExceptionHand
                 stringWriter.toString(),
             )
             crashInfo = infoList.toLineString().trim()
+            // 写入日志文件，便于用户通过「导出日志」提交崩溃堆栈。
+            LogUtil.logCrash(crashInfo)
         }
     }
 }

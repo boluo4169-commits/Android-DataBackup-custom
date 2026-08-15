@@ -75,7 +75,7 @@
     <string name="date">Date</string>
     <string name="restoring">Restoring</string>
     <string name="restore_ssaid_reminder">You have enabled \u201CRestore Android ID\u201D. The restored apps will get their original Android ID back. A reboot is needed after restoring to take effect. Continue?</string>
-    <string name="randomize_ssaid_reminder">You have enabled \u201CRandomize Android ID\u201D. The restored apps will get a brand-new random Android ID. A reboot is needed after restoring to take effect. Continue?</string>
+    <string name="randomize_ssaid_reminder">You have enabled \u201CRandomize Android ID\u201D. The restored apps will get a brand-new random Android ID.\n\n\u26A0\uFE0F Note: You need to REBOOT the device MANUALLY after restoring for it to take effect. This app does not provide a reboot option.\n\nContinue?</string>
     <string name="duplicate_version_reminder">You selected multiple versions of the same app (%1$s). Restoring them together will overwrite each other, only the last restored version will remain. Continue?</string>
     <string name="prompt">Prompt</string>
     <string name="processing_exit_confirmation">Exit the app and interrupt ongoing operation\?</string>
@@ -343,8 +343,8 @@
     <string name="protect_desc">Prevent this backup from being overwritten</string>
     <string name="about">About</string>
     <string name="about_app">About application</string>
-    <string name="export_log">Export log</string>
-    <string name="export_log_desc">Share the current log file to help diagnose issues</string>
+    <string name="export_log">Export logs</string>
+    <string name="export_log_desc">Package and share recent logs as a zip archive</string>
     <string name="donate">Donate</string>
     <string name="buymeacoffee" translatable="false">Buy me a coffee</string>
     <string name="paypal" translatable="false">PayPal</string>

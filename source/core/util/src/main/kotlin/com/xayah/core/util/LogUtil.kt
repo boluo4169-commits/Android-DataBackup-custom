@@ -1,10 +1,8 @@
 package com.xayah.core.util
 
 import android.content.Context
-import android.content.Intent
 import android.os.Build
 import android.util.Log
-import androidx.core.content.FileProvider.getUriForFile
 import com.xayah.core.common.util.BuildConfigUtil
 import com.xayah.core.datastore.readCustomSUFile
 import com.xayah.core.util.SymbolUtil.LF
@@ -12,11 +10,15 @@ import com.xayah.core.util.SymbolUtil.USD
 import com.xayah.core.util.command.BaseUtil
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.runBlocking
+import java.io.BufferedOutputStream
 import java.io.File
+import java.io.FileOutputStream
 import java.io.PrintWriter
 import java.io.RandomAccessFile
 import java.io.StringWriter
 import java.nio.channels.FileChannel
+import java.util.zip.ZipEntry
+import java.util.zip.ZipOutputStream
 
 object LogUtil {
     private lateinit var cacheDir: String
@@ -24,6 +26,8 @@ object LogUtil {
     private val timestamp: Long = DateUtil.getTimestamp()
     private const val SEPARATOR = "    "
     private const val LOG_FILE_PREFIX = "log_"
+    private const val LOG_ZIP_PREFIX = "logs_"
+    private const val MAX_LOG_FILES = 10
     private const val TAG_COMMON = "Common    "
     const val TAG_SHELL_IN = "SHELL_IN  "
     const val TAG_SHELL_OUT = "SHELL_OUT "
@@ -75,19 +79,27 @@ object LogUtil {
         appendWithTimestamp(tag = TAG_COMMON, msg = msg)
     }
 
-    fun shareLog(context: Context) = shareLog(context, getLogFileName())
+    fun logCrash(msg: String) = runCatching {
+        appendLine("${DateUtil.formatTimestamp(DateUtil.getTimestamp())}$SEPARATOR$TAG_COMMON$SEPARATOR$msg")
+    }
 
-    fun shareLog(context: Context, name: String) {
-        val sharingLog = File(cacheDir, name)
-        val sharingUri =
-            getUriForFile(context, "com.xayah.core.provider.FileSharingProvider.${BuildConfigUtil.FLAVOR_feature.lowercase()}", sharingLog)
-        val sharingIntent = Intent().apply {
-            action = Intent.ACTION_SEND
-            type = "*/*"
-            putExtra(Intent.EXTRA_STREAM, sharingUri)
-            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION or Intent.FLAG_ACTIVITY_NEW_TASK)
-        }
-        context.startActivity(sharingIntent)
+    fun createLogsZip(): File? {
+        val zipName = "$LOG_ZIP_PREFIX${DateUtil.getTimestamp()}.zip"
+        val logFiles = File(cacheDir).listFiles { f ->
+            f.isFile && f.name.startsWith(LOG_FILE_PREFIX) && f.name.endsWith(".txt")
+        }?.sortedByDescending { it.lastModified() }?.take(MAX_LOG_FILES).orEmpty()
+
+        return runCatching {
+            val zipFile = File(cacheDir, zipName)
+            ZipOutputStream(BufferedOutputStream(FileOutputStream(zipFile))).use { zos ->
+                logFiles.forEach { f ->
+                    zos.putNextEntry(ZipEntry(f.name))
+                    f.inputStream().use { it.copyTo(zos) }
+                    zos.closeEntry()
+                }
+            }
+            zipFile
+        }.getOrNull()
     }
 }
 

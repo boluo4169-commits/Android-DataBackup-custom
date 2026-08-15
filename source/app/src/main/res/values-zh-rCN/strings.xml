@@ -72,7 +72,7 @@
     <string name="date">日期</string>
     <string name="restoring">恢复中</string>
     <string name="restore_ssaid_reminder">你已开启「恢复Android ID」，恢复后的应用会恢复原来的Android ID，需要在恢复后重启以生效。是否继续？</string>
-    <string name="randomize_ssaid_reminder">你已开启「随机化Android ID」，恢复后的应用会获得一个全新的随机Android ID，需要在恢复后重启以生效。是否继续？</string>
+    <string name="randomize_ssaid_reminder">你已开启「随机化Android ID」，恢复后的应用会获得一个全新的随机Android ID。\n\n⚠️ 注意：恢复完成后需【手动重启设备】才会生效，本应用不提供重启功能，请自行重启。\n\n是否继续？</string>
     <string name="duplicate_version_reminder">检测到同一应用（%1$s）勾选了多个备份版本，一起恢复会互相覆盖，最终只保留最后一个版本。是否继续？</string>
     <string name="prompt">提示</string>
     <string name="processing_exit_confirmation">确定退出吗？这将会中断操作。</string>
@@ -336,7 +336,7 @@
     <string name="about">关于</string>
     <string name="about_app">关于应用</string>
     <string name="export_log">导出日志</string>
-    <string name="export_log_desc">分享当前日志文件，用于提交问题分析</string>
+    <string name="export_log_desc">打包近期日志为压缩包，用于提交问题分析</string>
     <string name="donate">捐赠</string>
     <string name="afdian">爱发电</string>
     <string name="contact">联系</string>

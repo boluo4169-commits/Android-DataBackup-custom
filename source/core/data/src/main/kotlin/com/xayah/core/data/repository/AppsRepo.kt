@@ -352,10 +352,10 @@ class AppsRepo @Inject constructor(
         appsDao.update(updateList)
     }
 
-    suspend fun updateApp(pkg: PackageEntity, userId: Int) {
+    suspend fun updateApp(pkg: PackageEntity, userId: Int, queryStats: Boolean = true) {
         val pm = context.packageManager
         val userHandle = rootService.getUserHandle(userId)
-        val updateEntity = updateApp(pm, pkg, userId, userHandle)
+        val updateEntity = updateApp(pm, pkg, userId, userHandle, queryStats = queryStats)
         if (updateEntity != null) {
             appsDao.update(updateEntity)
         }
@@ -401,13 +401,14 @@ class AppsRepo @Inject constructor(
             updateEntity.extraInfo.enabled = info.applicationInfo?.enabled ?: false
 
             if (queryStats && userHandle != null) {
-                rootService.queryStatsForPackage(info, userHandle).also { stats ->
-                    if (stats != null) {
-                        updateEntity.storageStats.appBytes = stats.appBytes
-                        updateEntity.storageStats.cacheBytes = stats.cacheBytes
-                        updateEntity.storageStats.dataBytes = stats.dataBytes
-                        updateEntity.storageStats.externalCacheBytes = stats.externalCacheBytes
-                    }
+                val stats = withTimeoutOrNull(5_000) {
+                    rootService.queryStatsForPackage(info, userHandle)
+                }
+                if (stats != null) {
+                    updateEntity.storageStats.appBytes = stats.appBytes
+                    updateEntity.storageStats.cacheBytes = stats.cacheBytes
+                    updateEntity.storageStats.dataBytes = stats.dataBytes
+                    updateEntity.storageStats.externalCacheBytes = stats.externalCacheBytes
                 }
             }
             return updateEntity

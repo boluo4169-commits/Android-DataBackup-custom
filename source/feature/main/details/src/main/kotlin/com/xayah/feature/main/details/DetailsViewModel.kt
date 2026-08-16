@@ -87,7 +87,7 @@ class DetailsViewModel @Inject constructor(
                     when (state.app.indexInfo.opType) {
                         OpType.BACKUP -> {
                             isRefreshing.emit(true)
-                            appsRepo.updateApp(state.app, state.app.userId)
+                            appsRepo.updateApp(state.app, state.app.userId, queryStats = false)
                             appsRepo.calculateLocalAppSize(state.app)
                             isRefreshing.emit(false)
                         }

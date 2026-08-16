@@ -440,6 +440,16 @@ internal class RemoteRootServiceImpl(private val context: Context) : IRemoteRoot
         synchronized(lock) { SsaidUtil(userId).setSsaid(packageName, uid, ssaid) }
     }
 
+    override fun randomizeGaid(): Boolean = synchronized(lock) {
+        runCatching {
+            // 删除 GMS 的广告 ID 配置文件，GMS 下次访问时会自动重新生成新的 GAID
+            ShellUtils.fastCmd("rm -f /data/data/com.google.android.gms/shared_prefs/adid_settings.xml")
+            // 删除 GSF 的 Android ID 配置文件，GSF 下次访问时会自动重新生成新的 GSF ID
+            ShellUtils.fastCmd("rm -f /data/data/com.google.android.gsf/shared_prefs/google_services.xml")
+            true
+        }.getOrElse { false }
+    }
+
     override fun setDisplayPowerMode(mode: Int) {
         synchronized(lock) {
             val physicalDisplayIds: LongArray = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {

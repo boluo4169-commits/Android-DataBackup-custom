@@ -19,6 +19,8 @@ val KeyBackupConfigs = booleanPreferencesKey("backup_configs")
 val KeyRestorePermissions = booleanPreferencesKey("restore_permissions")
 val KeyRestoreSsaid = booleanPreferencesKey("restore_ssaid")
 val KeyRandomizeSsaid = booleanPreferencesKey("randomize_ssaid")
+val KeyRandomizeGaid = booleanPreferencesKey("randomize_gaid")
+val KeyClearDeviceFingerprint = booleanPreferencesKey("clear_device_fingerprint")
 val KeyPreserveBackups = booleanPreferencesKey("preserve_backups")
 
 // -----------------------------------------Read-----------------------------------------
@@ -37,6 +39,8 @@ fun Context.readBackupConfigs() = readStoreBoolean(key = KeyBackupConfigs, defVa
 fun Context.readRestorePermissions() = readStoreBoolean(key = KeyRestorePermissions, defValue = true)
 fun Context.readRestoreSsaid() = readStoreBoolean(key = KeyRestoreSsaid, defValue = true)
 fun Context.readRandomizeSsaid() = readStoreBoolean(key = KeyRandomizeSsaid, defValue = false)
+fun Context.readRandomizeGaid() = readStoreBoolean(key = KeyRandomizeGaid, defValue = false)
+fun Context.readClearDeviceFingerprint() = readStoreBoolean(key = KeyClearDeviceFingerprint, defValue = false)
 fun Context.readPreserveBackups() = readStoreBoolean(key = KeyPreserveBackups, defValue = false)
 
 // -----------------------------------------Write-----------------------------------------
@@ -55,4 +59,6 @@ suspend fun Context.saveBackupConfigs(value: Boolean) = saveStoreBoolean(key = K
 suspend fun Context.saveRestorePermissions(value: Boolean) = saveStoreBoolean(key = KeyRestorePermissions, value = value)
 suspend fun Context.saveRestoreSsaid(value: Boolean) = saveStoreBoolean(key = KeyRestoreSsaid, value = value)
 suspend fun Context.saveRandomizeSsaid(value: Boolean) = saveStoreBoolean(key = KeyRandomizeSsaid, value = value)
+suspend fun Context.saveRandomizeGaid(value: Boolean) = saveStoreBoolean(key = KeyRandomizeGaid, value = value)
+suspend fun Context.saveClearDeviceFingerprint(value: Boolean) = saveStoreBoolean(key = KeyClearDeviceFingerprint, value = value)
 suspend fun Context.savePreserveBackups(value: Boolean) = saveStoreBoolean(key = KeyPreserveBackups, value = value)

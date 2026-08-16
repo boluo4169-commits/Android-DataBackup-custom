@@ -2,6 +2,7 @@ package com.xayah.core.service.packages.restore
 
 import android.annotation.SuppressLint
 import com.xayah.core.datastore.readKillAppOption
+import com.xayah.core.datastore.readRandomizeGaid
 import com.xayah.core.datastore.readRandomizeSsaid
 import com.xayah.core.datastore.readResetRestoreList
 import com.xayah.core.datastore.readRestorePermissions
@@ -119,6 +120,11 @@ internal abstract class AbstractRestoreService : AbstractPackagesService() {
                 log { "Restore cancelled by user: ssaid reminder." }
                 return
             }
+        }
+
+        // 随机化 GAID（全局，仅一次）：删除 GMS 的广告 ID 配置，GMS 下次访问时自动重新生成
+        if (mContext.readRandomizeGaid().first()) {
+            mRootService.randomizeGaid()
         }
 
         // 多版本覆盖提醒：同一应用（同包名+同用户）勾选了多个备份版本，一起恢复会互相覆盖

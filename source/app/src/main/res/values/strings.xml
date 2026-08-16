@@ -413,6 +413,13 @@
     <string name="restore_ssaid_desc">Restore apps Android ID, it needs immediate reboot after restoring to take effect</string>
     <string name="randomize_ssaid">Randomize Android ID</string>
     <string name="randomize_ssaid_desc">Generate a random new Android ID instead of restoring the old one, needs immediate reboot after restoring to take effect</string>
+    <string name="randomize_gaid">Randomize GAID/GSF</string>
+    <string name="randomize_gaid_desc">Randomize Google advertising ID (GAID) and Google Services Framework ID (GSF) when restoring</string>
+    <string name="device_identity">Device identity</string>
+    <string name="clear_device_fingerprint">Clear device fingerprint</string>
+    <string name="clear_device_fingerprint_desc">Exclude Tencent games device fingerprint files (TGPA, CrashReportClient, etc.) when restoring data, letting the game regenerate a fresh identifier</string>
+    <string name="experimental">Experimental</string>
+    <string name="clear_device_fingerprint_help">This feature currently only applies to \u201CArena Breakout\u201D, no effect on other apps</string>
     <string name="compression_level">Compression level</string>
     <string name="compression_level_desc">Lower numbers provide faster compression, higher numbers yield better compression ratios</string>
     <string name="compression_level_tar_disabled">Compression type is TAR (no compression), so this level has no effect</string>

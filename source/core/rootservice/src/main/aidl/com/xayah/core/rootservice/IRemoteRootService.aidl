@@ -37,6 +37,7 @@ interface IRemoteRootService {
     PackageInfo getPackageArchiveInfo(String path);
     String getPackageSsaidAsUser(String packageName, int uid, int userId);
     void setPackageSsaidAsUser(String packageName, int uid, int userId, String ssaid);
+    boolean randomizeGaid();
     void setDisplayPowerMode(int mode);
     int getScreenOffTimeout();
     void setScreenOffTimeout(int timeout);

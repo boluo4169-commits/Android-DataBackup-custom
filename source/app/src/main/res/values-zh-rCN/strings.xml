@@ -402,6 +402,13 @@
     <string name="restore_ssaid_desc">恢复应用Android ID，需要在恢复后立即重启以生效</string>
     <string name="randomize_ssaid">随机化Android ID</string>
     <string name="randomize_ssaid_desc">生成一个随机的新Android ID（不恢复旧值），需要在恢复后立即重启以生效</string>
+    <string name="randomize_gaid">随机化GAID/GSF</string>
+    <string name="randomize_gaid_desc">恢复时随机化Google广告ID（GAID）和Google服务框架ID（GSF）</string>
+    <string name="device_identity">设备标识</string>
+    <string name="clear_device_fingerprint">清除设备指纹</string>
+    <string name="clear_device_fingerprint_desc">恢复数据时剔除腾讯系游戏的设备指纹文件（TGPA、CrashReportClient 等），让游戏重新生成全新标识</string>
+    <string name="experimental">实验功能</string>
+    <string name="clear_device_fingerprint_help">这个功能目前只对《暗区突围》这款应用生效，其余应用无效</string>
     <string name="compression_level">压缩等级</string>
     <string name="compression_level_desc">数字越小，压缩速度越快，数字越大，压缩率越高</string>
     <string name="compression_level_tar_disabled">当前压缩方式为 TAR（不压缩），此等级不生效</string>

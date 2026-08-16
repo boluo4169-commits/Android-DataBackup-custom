@@ -9,6 +9,7 @@ import com.xayah.core.data.repository.PackageRepository
 import com.xayah.core.data.util.srcDir
 import com.xayah.core.database.dao.TaskDao
 import com.xayah.core.datastore.readCleanRestoring
+import com.xayah.core.datastore.readClearDeviceFingerprint
 import com.xayah.core.datastore.readRandomizeSsaid
 import com.xayah.core.datastore.readSelectionType
 import com.xayah.core.model.DataType
@@ -46,6 +47,9 @@ class PackagesRestoreUtil @Inject constructor(
 ) {
     companion object {
         private const val TAG = "PackagesRestoreUtil"
+
+        // 清除设备指纹目前只针对暗区突围（腾讯魔方工作室）
+        private const val CLEAR_FINGERPRINT_TARGET_PACKAGE = "com.tencent.mf.uam"
 
         /**
          * 生成一个全新的随机 SSAID（Android ID，64 位 = 16 个十六进制字符）。
@@ -318,6 +322,21 @@ class PackagesRestoreUtil @Inject constructor(
                             if (dataType == DataType.PACKAGE_DATA || dataType == DataType.PACKAGE_OBB || dataType == DataType.PACKAGE_MEDIA) {
                                 // Exclude Backup_*
                                 exclusionList.add("${SymbolUtil.QUOTE}Backup_${SymbolUtil.QUOTE}*")
+                                // 清除设备指纹：仅对暗区突围（com.tencent.mf.uam）生效，
+                                // 剔除其设备指纹文件，让游戏重新生成全新标识（用于换号防偏框）。
+                                if (dataType == DataType.PACKAGE_DATA && packageName == CLEAR_FINGERPRINT_TARGET_PACKAGE && context.readClearDeviceFingerprint().first()) {
+                                    val fingerprintExclusions = listOf(
+                                        "TGPA",                // 腾讯游戏性能助手（.tgpacloud 设备数据）
+                                        "g6_player_prefs.ini", // G6 引擎玩家偏好（加密配置）
+                                        "pixui",               // PixUI 界面引擎缓存
+                                        "AppVersionCache.txt", // 版本缓存
+                                        "program_version.txt", // 版本号
+                                    )
+                                    exclusionList.addAll(fingerprintExclusions.map { "${SymbolUtil.QUOTE}$packageName/files/$it${SymbolUtil.QUOTE}" })
+                                    // UE4 崩溃上报目录（目录名嵌 DeviceId），basename 匹配任意层级
+                                    exclusionList.add("${SymbolUtil.QUOTE}CrashReportClient${SymbolUtil.QUOTE}")
+                                    log { "Clear device fingerprint: excluded fingerprint files for $packageName." }
+                                }
                             }
 
                         }
@@ -441,8 +460,11 @@ class PackagesRestoreUtil @Inject constructor(
                             } else {
                                 rootService.revokeRuntimePermission(packageName, it.name, user!!)
                             }
-                        }
-                        if (it.op != AppOpsManagerHidden.OP_NONE) {
+                            // runtime 权限：grant/revoke 已同步对应 appop 的状态，不再单独 setOpsMode，
+                            // 否则会用备份的 mode（可能为 MODE_DEFAULT）覆盖 revoke 的效果，
+                            // 导致「拒绝的权限恢复后变允许」（澎湃 OS 剪贴板问题）。
+                        } else if (it.op != AppOpsManagerHidden.OP_NONE) {
+                            // 非 runtime 的纯 appop（无对应 runtime 权限），才需要单独恢复 mode
                             rootService.setOpsMode(it.op, uid, packageName, it.mode)
                         }
                     }

@@ -1,13 +1,22 @@
 package com.xayah.feature.main.settings.restore
 
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.foundation.background
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.Info
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
+import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
@@ -17,11 +26,14 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xayah.core.datastore.KeyCleanRestoring
+import com.xayah.core.datastore.KeyClearDeviceFingerprint
+import com.xayah.core.datastore.KeyRandomizeGaid
 import com.xayah.core.datastore.KeyRandomizeSsaid
 import com.xayah.core.datastore.KeyRestorePermissions
 import com.xayah.core.datastore.KeyRestoreSsaid
@@ -32,11 +44,15 @@ import com.xayah.core.datastore.saveRestoreSsaid
 import com.xayah.core.model.KillAppOption
 import com.xayah.core.model.util.indexOf
 import com.xayah.core.ui.component.InnerBottomSpacer
+import com.xayah.core.ui.component.LabelMediumText
 import com.xayah.core.ui.component.LocalSlotScope
 import com.xayah.core.ui.component.Selectable
 import com.xayah.core.ui.component.Switchable
+import com.xayah.core.ui.component.Title
 import com.xayah.core.ui.component.select
 import com.xayah.core.ui.model.DialogRadioItem
+import com.xayah.core.ui.theme.ThemedColorSchemeKeyTokens
+import com.xayah.core.ui.theme.value
 import com.xayah.core.ui.token.SizeTokens
 import com.xayah.feature.main.settings.R
 import kotlinx.coroutines.launch
@@ -100,6 +116,8 @@ fun PageRestoreSettings() {
                     title = stringResource(id = R.string.restore_permissions),
                     checkedText = stringResource(id = R.string.restore_permissions_desc),
                 )
+            }
+            Title(title = stringResource(id = R.string.device_identity)) {
                 Switchable(
                     key = KeyRestoreSsaid,
                     defValue = true,
@@ -120,6 +138,50 @@ fun PageRestoreSettings() {
                         // 与「恢复 Android id」互斥：开启本项则关闭恢复旧值
                         if (checked) scope.launch { context.saveRestoreSsaid(false) }
                     }
+                )
+
+                Switchable(
+                    key = KeyRandomizeGaid,
+                    defValue = false,
+                    title = stringResource(id = R.string.randomize_gaid),
+                    checkedText = stringResource(id = R.string.randomize_gaid_desc),
+                )
+            }
+            Title(title = stringResource(id = R.string.clear_device_fingerprint)) {
+                Switchable(
+                    key = KeyClearDeviceFingerprint,
+                    defValue = false,
+                    title = stringResource(id = R.string.clear_device_fingerprint),
+                    checkedText = stringResource(id = R.string.clear_device_fingerprint_desc),
+                    titleTrailingContent = {
+                        LabelMediumText(
+                            modifier = Modifier
+                                .clip(RoundedCornerShape(SizeTokens.Level4))
+                                .background(ThemedColorSchemeKeyTokens.PrimaryContainer.value)
+                                .padding(horizontal = SizeTokens.Level8, vertical = SizeTokens.Level2),
+                            text = stringResource(id = R.string.experimental),
+                            color = ThemedColorSchemeKeyTokens.OnPrimaryContainer.value,
+                        )
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(SizeTokens.Level16)
+                                .clickable {
+                                    scope.launch {
+                                        dialogState.open(
+                                            initialState = Unit,
+                                            title = context.getString(R.string.clear_device_fingerprint),
+                                            icon = Icons.Outlined.Info,
+                                            confirmText = context.getString(R.string.got_it),
+                                            dismissText = context.getString(R.string.cancel),
+                                        ) { _ ->
+                                            Text(text = context.getString(R.string.clear_device_fingerprint_help))
+                                        }
+                                    }
+                                },
+                        )
+                    },
                 )
             }
             InnerBottomSpacer(innerPadding = it)

@@ -1,5 +1,6 @@
 package com.xayah.core.service.util
 
+import android.app.AppOpsManager
 import android.app.AppOpsManagerHidden
 import android.content.Context
 import android.content.pm.PermissionInfo
@@ -459,12 +460,15 @@ class PackagesRestoreUtil @Inject constructor(
                                 rootService.grantRuntimePermission(packageName, it.name, user!!)
                             } else {
                                 rootService.revokeRuntimePermission(packageName, it.name, user!!)
+                                // revoke 只清 grant 标志，对应 appop 可能仍为 MODE_DEFAULT，
+                                // 部分检测工具（如 QQ 安全中心）按 appop mode 判定，MODE_DEFAULT 会被当成「允许」。
+                                // 额外把 appop 设为 MODE_IGNORED，确保「拒绝」彻底生效。
+                                if (it.op != AppOpsManagerHidden.OP_NONE) {
+                                    rootService.setOpsMode(it.op, uid, packageName, AppOpsManager.MODE_IGNORED)
+                                }
                             }
-                            // runtime 权限：grant/revoke 已同步对应 appop 的状态，不再单独 setOpsMode，
-                            // 否则会用备份的 mode（可能为 MODE_DEFAULT）覆盖 revoke 的效果，
-                            // 导致「拒绝的权限恢复后变允许」（澎湃 OS 剪贴板问题）。
                         } else if (it.op != AppOpsManagerHidden.OP_NONE) {
-                            // 非 runtime 的纯 appop（无对应 runtime 权限），才需要单独恢复 mode
+                            // 非 runtime 的纯 appop（无对应 runtime 权限），恢复备份的 mode
                             rootService.setOpsMode(it.op, uid, packageName, it.mode)
                         }
                     }

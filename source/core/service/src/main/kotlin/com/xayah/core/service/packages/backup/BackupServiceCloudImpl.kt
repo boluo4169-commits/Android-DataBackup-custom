@@ -19,6 +19,7 @@ import com.xayah.core.network.client.CloudClient
 import com.xayah.core.rootservice.service.RemoteRootService
 import com.xayah.core.service.util.CommonBackupUtil
 import com.xayah.core.service.util.PackagesBackupUtil
+import com.xayah.core.util.DateUtil
 import com.xayah.core.util.PathUtil
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
@@ -156,6 +157,40 @@ internal class BackupServiceCloudImpl @Inject constructor() : AbstractBackupServ
     override suspend fun clear() {
         mRootService.deleteRecursively(mRootDir)
         mClient.disconnect()
+    }
+
+    // 修复：保留历史备份在云场景失效。归档旧主备份需在远程执行 rename，否则旧备份被新备份上传覆盖。
+    override suspend fun archiveMainBackup(existingMain: PackageEntity) {
+        var preserveId = DateUtil.getPreserveTimestamp()
+        var archived = existingMain.copy(indexInfo = existingMain.indexInfo.copy(preserveId = preserveId))
+        var dst = "${mRemoteAppsDir}/${archived.archivesRelativeDir}"
+        while (mClient.exists(dst)) {
+            preserveId++
+            archived = existingMain.copy(indexInfo = existingMain.indexInfo.copy(preserveId = preserveId))
+            dst = "${mRemoteAppsDir}/${archived.archivesRelativeDir}"
+        }
+        val srcNew = "${mRemoteAppsDir}/${existingMain.archivesRelativeDir}"
+        val src = if (mClient.exists(srcNew)) srcNew else "${mRemoteAppsDir}/${existingMain.legacyArchivesRelativeDir}"
+        if (mClient.exists(src)) {
+            // 写新 config（preserveId 已更新）到本地临时目录，上传到远程 src，再远程改名
+            val tmpDir = mPathUtil.getCloudTmpDir()
+            val tmpJsonPath = PathUtil.getPackageRestoreConfigDst(tmpDir)
+            mRootService.writeJson(data = archived, dst = tmpJsonPath)
+            mCloudRepo.upload(client = mClient, src = tmpJsonPath, dstDir = src)
+            mRootService.deleteRecursively(tmpDir)
+            mClient.renameTo(src, dst)
+            mPackageDao.upsert(archived)
+        }
+    }
+
+    // 修复：清理超量旧归档需在远程执行删除，否则远程旧版本不会被真正删除
+    override suspend fun deleteArchiveDir(old: PackageEntity) {
+        val dirNew = "${mRemoteAppsDir}/${old.archivesRelativeDir}"
+        val dir = if (mClient.exists(dirNew)) dirNew else "${mRemoteAppsDir}/${old.legacyArchivesRelativeDir}"
+        if (mClient.exists(dir)) {
+            mClient.deleteRecursively(dir)
+        }
+        mPackageDao.delete(old.id)
     }
 
     @Inject

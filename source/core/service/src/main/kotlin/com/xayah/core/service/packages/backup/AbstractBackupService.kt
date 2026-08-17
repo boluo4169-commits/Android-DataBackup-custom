@@ -107,6 +107,39 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
     protected open suspend fun onIconsSaved(path: String, entity: ProcessingInfoEntity) {}
     protected open suspend fun clear() {}
 
+    /**
+     * 归档旧主备份为保护版本（preserveId 从 0 改为时间戳，目录加 @时间戳 后缀）。
+     * 本地默认实现操作本地目录；云子类 override 用远程客户端操作，否则远程旧备份会被新备份覆盖。
+     */
+    protected open suspend fun archiveMainBackup(existingMain: PackageEntity) {
+        var preserveId = DateUtil.getPreserveTimestamp()
+        var archived = existingMain.copy(indexInfo = existingMain.indexInfo.copy(preserveId = preserveId))
+        var dst = "${mAppsDir}/${archived.archivesRelativeDir}"
+        while (mRootService.exists(dst)) {
+            preserveId++
+            archived = existingMain.copy(indexInfo = existingMain.indexInfo.copy(preserveId = preserveId))
+            dst = "${mAppsDir}/${archived.archivesRelativeDir}"
+        }
+        val srcNew = "${mAppsDir}/${existingMain.archivesRelativeDir}"
+        val src = if (mRootService.exists(srcNew)) srcNew else "${mAppsDir}/${existingMain.legacyArchivesRelativeDir}"
+        if (mRootService.exists(src)) {
+            mRootService.writeJson(data = archived, dst = PathUtil.getPackageRestoreConfigDst(src))
+            mRootService.renameTo(src, dst)
+            mPackageDao.upsert(archived)
+        }
+    }
+
+    /**
+     * 删除旧归档目录（保留历史备份超出上限时清理）。本地默认实现操作本地目录；
+     * 云子类 override 用远程客户端操作，否则远程旧版本不会被真正删除。
+     */
+    protected open suspend fun deleteArchiveDir(old: PackageEntity) {
+        val dirNew = "${mAppsDir}/${old.archivesRelativeDir}"
+        val dir = if (mRootService.exists(dirNew)) dirNew else "${mAppsDir}/${old.legacyArchivesRelativeDir}"
+        mRootService.deleteRecursively(dir)
+        mPackageDao.delete(old.id)
+    }
+
     protected abstract val mPackagesBackupUtil: PackagesBackupUtil
 
     private lateinit var necessaryInfo: NecessaryInfo
@@ -170,22 +203,7 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
                 if (preserveBackups) {
                     val existingMain = mPackageDao.query(p.packageName, OpType.RESTORE, p.userId, 0L, p.indexInfo.compressionType, mTaskEntity.cloud, mTaskEntity.backupDir)
                     if (existingMain != null) {
-                        val srcNew = "${mAppsDir}/${existingMain.archivesRelativeDir}"
-                        val src = if (mRootService.exists(srcNew)) srcNew else "${mAppsDir}/${existingMain.legacyArchivesRelativeDir}"
-                        if (mRootService.exists(src)) {
-                            // 生成唯一 preserveId（秒级时间戳，若同秒冲突则递增直到不冲突）
-                            var preserveId = DateUtil.getPreserveTimestamp()
-                            var archived = existingMain.copy(indexInfo = existingMain.indexInfo.copy(preserveId = preserveId))
-                            var dst = "${mAppsDir}/${archived.archivesRelativeDir}"
-                            while (mRootService.exists(dst)) {
-                                preserveId++
-                                archived = existingMain.copy(indexInfo = existingMain.indexInfo.copy(preserveId = preserveId))
-                                dst = "${mAppsDir}/${archived.archivesRelativeDir}"
-                            }
-                            mRootService.writeJson(data = archived, dst = PathUtil.getPackageRestoreConfigDst(src))
-                            mRootService.renameTo(src, dst)
-                            mPackageDao.upsert(archived)
-                        }
+                        archiveMainBackup(existingMain)
                     }
                 }
 
@@ -335,10 +353,7 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
                     if (preserved.size > maxPreserveCount) {
                         preserved.drop(maxPreserveCount).forEach { old ->
                             log { "Cleaning old preserved backup: ${old.archivesRelativeDir}" }
-                            mPackageDao.delete(old.id)
-                            val dirNew = "${mAppsDir}/${old.archivesRelativeDir}"
-                            val dir = if (mRootService.exists(dirNew)) dirNew else "${mAppsDir}/${old.legacyArchivesRelativeDir}"
-                            mRootService.deleteRecursively(dir)
+                            deleteArchiveDir(old)
                         }
                     }
                 }

@@ -708,6 +708,8 @@ class AppsRepo @Inject constructor(
             cloudRepo.upload(client = client, src = tmpJsonPath, dstDir = src)
             rootService.deleteRecursively(tmpDir)
             client.renameTo(src, dst)
+            // 修复：远程场景缺数据库更新，导致受保护标记（preserveId）不生效
+            appsDao.update(protectedApp)
         }
     }.withLog()
 

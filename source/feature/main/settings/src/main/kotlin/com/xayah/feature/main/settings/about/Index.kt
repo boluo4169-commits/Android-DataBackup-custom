@@ -2,6 +2,7 @@ package com.xayah.feature.main.settings.about
 
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -18,7 +19,10 @@ import androidx.compose.material.icons.outlined.Assignment
 import androidx.compose.material.icons.outlined.Chat
 import androidx.compose.material.icons.outlined.Code
 import androidx.compose.material.icons.outlined.FavoriteBorder
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
@@ -30,6 +34,7 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -68,6 +73,7 @@ fun PageAboutSettings() {
     val navController = LocalNavController.current!!
     val viewModel = hiltViewModel<IndexViewModel>()
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    var showSponsorDialog by remember { mutableStateOf(false) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
     LaunchedEffect(null) {
@@ -112,14 +118,20 @@ fun PageAboutSettings() {
                             expanded = true
                         }
                         ModalActionDropdownMenu(expanded = expanded, actionList = listOf(
-//                            ActionMenuItem(
-//                                title = stringResource(id = R.string.buymeacoffee),
-//                                enabled = true,
-//                                secondaryMenu = listOf(),
-//                                onClick = {
-//                                    viewModel.emitIntentOnIO(IndexUiIntent.ToBrowser(context, ConstantUtil.DONATE_BMAC_LINK))
-//                                }
-//                            ),
+                            ActionMenuItem(
+                                title = stringResource(id = R.string.sponsor_me),
+                                enabled = true,
+                                secondaryMenu = listOf(),
+                                onClick = {
+                                    showSponsorDialog = true
+                                }
+                            ),
+                            ActionMenuItem(
+                                title = stringResource(id = R.string.original_author),
+                                enabled = false,
+                                secondaryMenu = listOf(),
+                                onClick = {}
+                            ),
                             ActionMenuItem(
                                 title = stringResource(id = R.string.paypal),
                                 enabled = true,
@@ -152,13 +164,6 @@ fun PageAboutSettings() {
                     ) {
                         viewModel.emitIntentOnIO(IndexUiIntent.ToBrowser(context, ConstantUtil.GITHUB_LINK))
                     }
-                    OutlinedButtonIconTextButton(
-                        modifier = Modifier.width(SizeTokens.Level128),
-                        icon = Icons.Outlined.Chat,
-                        text = stringResource(id = R.string.contact)
-                    ) {
-                        viewModel.emitIntentOnIO(IndexUiIntent.ToBrowser(context, ConstantUtil.CHAT_LINK))
-                    }
                 }
             }
 
@@ -187,6 +192,28 @@ fun PageAboutSettings() {
             }
 
             InnerBottomSpacer(innerPadding = it)
+        }
+
+        if (showSponsorDialog) {
+            AlertDialog(
+                onDismissRequest = { showSponsorDialog = false },
+                title = { Text(text = stringResource(id = R.string.sponsor_me)) },
+                text = {
+                    Column {
+                        Image(
+                            painter = painterResource(id = R.drawable.ic_sponsor_me),
+                            contentDescription = null,
+                            modifier = Modifier.fillMaxWidth()
+                        )
+                        BodyMediumText(text = stringResource(id = R.string.sponsor_desc))
+                    }
+                },
+                confirmButton = {
+                    TextButton(onClick = { showSponsorDialog = false }) {
+                        Text(text = stringResource(id = R.string.got_it))
+                    }
+                }
+            )
         }
     }
 }

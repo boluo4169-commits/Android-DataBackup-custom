@@ -51,6 +51,9 @@
     <item name="app_name" type="string" />
     <item name="no_browser" type="string" />
     <item name="donate" type="string" />
+    <item name="sponsor_me" type="string" />
+    <item name="sponsor_desc" type="string" />
+    <item name="original_author" type="string" />
     <item name="buymeacoffee" type="string" />
     <item name="paypal" type="string" />
     <item name="afdian" type="string" />

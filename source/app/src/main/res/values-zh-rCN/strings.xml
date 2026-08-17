@@ -338,6 +338,9 @@
     <string name="export_log">导出日志</string>
     <string name="export_log_desc">打包近期日志为压缩包，用于提交问题分析</string>
     <string name="donate">捐赠</string>
+    <string name="sponsor_me">微信赞赏码（我）</string>
+    <string name="sponsor_desc">感谢赞助，支持定制版持续开发与维护</string>
+    <string name="original_author">原作者</string>
     <string name="afdian">爱发电</string>
     <string name="contact">联系</string>
     <string name="docs">文档</string>

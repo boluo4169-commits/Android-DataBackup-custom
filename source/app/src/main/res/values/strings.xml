@@ -346,6 +346,9 @@
     <string name="export_log">Export logs</string>
     <string name="export_log_desc">Package and share recent logs as a zip archive</string>
     <string name="donate">Donate</string>
+    <string name="sponsor_me">WeChat sponsor code (me)</string>
+    <string name="sponsor_desc">Thanks for sponsoring, supporting the custom version development</string>
+    <string name="original_author">Original author</string>
     <string name="buymeacoffee" translatable="false">Buy me a coffee</string>
     <string name="paypal" translatable="false">PayPal</string>
     <string name="afdian">AFDIAN</string>

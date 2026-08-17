@@ -80,6 +80,19 @@
 
 从 [Releases](https://github.com/boluo4169-commits/Android-DataBackup-custom/releases/latest) 获取最新 APK。
 
+## 捐赠
+
+如果你觉得这个定制版对你有帮助，欢迎支持：
+
+**定制版作者（我）** — 微信赞赏码：
+
+<img src="./docs/wechat_sponsor.png" width="240" alt="微信赞赏码" />
+
+**原作者 [XayahSuSuSu](https://github.com/XayahSuSuSu/Android-DataBackup)**：
+
+- PayPal：https://paypal.me/XayahSuSuSu
+- 爱发电：https://afdian.net/a/XayahSuSuSu
+
 ## 许可证
 
 本项目基于 [XayahSuSuSu/Android-DataBackup](https://github.com/XayahSuSuSu/Android-DataBackup) 修改，遵循 [GNU General Public License v3.0](./LICENSE)。

@@ -31,8 +31,8 @@ object ConstantUtil {
         "Download" to "${DEFAULT_PATH_PARENT}/Download",
     )
 
-    const val DOC_LINK = "https://DataBackupOfficial.github.io"
-    const val GITHUB_LINK = "https://github.com/XayahSuSuSu/Android-DataBackup"
+    const val DOC_LINK = "https://github.com/boluo4169-commits/Android-DataBackup-custom"
+    const val GITHUB_LINK = "https://github.com/boluo4169-commits/Android-DataBackup-custom"
     const val CHAT_LINK = "https://t.me/databackupchat"
     const val DONATE_BMAC_LINK = "https://buymeacoffee.com/xayahsususu"
     const val DONATE_PAYPAL_LINK = "https://paypal.me/XayahSuSuSu"

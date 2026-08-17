@@ -127,13 +127,7 @@ fun PageAboutSettings() {
                                 }
                             ),
                             ActionMenuItem(
-                                title = stringResource(id = R.string.original_author),
-                                enabled = false,
-                                secondaryMenu = listOf(),
-                                onClick = {}
-                            ),
-                            ActionMenuItem(
-                                title = stringResource(id = R.string.paypal),
+                                title = "${stringResource(id = R.string.paypal)}（${stringResource(id = R.string.original_author)}）",
                                 enabled = true,
                                 secondaryMenu = listOf(),
                                 onClick = {
@@ -141,7 +135,7 @@ fun PageAboutSettings() {
                                 }
                             ),
                             ActionMenuItem(
-                                title = stringResource(id = R.string.afdian),
+                                title = "${stringResource(id = R.string.afdian)}（${stringResource(id = R.string.original_author)}）",
                                 enabled = true,
                                 secondaryMenu = listOf(),
                                 onClick = {

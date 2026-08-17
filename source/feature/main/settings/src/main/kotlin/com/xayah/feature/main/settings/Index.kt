@@ -13,7 +13,6 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Block
-import androidx.compose.material.icons.rounded.Inventory2
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
@@ -147,7 +146,6 @@ fun PageSettings() {
                     checkedText = stringResource(id = R.string.auto_screen_off_desc),
                 )
                 Clickable(
-                    icon = Icons.Rounded.Inventory2,
                     title = stringResource(id = R.string.export_log),
                     value = stringResource(id = R.string.export_log_desc),
                 ) {

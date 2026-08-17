@@ -115,6 +115,27 @@ fun PageRestoreSettings() {
                     defValue = true,
                     title = stringResource(id = R.string.restore_permissions),
                     checkedText = stringResource(id = R.string.restore_permissions_desc),
+                    titleTrailingContent = {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(SizeTokens.Level16)
+                                .clickable {
+                                    scope.launch {
+                                        dialogState.open(
+                                            initialState = Unit,
+                                            title = context.getString(R.string.restore_permissions),
+                                            icon = Icons.Outlined.Info,
+                                            confirmText = context.getString(R.string.got_it),
+                                            dismissText = context.getString(R.string.cancel),
+                                        ) { _ ->
+                                            Text(text = context.getString(R.string.restore_permissions_help))
+                                        }
+                                    }
+                                },
+                        )
+                    },
                 )
             }
             Title(title = stringResource(id = R.string.device_identity)) {

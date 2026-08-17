@@ -289,6 +289,8 @@ class FilesRepo @Inject constructor(
     private fun getArchiveSrc(dstDir: String, ct: CompressionType) = "${dstDir}/${DataType.MEDIA_MEDIA.type}.${ct.suffix}"
 
     suspend fun calculateLocalFileArchiveSize(file: MediaEntity) {
+        // 云端备份的归档在远程 WebDAV，本地路径不存在，本地计算会得到 0 并覆盖 displayBytes。云端跳过。
+        if (file.indexInfo.cloud.isNotEmpty()) return
         file.mediaInfo.displayBytes = rootService.calculateSize(getArchiveSrc("${pathUtil.getLocalBackupFilesDir()}/${file.archivesRelativeDir}", file.indexInfo.compressionType))
         filesDao.upsert(file)
     }

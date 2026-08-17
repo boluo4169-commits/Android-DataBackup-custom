@@ -79,6 +79,7 @@
     <item name="clear_device_fingerprint_desc" type="string" />
     <item name="experimental" type="string" />
     <item name="clear_device_fingerprint_help" type="string" />
+    <item name="restore_permissions_help" type="string" />
     <item name="compression_level" type="string" />
     <item name="compression_level_desc" type="string" />
     <item name="compression_level_tar_disabled" type="string" />

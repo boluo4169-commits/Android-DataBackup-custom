@@ -411,7 +411,9 @@ private fun Info(file: MediaEntity) {
                 Clickable(
                     icon = Icons.Outlined.Shield,
                     title = stringResource(id = R.string._protected),
-                    value = DateUtil.formatTimestamp(file.preserveId, DateUtil.PATTERN_FINISH),
+                    // 用 formatPreserveTimestamp 而非 formatTimestamp：archiveMainBackup 生成的 preserveId 是 14 位日期字符串（如 20260817204020），
+                    // 传给 formatTimestamp 会被当毫秒解析为 642 年后（2612 年），formatPreserveTimestamp 兼容 14/12 位字符串和毫秒。
+                    value = DateUtil.formatPreserveTimestamp(file.preserveId),
                 )
             }
         }

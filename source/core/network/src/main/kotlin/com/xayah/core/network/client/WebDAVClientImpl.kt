@@ -1,6 +1,7 @@
 package com.xayah.core.network.client
 
 import android.content.Context
+import android.net.Uri
 import com.xayah.core.common.util.toPathString
 import com.xayah.core.model.database.CloudEntity
 import com.xayah.core.model.database.WebDAVExtra
@@ -35,7 +36,9 @@ class WebDAVClientImpl(private val entity: CloudEntity, private val extra: WebDA
         msg()
     }
 
-    private fun getPath(path: String) = "${entity.host.trimEnd('/')}/${path.trimStart('/')}"
+    private fun getPath(path: String) = "${entity.host.trimEnd('/')}/${encodePath(path.trimStart('/'))}"
+
+    private fun encodePath(path: String) = path.split("/").joinToString("/") { Uri.encode(it) }
 
     private fun withClient(block: (client: OkHttpSardine) -> Unit) = run {
         if (client == null) throw NullPointerException("Client is null.")

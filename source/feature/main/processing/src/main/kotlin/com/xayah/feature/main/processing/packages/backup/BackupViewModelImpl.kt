@@ -2,6 +2,7 @@ package com.xayah.feature.main.processing.packages.backup
 
 import android.content.Context
 import androidx.compose.material3.ExperimentalMaterial3Api
+import com.xayah.core.data.repository.AppsRepo
 import com.xayah.core.data.repository.CloudRepository
 import com.xayah.core.data.repository.PackageRepository
 import com.xayah.core.data.repository.TaskRepository
@@ -45,6 +46,7 @@ class BackupViewModelImpl @Inject constructor(
     mTaskRepo: TaskRepository,
     private val mPkgRepo: PackageRepository,
     private val mCloudRepo: CloudRepository,
+    private val mAppsRepo: AppsRepo,
     mLocalService: ProcessingServiceProxyLocalImpl,
     mCloudService: ProcessingServiceProxyCloudImpl,
 ) : AbstractPackagesProcessingViewModel(mContext, mRootService, mTaskRepo, mLocalService, mCloudService) {
@@ -52,9 +54,14 @@ class BackupViewModelImpl @Inject constructor(
         when (intent) {
             is UpdateApps -> {
                 val packages = mPkgRepo.queryActivated(OpType.BACKUP)
+                // 扫描时跳过了存储统计（storageStats 恒 0），这里计算选中应用的本地实际大小（displayStats），
+                // 否则引导页「应用」总大小会显示 0.00 bytes。
+                packages.forEach { app ->
+                    mAppsRepo.calculateLocalAppSize(app)
+                }
                 var bytes = 0.0
                 packages.forEach {
-                    bytes += it.storageStatsBytes
+                    bytes += it.displayStatsBytes
                 }
                 _packages.value = packages
                 _packagesSize.value = bytes.formatSize()

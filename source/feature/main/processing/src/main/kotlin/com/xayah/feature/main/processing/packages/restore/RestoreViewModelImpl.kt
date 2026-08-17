@@ -70,7 +70,7 @@ class RestoreViewModelImpl @Inject constructor(
                 LogUtil.log { "RestoreViewModelImpl.UpdateApps" to "Queried apps count: ${packages.size}" }
                 var bytes = 0.0
                 packages.forEach {
-                    bytes += it.storageStatsBytes
+                    bytes += it.displayStatsBytes
                 }
                 _packages.value = packages
                 _packagesSize.value = bytes.formatSize()

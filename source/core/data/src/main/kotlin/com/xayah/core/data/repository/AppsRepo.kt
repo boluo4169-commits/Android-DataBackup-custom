@@ -645,6 +645,9 @@ class AppsRepo @Inject constructor(
     } ?: 0
 
     suspend fun calculateLocalAppArchiveSize(app: PackageEntity) {
+        // 云端备份的归档目录在远程 WebDAV，本地路径不存在，本地计算会得到 0 并覆盖 displayStats。
+        // 云端实体跳过计算，保留备份时写入的 displayStats。
+        if (app.indexInfo.cloud.isNotEmpty()) return
         val dataTypes = listOf(
             DataType.PACKAGE_APK,
             DataType.PACKAGE_USER,

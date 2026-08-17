@@ -409,6 +409,7 @@
     <string name="backup_configs_desc">Export configurations to backup directory</string>
     <string name="restore_permissions">Restore permissions</string>
     <string name="restore_permissions_desc">Restore apps permissions</string>
+    <string name="restore_permissions_help">On HyperOS/MIUI this force-grants all permissions during restore. Turn it off to let the system restore the backed-up state.</string>
     <string name="restore_ssaid">Restore Android ID</string>
     <string name="restore_ssaid_desc">Restore apps Android ID, it needs immediate reboot after restoring to take effect</string>
     <string name="randomize_ssaid">Randomize Android ID</string>

@@ -398,6 +398,7 @@
     <string name="backup_configs_desc">将配置文件导出到备份目录</string>
     <string name="restore_permissions">恢复权限</string>
     <string name="restore_permissions_desc">恢复应用权限</string>
+    <string name="restore_permissions_help">在澎湃系统上开启会强制放行所有权限（关闭后系统会自动恢复备份时的状态）。</string>
     <string name="restore_ssaid">恢复Android ID</string>
     <string name="restore_ssaid_desc">恢复应用Android ID，需要在恢复后立即重启以生效</string>
     <string name="randomize_ssaid">随机化Android ID</string>

@@ -24,6 +24,8 @@ import com.xayah.feature.main.cloud.add.PageSMBSetup
 import com.xayah.feature.main.cloud.add.PageWebDAVSetup
 import com.xayah.feature.main.configurations.PageConfigurations
 import com.xayah.feature.main.dashboard.PageDashboard
+import com.xayah.feature.main.dashboard.PageDataMigration
+import com.xayah.feature.main.dashboard.PageDataMigrationExport
 import com.xayah.feature.main.details.DetailsRoute
 import com.xayah.feature.main.directory.PageDirectory
 import com.xayah.feature.main.history.HistoryRoute
@@ -103,6 +105,12 @@ class MainActivity : AppCompatActivity() {
                         }
                         composable(MainRoutes.History.route) {
                             HistoryRoute()
+                        }
+                        composable(MainRoutes.DataMigration.route) {
+                            PageDataMigration()
+                        }
+                        composable(MainRoutes.DataMigrationExport.route) {
+                            PageDataMigrationExport()
                         }
                         composable(MainRoutes.TaskDetails.route) {
                             TaskDetailsRoute()

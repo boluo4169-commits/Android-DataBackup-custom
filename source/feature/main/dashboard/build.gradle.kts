@@ -24,4 +24,7 @@ dependencies {
 
     // Preferences DataStore
     implementation(libs.androidx.datastore.preferences)
+
+    // libsu
+    implementation(libs.libsu.core)
 }

@@ -4,6 +4,7 @@ import android.annotation.SuppressLint
 import androidx.compose.animation.ExperimentalAnimationApi
 import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
@@ -16,6 +17,7 @@ import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material.icons.rounded.ListAlt
+import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
@@ -220,7 +222,20 @@ fun PageDashboard() {
                     ) {
                         navController.navigateSingle(MainRoutes.History.route)
                     }
-                    Spacer(modifier = Modifier.weight(1f))
+                    Box(modifier = Modifier.weight(1f)) {
+                        QuickActionsButton(
+                            modifier = Modifier.fillMaxWidth(),
+                            enabled = nullBackupDir.not(),
+                            title = stringResource(id = R.string.data_migration),
+                            icon = Icons.Rounded.SwapHoriz,
+                            colorContainer = ThemedColorSchemeKeyTokens.GreenPrimaryContainer,
+                            colorL80D20 = ThemedColorSchemeKeyTokens.GreenL80D20,
+                            onColorContainer = ThemedColorSchemeKeyTokens.GreenOnPrimaryContainer,
+                            actionIcon = Icons.Rounded.KeyboardArrowRight,
+                        ) {
+                            navController.navigateSingle(MainRoutes.DataMigration.route)
+                        }
+                    }
                 }
             }
         }

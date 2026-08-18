@@ -58,7 +58,7 @@
 
 **定制版作者（我）** — 微信赞赏码：
 
-<img src="./docs/wechat_sponsor.png" width="240" alt="微信赞赏码" />
+<img src="https://cdn.jsdelivr.net/gh/boluo4169-commits/Android-DataBackup-custom@main/docs/wechat_sponsor.png" width="240" alt="微信赞赏码" />
 
 **原作者 [XayahSuSuSu](https://github.com/XayahSuSuSu/Android-DataBackup)**：
 

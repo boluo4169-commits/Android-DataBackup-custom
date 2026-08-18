@@ -196,7 +196,16 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
                 pkg.update(state = OperationState.PROCESSING)
                 // BACKUP 实体 preserveId 恒为 0；新备份始终作为「正常版本」（preserveId=0，无盾牌）
                 val cleanP = pkg.packageEntity.copy(indexInfo = pkg.packageEntity.indexInfo.copy(preserveId = 0L))
-                val p = cleanP
+                // 重新查询设备上当前安装的版本，避免数据库缓存过期导致备份记录版本错误
+                val p = runCatching {
+                    val info = mContext.packageManager.getPackageInfo(cleanP.packageName, 0)
+                    cleanP.copy(
+                        packageInfo = cleanP.packageInfo.copy(
+                            versionName = info.versionName ?: cleanP.packageInfo.versionName,
+                            versionCode = info.longVersionCode,
+                        )
+                    )
+                }.getOrDefault(cleanP)
                 val dstDir = "${mAppsDir}/${p.archivesRelativeDir}"
 
                 // 保留历史备份：备份前，把已有的主备份（RESTORE preserveId=0）归档成保护版本（带盾牌序号）

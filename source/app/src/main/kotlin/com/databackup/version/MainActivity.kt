@@ -26,6 +26,7 @@ import com.xayah.feature.main.configurations.PageConfigurations
 import com.xayah.feature.main.dashboard.PageDashboard
 import com.xayah.feature.main.dashboard.PageDataMigration
 import com.xayah.feature.main.dashboard.PageDataMigrationExport
+import com.xayah.feature.main.dashboard.PageDataMigrationImport
 import com.xayah.feature.main.details.DetailsRoute
 import com.xayah.feature.main.directory.PageDirectory
 import com.xayah.feature.main.history.HistoryRoute
@@ -111,6 +112,9 @@ class MainActivity : AppCompatActivity() {
                         }
                         composable(MainRoutes.DataMigrationExport.route) {
                             PageDataMigrationExport()
+                        }
+                        composable(MainRoutes.DataMigrationImport.route) {
+                            PageDataMigrationImport()
                         }
                         composable(MainRoutes.TaskDetails.route) {
                             TaskDetailsRoute()

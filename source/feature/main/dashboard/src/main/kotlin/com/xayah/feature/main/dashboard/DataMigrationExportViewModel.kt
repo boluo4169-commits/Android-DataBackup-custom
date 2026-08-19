@@ -12,6 +12,7 @@ import com.xayah.core.util.DateUtil
 import com.xayah.core.util.SymbolUtil
 import com.xayah.core.util.command.BaseUtil
 import com.xayah.core.util.localBackupSaveDir
+import com.xayah.core.util.withIOContext
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -87,6 +88,12 @@ class DataMigrationExportViewModel @Inject constructor(
 
     private val _success = MutableStateFlow(false)
     val success: StateFlow<Boolean> = _success.asStateFlow()
+
+    /**
+     * 当前导出阶段（Idle/Processing/Success），UI 用于显示顶部进度卡。
+     */
+    private val _stage = MutableStateFlow(MigrationStage.Idle)
+    val stage: StateFlow<MigrationStage> = _stage.asStateFlow()
 
     suspend fun load() {
         if (_isLoading.value) return
@@ -214,8 +221,9 @@ class DataMigrationExportViewModel @Inject constructor(
     /**
      * 把勾选的版本目录（apps/<label_pkg>/<user_0...>）打包成迁移包并写入用户选择的 uri。
      */
-    suspend fun export(uri: Uri): Boolean {
+    suspend fun export(uri: Uri): Boolean = withIOContext {
         _isExporting.value = true
+        _stage.value = MigrationStage.Processing
         _error.value = null
         val result = runCatching {
             val selectedDirs = _selectedKeys.value
@@ -235,19 +243,36 @@ class DataMigrationExportViewModel @Inject constructor(
             )
             check(shellResult.code == 0) { shellResult.out.joinToString("\n") }
 
+            // 复制大文件到 SAF：必须 IO 线程 + 大缓冲，否则主线程阻塞导致卡顿/ANR
             context.contentResolver.openOutputStream(uri)?.use { out ->
-                File(dstPath).inputStream().use { it.copyTo(out) }
+                File(dstPath).inputStream().use { input ->
+                    val buffer = ByteArray(1024 * 1024)
+                    while (true) {
+                        val read = input.read(buffer)
+                        if (read == -1) break
+                        out.write(buffer, 0, read)
+                    }
+                }
             } ?: error("open output stream failed")
             File(dstPath).delete()
         }
         _isExporting.value = false
         if (result.isSuccess) {
             _success.value = true
-            return true
+            _stage.value = MigrationStage.Success
+            true
         } else {
             _error.value = result.exceptionOrNull()?.message
-            return false
+            _stage.value = MigrationStage.Idle
+            false
         }
+    }
+
+    /**
+     * 重置阶段（用户继续操作时返回 Idle）。
+     */
+    fun consumeStage() {
+        _stage.value = MigrationStage.Idle
     }
 
     fun consumeSuccess() {

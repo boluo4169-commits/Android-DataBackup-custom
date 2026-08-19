@@ -291,8 +291,13 @@ class FilesRepo @Inject constructor(
     suspend fun calculateLocalFileArchiveSize(file: MediaEntity) {
         // 云端备份的归档在远程 WebDAV，本地路径不存在，本地计算会得到 0 并覆盖 displayBytes。云端跳过。
         if (file.indexInfo.cloud.isNotEmpty()) return
-        file.mediaInfo.displayBytes = rootService.calculateSize(getArchiveSrc("${pathUtil.getLocalBackupFilesDir()}/${file.archivesRelativeDir}", file.indexInfo.compressionType))
-        filesDao.upsert(file)
+        val src = getArchiveSrc("${pathUtil.getLocalBackupFilesDir()}/${file.archivesRelativeDir}", file.indexInfo.compressionType)
+        val size = rootService.calculateSize(src)
+        // 兜底：计算路径不存在（备份被移动/压缩类型不匹配等）算出 0 时，保留备份时写入的大小，避免"闪一下归零"。
+        if (size > 0 || file.mediaInfo.displayBytes <= 0) {
+            file.mediaInfo.displayBytes = size
+            filesDao.upsert(file)
+        }
     }
 
     suspend fun blockByIds(ids: List<Long>) {

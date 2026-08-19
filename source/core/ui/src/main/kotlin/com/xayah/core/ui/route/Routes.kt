@@ -60,6 +60,7 @@ sealed class MainRoutes(val route: String) {
     data object History : MainRoutes(route = "main_history")
     data object DataMigration : MainRoutes(route = "main_data_migration")
     data object DataMigrationExport : MainRoutes(route = "main_data_migration_export")
+    data object DataMigrationImport : MainRoutes(route = "main_data_migration_import")
     data object TaskDetails : MainRoutes(route = "main_task_details/{$ARG_ID}") {
         fun getRoute(id: Long) = "main_task_details/${id}"
     }

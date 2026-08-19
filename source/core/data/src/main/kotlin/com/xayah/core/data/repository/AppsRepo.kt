@@ -688,18 +688,25 @@ class AppsRepo @Inject constructor(
         val sizes = coroutineScope {
             dataTypes.map { dt -> async { dt to calculateArchiveDataSize(app, dt) } }.awaitAll()
         }
-        sizes.forEach { (dt, size) ->
-            when (dt) {
-                DataType.PACKAGE_APK -> app.displayStats.apkBytes = size
-                DataType.PACKAGE_USER -> app.displayStats.userBytes = size
-                DataType.PACKAGE_USER_DE -> app.displayStats.userDeBytes = size
-                DataType.PACKAGE_DATA -> app.displayStats.dataBytes = size
-                DataType.PACKAGE_OBB -> app.displayStats.obbBytes = size
-                DataType.PACKAGE_MEDIA -> app.displayStats.mediaBytes = size
-                else -> {}
+        // 兜底：归档目录/文件路径不存在（备份被移动/压缩类型不匹配等）时全部算出 0，
+        // 此时保留备份时写入的 displayStats，避免详情页"闪一下归零"。
+        val newTotal = sizes.sumOf { it.second }
+        val oldTotal = app.displayStats.apkBytes + app.displayStats.userBytes + app.displayStats.userDeBytes +
+            app.displayStats.dataBytes + app.displayStats.obbBytes + app.displayStats.mediaBytes
+        if (newTotal > 0 || oldTotal <= 0) {
+            sizes.forEach { (dt, size) ->
+                when (dt) {
+                    DataType.PACKAGE_APK -> app.displayStats.apkBytes = size
+                    DataType.PACKAGE_USER -> app.displayStats.userBytes = size
+                    DataType.PACKAGE_USER_DE -> app.displayStats.userDeBytes = size
+                    DataType.PACKAGE_DATA -> app.displayStats.dataBytes = size
+                    DataType.PACKAGE_OBB -> app.displayStats.obbBytes = size
+                    DataType.PACKAGE_MEDIA -> app.displayStats.mediaBytes = size
+                    else -> {}
+                }
             }
+            appsDao.upsert(app)
         }
-        appsDao.upsert(app)
     }
 
     private suspend fun resolveLocalArchiveDir(app: PackageEntity, appsDir: String): String {

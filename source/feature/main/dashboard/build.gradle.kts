@@ -22,6 +22,9 @@ dependencies {
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.navigation.compose)
 
+    // Animation graphics (animated vector)
+    implementation(libs.androidx.animation.graphics)
+
     // Preferences DataStore
     implementation(libs.androidx.datastore.preferences)
 

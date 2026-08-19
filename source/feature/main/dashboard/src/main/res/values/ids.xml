@@ -45,6 +45,25 @@
     <item name="migration_import_success" type="string" />
     <item name="migration_import_failed" type="string" />
     <item name="migration_import_empty" type="string" />
+    <item name="migration_stage_idle_title" type="string" />
+    <item name="migration_stage_idle_desc" type="string" />
+    <item name="migration_stage_processing_title" type="string" />
+    <item name="migration_stage_processing_desc" type="string" />
+    <item name="migration_stage_success_title" type="string" />
+    <item name="migration_stage_success_desc" type="string" />
+    <item name="migration_stage_import_idle_title" type="string" />
+    <item name="migration_stage_import_idle_desc" type="string" />
+    <item name="migration_stage_parsing_title" type="string" />
+    <item name="migration_stage_parsing_desc" type="string" />
+    <item name="migration_stage_importing_title" type="string" />
+    <item name="migration_stage_importing_desc" type="string" />
+    <item name="migration_stage_import_success_title" type="string" />
+    <item name="migration_stage_import_success_desc" type="string" />
+    <item name="migration_export_done" type="string" />
+    <item name="insurance_title" type="string" />
+    <item name="insurance_desc" type="string" />
+    <item name="insurance_confirm" type="string" />
+    <item name="insurance_skip" type="string" />
 
     <item name="ic_rounded_package_2" type="drawable" />
     <item name="ic_rounded_folder_open" type="drawable" />

@@ -17,7 +17,9 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.FilterList
 import androidx.compose.material.icons.outlined.Shield
@@ -63,11 +65,13 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xayah.core.model.SortType
 import com.xayah.core.model.UserInfo
 import com.xayah.core.model.util.formatSize
+import kotlinx.coroutines.Dispatchers
 import com.xayah.core.ui.component.BodyMediumText
 import com.xayah.core.ui.component.Divider
 import com.xayah.core.ui.component.IconButton
 import com.xayah.core.ui.component.InnerBottomSpacer
 import com.xayah.core.ui.component.InnerTopSpacer
+import com.xayah.core.ui.component.LocalSlotScope
 import com.xayah.core.ui.component.ModalBottomSheet
 import com.xayah.core.ui.component.PackageIconImage
 import com.xayah.core.ui.component.RadioButtons
@@ -94,6 +98,7 @@ fun PageDataMigrationExport(
     val navController = LocalNavController.current!!
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
+    val dialogState = LocalSlotScope.current!!.dialogSlot
 
     val allItems by viewModel.allItems.collectAsStateWithLifecycle()
     val userList by viewModel.userList.collectAsStateWithLifecycle()
@@ -107,6 +112,17 @@ fun PageDataMigrationExport(
     val isExporting by viewModel.isExporting.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
     val success by viewModel.success.collectAsStateWithLifecycle()
+    val stage by viewModel.stage.collectAsStateWithLifecycle()
+
+    // 阶段卡：根据 stage 选标题/描述
+    val (stageTitle, stageDesc) = when (stage) {
+        MigrationStage.Processing -> context.getString(R.string.migration_stage_processing_title) to
+            context.getString(R.string.migration_stage_processing_desc)
+        MigrationStage.Success -> context.getString(R.string.migration_stage_success_title) to
+            context.getString(R.string.migration_stage_success_desc)
+        else -> context.getString(R.string.migration_stage_idle_title) to
+            context.getString(R.string.migration_stage_idle_desc)
+    }
 
     val displayItems = remember(allItems, userList, userIndex, searchQuery, sortIndex, sortType) {
         viewModel.displayItems()
@@ -122,7 +138,17 @@ fun PageDataMigrationExport(
         ActivityResultContracts.CreateDocument("application/zstd")
     ) { uri ->
         uri?.let {
+            // 先选好保存位置，再弹「加份保险」提示（引导用户自行用文件管理器打包备份目录）
             scope.launch {
+                dialogState.open(
+                    initialState = Unit,
+                    title = context.getString(R.string.insurance_title),
+                    dismissText = context.getString(R.string.insurance_skip),
+                    confirmText = context.getString(R.string.insurance_confirm),
+                ) { _ ->
+                    Text(text = context.getString(R.string.insurance_desc))
+                }.first
+                // 导出含打包+压缩+复制大文件，必须在 IO 线程执行，否则主线程阻塞 → 卡顿/ANR
                 viewModel.export(it)
             }
         }
@@ -142,7 +168,6 @@ fun PageDataMigrationExport(
         if (success) {
             snackbarHostState.showSnackbar(context.getString(R.string.migration_export_success))
             viewModel.consumeSuccess()
-            navController.maybePopBackStack()
         }
     }
 
@@ -154,44 +179,50 @@ fun PageDataMigrationExport(
                 SecondaryTopBar(
                     scrollBehavior = TopAppBarDefaults.pinnedScrollBehavior(rememberTopAppBarState()),
                     title = stringResource(R.string.export_backup),
-                    subtitle = if (totalCount > 0) "(${selectedCount}/${totalCount})" else null,
+                    subtitle = if (totalCount > 0 && stage == MigrationStage.Idle) "(${selectedCount}/${totalCount})" else null,
                     actions = {
-                        IconButton(icon = Icons.Outlined.FilterList) {
-                            showSortSheet = true
-                        }
-                        IconButton(icon = Icons.Rounded.Refresh) {
-                            scope.launch { viewModel.load() }
-                        }
-                        if (allItems.isNotEmpty()) {
-                            TextButton(onClick = {
-                                if (selectedCount == totalCount) viewModel.unselectAll() else viewModel.selectAll()
-                            }) {
-                                Text(
-                                    text = stringResource(
-                                        if (selectedCount == totalCount) R.string.unselect_all else R.string.select_all
+                        // 导出中/完成后隐藏筛选、刷新、全选（这些操作在导出过程中无意义）
+                        if (stage == MigrationStage.Idle) {
+                            IconButton(icon = Icons.Outlined.FilterList) {
+                                showSortSheet = true
+                            }
+                            IconButton(icon = Icons.Rounded.Refresh) {
+                                scope.launch { viewModel.load() }
+                            }
+                            if (allItems.isNotEmpty()) {
+                                TextButton(onClick = {
+                                    if (selectedCount == totalCount) viewModel.unselectAll() else viewModel.selectAll()
+                                }) {
+                                    Text(
+                                        text = stringResource(
+                                            if (selectedCount == totalCount) R.string.unselect_all else R.string.select_all
+                                        )
                                     )
-                                )
+                                }
                             }
                         }
                     },
                 )
-                SearchBar(
-                    modifier = Modifier
-                        .paddingHorizontal(SizeTokens.Level16)
-                        .paddingVertical(SizeTokens.Level8),
-                    enabled = true,
-                    placeholder = stringResource(R.string.search_bar_hint_packages),
-                    onTextChange = viewModel::search,
-                )
-                if (userList.isNotEmpty()) {
-                    UserTabs(
-                        selected = userIndex,
-                        userList = userList,
-                        usersMap = userMap,
-                        onTabClick = viewModel::setUser,
+                // 选择阶段显示搜索与用户 Tab；导出中/完成后隐藏
+                if (stage == MigrationStage.Idle) {
+                    SearchBar(
+                        modifier = Modifier
+                            .paddingHorizontal(SizeTokens.Level16)
+                            .paddingVertical(SizeTokens.Level8),
+                        enabled = true,
+                        placeholder = stringResource(R.string.search_bar_hint_packages),
+                        onTextChange = viewModel::search,
                     )
-                } else {
-                    Divider(modifier = Modifier.fillMaxWidth())
+                    if (userList.isNotEmpty()) {
+                        UserTabs(
+                            selected = userIndex,
+                            userList = userList,
+                            usersMap = userMap,
+                            onTabClick = viewModel::setUser,
+                        )
+                    } else {
+                        Divider(modifier = Modifier.fillMaxWidth())
+                    }
                 }
             }
         },
@@ -202,24 +233,66 @@ fun PageDataMigrationExport(
                     .padding(SizeTokens.Level16),
                 verticalArrangement = Arrangement.spacedBy(SizeTokens.Level8),
             ) {
-                Text(
-                    text = stringResource(R.string.migration_selected_count, selectedCount),
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier.fillMaxWidth(),
-                )
-                Button(
-                    onClick = {
-                        exportLauncher.launch("DataBackup_迁移包_${DateUtil.formatTimestamp(DateUtil.getTimestamp(), "yyyyMMdd_HHmmss")}.tar.zst")
-                    },
-                    enabled = selectedCount > 0 && isExporting.not(),
-                    modifier = Modifier.fillMaxWidth(),
-                ) {
-                    Text(text = stringResource(R.string.export_backup))
+                when (stage) {
+                    MigrationStage.Idle -> {
+                        Text(
+                            text = stringResource(R.string.migration_selected_count, selectedCount),
+                            textAlign = TextAlign.Center,
+                            modifier = Modifier.fillMaxWidth(),
+                        )
+                        Button(
+                            onClick = {
+                                // 直接弹系统文件选择器选保存位置（保险弹窗在选好位置后弹出）
+                                exportLauncher.launch("DataBackup_迁移包_${DateUtil.formatTimestamp(DateUtil.getTimestamp(), "yyyyMMdd_HHmmss")}.tar.zst")
+                            },
+                            enabled = selectedCount > 0,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(text = stringResource(R.string.export_backup))
+                        }
+                    }
+
+                    MigrationStage.Processing -> {
+                        Button(
+                            onClick = {},
+                            enabled = false,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(text = stringResource(R.string.migration_stage_processing_title))
+                        }
+                    }
+
+                    MigrationStage.Success -> {
+                        Button(
+                            onClick = { navController.maybePopBackStack() },
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Text(text = stringResource(R.string.migration_export_done))
+                        }
+                    }
+
+                    else -> {}
                 }
             }
         }
     ) { innerPadding ->
-        LazyColumn(modifier = Modifier.fillMaxSize()) {
+        if (stage != MigrationStage.Idle) {
+            // 导出中/完成：整页只显示进度卡（仿处理页）
+            Column(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState()),
+            ) {
+                InnerTopSpacer(innerPadding = innerPadding)
+                MigrationStageCard(
+                    stage = stage,
+                    title = stageTitle,
+                    description = stageDesc,
+                )
+                InnerBottomSpacer(innerPadding = innerPadding)
+            }
+        } else {
+            LazyColumn(modifier = Modifier.fillMaxSize()) {
             item {
                 InnerTopSpacer(innerPadding = innerPadding)
             }
@@ -279,6 +352,7 @@ fun PageDataMigrationExport(
             }
             item {
                 InnerBottomSpacer(innerPadding = innerPadding)
+            }
             }
         }
     }

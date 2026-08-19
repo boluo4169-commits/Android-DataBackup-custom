@@ -7,17 +7,18 @@ import com.xayah.core.util.model.ShellResult
 object Pm {
     private suspend fun execute(vararg args: String): ShellResult = BaseUtil.execute("pm", *args)
     suspend fun install(userId: Int, src: String): ShellResult = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-        // pm install --user "$userId" -r -t "$src"
+        // pm install --user "$userId" -r -t -d "$src"
         execute(
             "install",
             "--user",
             "$QUOTE$userId$QUOTE",
             "-r",
             "-t",
+            "-d",
             "$QUOTE$src$QUOTE",
         )
     } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.TIRAMISU) {
-        // pm install -i com.android.vending --user "$userId" -r -t "$src"
+        // pm install -i com.android.vending --user "$userId" -r -t -d "$src"
         execute(
             "install",
             "-i",
@@ -26,10 +27,11 @@ object Pm {
             "$QUOTE$userId$QUOTE",
             "-r",
             "-t",
+            "-d",
             "$QUOTE$src$QUOTE",
         )
     } else {
-        // pm install --bypass-low-target-sdk-block -i com.android.vending --user "$userId" -r -t "$src"
+        // pm install --bypass-low-target-sdk-block -i com.android.vending --user "$userId" -r -t -d "$src"
         execute(
             "install",
             "--bypass-low-target-sdk-block",
@@ -39,23 +41,25 @@ object Pm {
             "$QUOTE$userId$QUOTE",
             "-r",
             "-t",
+            "-d",
             "$QUOTE$src$QUOTE",
         )
     }
 
     object Install {
         suspend fun create(userId: Int): ShellResult = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
-            // pm install-create --user "$userId" -t | grep -E -o '[0-9]+'
+            // pm install-create --user "$userId" -t -d | grep -E -o '[0-9]+'
             execute(
                 "install-create",
                 "--user",
                 "$QUOTE$userId$QUOTE",
                 "-t",
+                "-d",
                 "|",
                 "grep -E -o '[0-9]+'",
             )
         } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.TIRAMISU) {
-            // pm install-create -i com.android.vending --user "$userId" -t | grep -E -o '[0-9]+'
+            // pm install-create -i com.android.vending --user "$userId" -t -d | grep -E -o '[0-9]+'
             execute(
                 "install-create",
                 "-i",
@@ -63,11 +67,12 @@ object Pm {
                 "--user",
                 "$QUOTE$userId$QUOTE",
                 "-t",
+                "-d",
                 "|",
                 "grep -E -o '[0-9]+'",
             )
         } else {
-            // pm install-create --bypass-low-target-sdk-block -i com.android.vending --user "$userId" -t | grep -E -o '[0-9]+'
+            // pm install-create --bypass-low-target-sdk-block -i com.android.vending --user "$userId" -t -d | grep -E -o '[0-9]+'
             execute(
                 "install-create",
                 "--bypass-low-target-sdk-block",
@@ -76,6 +81,7 @@ object Pm {
                 "--user",
                 "$QUOTE$userId$QUOTE",
                 "-t",
+                "-d",
                 "|",
                 "grep -E -o '[0-9]+'",
             )

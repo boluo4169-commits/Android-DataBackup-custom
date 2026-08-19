@@ -2,4 +2,6 @@
 <resources>
     <string name="checksum_mismatch_title">Checksum verification failed</string>
     <string name="checksum_mismatch_text">Archive %1$s failed MD5 verification and may be corrupted. Force restore anyway?</string>
+    <string name="backup_incomplete_title">Backup files incomplete</string>
+    <string name="backup_incomplete_text">The following apps have incomplete backup files (archives missing) and will fail to restore:\n%1$s\n\nContinue anyway?</string>
 </resources>

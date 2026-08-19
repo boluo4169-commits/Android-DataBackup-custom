@@ -22,6 +22,10 @@ import com.xayah.core.model.database.TaskDetailPackageEntity
 import com.xayah.core.service.R
 import com.xayah.core.service.packages.AbstractPackagesService
 import com.xayah.core.service.util.ChecksumConfirmation
+import com.xayah.core.service.util.IntegrityChecker
+import com.xayah.core.service.util.IntegrityConfirmation
+import com.xayah.core.service.util.IntegrityIssue
+import com.xayah.core.service.util.IntegrityReport
 import com.xayah.core.service.util.PackagesRestoreUtil
 import com.xayah.core.service.util.SsaidRestoreReminder
 import com.xayah.core.util.DateUtil
@@ -111,6 +115,31 @@ internal abstract class AbstractRestoreService : AbstractPackagesService() {
 
     override suspend fun onProcessing() {
         ChecksumConfirmation.reset()
+
+        // 备份完整性检查：恢复前扫描每个应用的备份目录，.md5 存在但归档本体缺失（或目录为空）时提示用户
+        val integrityIssues = mutableListOf<IntegrityIssue>()
+        val checkedDirs = mutableSetOf<String>()
+        mPkgEntities.forEach { pkg ->
+            val p = pkg.packageEntity
+            // 兼容旧目录：新格式（应用名_包名）不存在则回退纯包名
+            val newSrcDir = "${mAppsDir}/${p.archivesRelativeDir}"
+            val srcDir = if (mRootService.exists(newSrcDir)) newSrcDir else "${mAppsDir}/${p.legacyArchivesRelativeDir}"
+            // 同一应用勾选多个版本时目录可能重复，只检查一次
+            if (checkedDirs.add(srcDir)) {
+                IntegrityChecker.checkDir(
+                    rootService = mRootService,
+                    srcDir = srcDir,
+                    label = p.packageInfo.label,
+                    packageName = p.packageName,
+                )?.let { integrityIssues.add(it) }
+            }
+        }
+        if (integrityIssues.isNotEmpty()) {
+            if (IntegrityConfirmation.awaitDecision(IntegrityReport(integrityIssues)).not()) {
+                log { "Restore cancelled by user: incomplete backup archives." }
+                return
+            }
+        }
 
         // 恢复前提醒：仅「随机化 Android id」弹确认框（「恢复 Android id」不弹）
         val randomizeSsaid = mContext.readRandomizeSsaid().first()

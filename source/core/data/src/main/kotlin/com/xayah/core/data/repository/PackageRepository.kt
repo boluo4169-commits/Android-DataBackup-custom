@@ -574,13 +574,29 @@ class PackageRepository @Inject constructor(
                 )
                 val packageEntity = runCatching {
                     val entity = rootService.readJson<PackageEntity>(jsonPath).also { p ->
-                        p?.indexInfo?.packageName = packageName
+                        // 注意：不要用目录名覆盖 packageName！
+                        // 目录名 = sanitizedLabel_packageName（含 label 前缀），不是真实包名。
+                        // 真实包名以配置 json 里备份时写入的为准，否则恢复时 queryInstalled/getPackageUid 查不到。
+                        // 历史 json 可能已被旧版扫描污染（packageName 被写成目录名并写回），这里用 label 反推修复。
+                        p?.recoverPackageNameFromDirName(packageName)
                         p?.indexInfo?.userId = userId
                         p?.indexInfo?.preserveId = if (mainBackup) 0L else preserveId
                         p?.extraInfo?.activated = false
                         p?.indexInfo?.cloud = ""
                         p?.indexInfo?.backupDir = localBackupSaveDir
                         p?.dataStates = dataStates
+                        // 无论本次是否剥离，都按目录名查删数据库里的旧"目录名"实体，防止恢复列表重复显示（幂等）。
+                        if (p != null) {
+                            val old = packageDao.query(
+                                packageName, OpType.RESTORE,
+                                p.indexInfo.userId, p.indexInfo.preserveId,
+                                p.indexInfo.compressionType, p.indexInfo.cloud, p.indexInfo.backupDir
+                            )
+                            if (old != null) {
+                                packageDao.delete(old.id)
+                                log { "Deleted stale polluted entity for dir: $packageName" }
+                            }
+                        }
                     }
                     onMsgUpdate(log { "Config is reloaded from json." })
                     entity
@@ -915,13 +931,27 @@ class PackageRepository @Inject constructor(
                             var entity: PackageEntity? = null
                             cloudRepository.download(client = client, src = jsonPath, dstDir = tmpDir) { path ->
                                 entity = rootService.readJson<PackageEntity>(path).also { p ->
-                                    p?.indexInfo?.packageName = packageName
+                                    // 不要用目录名覆盖 packageName（目录名含 label 前缀，非真实包名）
+                                    // 历史 json 可能已被旧版扫描污染，用 label 反推修复
+                                    p?.recoverPackageNameFromDirName(packageName)
                                     p?.indexInfo?.userId = userId
                                     p?.indexInfo?.preserveId = if (mainBackup) 0L else preserveId
                                     p?.extraInfo?.activated = false
                                     p?.indexInfo?.cloud = cloud
                                     p?.indexInfo?.backupDir = cloudEntity.remote
                                     p?.dataStates = dataStates
+                                    // 无论是否剥离，都按目录名查删数据库旧实体防重复（幂等）
+                                    if (p != null) {
+                                        val old = packageDao.query(
+                                            packageName, OpType.RESTORE,
+                                            p.indexInfo.userId, p.indexInfo.preserveId,
+                                            p.indexInfo.compressionType, p.indexInfo.cloud, p.indexInfo.backupDir
+                                        )
+                                        if (old != null) {
+                                            packageDao.delete(old.id)
+                                            log { "Deleted stale polluted cloud entity for dir: $packageName" }
+                                        }
+                                    }
                                 }
                                 onMsgUpdate(log { "Config is reloaded from json." })
                             }

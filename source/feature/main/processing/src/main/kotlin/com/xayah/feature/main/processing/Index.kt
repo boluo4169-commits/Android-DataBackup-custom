@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.rememberLazyListState
@@ -110,6 +111,7 @@ fun PageProcessing(
     val screenOffCountDown by viewModel.screenOffCountDown.collectAsStateWithLifecycle()
     val checksumRequest by viewModel.checksumRequest.collectAsStateWithLifecycle()
     val ssaidReminder by viewModel.ssaidReminder.collectAsStateWithLifecycle()
+    val integrityRequest by viewModel.integrityRequest.collectAsStateWithLifecycle()
 
     LaunchedEffect(null) {
         viewModel.emitIntentOnIO(ProcessingUiIntent.Initialize)
@@ -134,6 +136,27 @@ fun PageProcessing(
                 block = { _ -> Text(text = message) }
             ).first.isConfirm
             viewModel.decideSsaidReminder(confirmed)
+        }
+    }
+
+    LaunchedEffect(integrityRequest) {
+        integrityRequest?.let { report ->
+            val continueRestore = dialogState.open(
+                initialState = false,
+                title = context.getString(R.string.backup_incomplete_title),
+                block = { _ ->
+                    LazyColumn(
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .heightIn(max = SizeTokens.Level152)
+                    ) {
+                        item {
+                            Text(text = context.getString(R.string.backup_incomplete_text, report.formatMessage()))
+                        }
+                    }
+                }
+            ).first.isConfirm
+            viewModel.decideIntegrity(continueRestore)
         }
     }
 

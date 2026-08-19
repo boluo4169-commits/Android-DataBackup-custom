@@ -258,11 +258,17 @@ class PackagesRestoreUtil @Inject constructor(
                 rootService.deleteRecursively(tmpApkPath)
 
                 // Check the installation again.
-                rootService.queryInstalled(packageName = packageName, userId = userId).also {
-                    if (it.not()) {
-                        isSuccess = false
-                        log { "Not installed: $packageName." }
-                    }
+                // pm install 同步返回 Success 后，PackageManager 内部状态可能还没刷新（尤其跨系统大版本恢复时）。
+                // 重试等待最多 10 秒，避免恢复 USER/USER_DE 时 PackageManager 查不到包而失败。
+                var isInstalled = false
+                repeat(20) {
+                    isInstalled = rootService.queryInstalled(packageName = packageName, userId = userId)
+                    if (isInstalled) return@repeat
+                    delay(500)
+                }
+                if (isInstalled.not()) {
+                    isSuccess = false
+                    log { "Not installed: $packageName." }
                 }
             } else {
                 isSuccess = false
@@ -285,7 +291,16 @@ class PackagesRestoreUtil @Inject constructor(
         val src = packageRepository.getArchiveDst(dstDir = srcDir, dataType = dataType, ct = ct)
         val dstDir = packageRepository.getDataSrcDir(dataType, userId)
         val dst = packageRepository.getDataSrc(dstDir, packageName)
-        val uid = rootService.getPackageUid(packageName = packageName, userId = userId)
+        // 跨系统大版本恢复时，APK 装上后 PackageManager 缓存可能还没刷新，
+        // 重试等待最多 10 秒拿到真实 uid（-1 表示还没刷新好）。
+        var uid = rootService.getPackageUid(packageName = packageName, userId = userId)
+        if (uid == -1) {
+            repeat(20) {
+                delay(500)
+                uid = rootService.getPackageUid(packageName = packageName, userId = userId)
+                if (uid != -1) return@repeat
+            }
+        }
         var isSuccess = true
         val out = mutableListOf<String>()
 

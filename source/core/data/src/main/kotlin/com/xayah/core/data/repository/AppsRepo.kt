@@ -492,16 +492,33 @@ class AppsRepo @Inject constructor(
             onLoad(index, paths.size, fileName)
             if (fileName == ConfigsPackageRestoreName) {
                 runCatching {
+                    var recovered = false
+                    val dirName = pathParcelable.pathList.getOrNull(pathParcelable.pathList.size - 3)
                     rootService.readJson<PackageEntity>(pathParcelable.pathString).also { p ->
                         p?.id = 0
                         p?.extraInfo?.activated = false
                         p?.indexInfo?.cloud = ""
                         p?.indexInfo?.backupDir = context.localBackupSaveDir()
+                        // 兼容被旧版扫描污染的历史 json：剥离修复（若命中），并删除数据库旧实体防重复
+                        recovered = dirName != null && p?.recoverPackageNameFromDirName(dirName) == true
                         parsePreserveAndUserId(pathParcelable).also { result ->
                             result?.also { (pId, uId) ->
                                 p?.indexInfo?.preserveId = pId
                                 p?.indexInfo?.userId = uId
                             }
+                        }
+                        // 无论是否剥离，都按目录名查删旧实体（幂等）
+                        if (p != null && dirName != null) {
+                            val old = appsDao.query(
+                                dirName, OpType.RESTORE,
+                                p.indexInfo.userId, p.indexInfo.preserveId,
+                                p.indexInfo.compressionType, p.indexInfo.cloud, p.indexInfo.backupDir
+                            )
+                            if (old != null) appsDao.delete(old.id)
+                        }
+                        // 剥离成功时写回 json 修复被污染的数据
+                        if (recovered && p != null) {
+                            rootService.writeJson(data = p, dst = pathParcelable.pathString)
                         }
                     }?.apply {
                         if (appsDao.query(packageName, indexInfo.opType, userId, preserveId, indexInfo.compressionType, indexInfo.cloud, indexInfo.backupDir) == null) {
@@ -533,21 +550,33 @@ class AppsRepo @Inject constructor(
                     onLoad(index, paths.size, fileName)
                     if (fileName == ConfigsPackageRestoreName) {
                         runCatching {
-                            cloudRepo.download(client = client, src = pathParcelable.pathString, dstDir = tmpDir) { path ->
-                                rootService.readJson<PackageEntity>(path).also { p ->
-                                    p?.id = 0
-                                    p?.extraInfo?.activated = false
-                                    p?.indexInfo?.cloud = entity.name
-                                    p?.indexInfo?.backupDir = remote
-                                    parsePreserveAndUserId(pathParcelable).also { result ->
-                                        result?.also { (pId, uId) ->
-                                            p?.indexInfo?.preserveId = pId
-                                            p?.indexInfo?.userId = uId
-                                        }
+                            val dirName = pathParcelable.pathList.getOrNull(pathParcelable.pathList.size - 3)
+                            cloudRepo.download(client = client, src = pathParcelable.pathString, dstDir = tmpDir) { dlPath ->
+                                val p = rootService.readJson<PackageEntity>(dlPath)
+                                if (p != null) {
+                                    p.id = 0
+                                    p.extraInfo.activated = false
+                                    p.indexInfo.cloud = entity.name
+                                    p.indexInfo.backupDir = remote
+                                    // 兼容被旧版扫描污染的历史 json：剥离修复（若命中），并删除数据库旧实体防重复
+                                    if (dirName != null) {
+                                        p.recoverPackageNameFromDirName(dirName)
                                     }
-                                }?.apply {
-                                    if (appsDao.query(packageName, indexInfo.opType, userId, preserveId, indexInfo.compressionType, indexInfo.cloud, indexInfo.backupDir) == null) {
-                                        appsDao.upsert(this)
+                                    parsePreserveAndUserId(pathParcelable)?.let { (pId, uId) ->
+                                        p.indexInfo.preserveId = pId
+                                        p.indexInfo.userId = uId
+                                    }
+                                    // 无论是否剥离，都按目录名查删旧实体（幂等）
+                                    if (dirName != null) {
+                                        val old = appsDao.query(
+                                            dirName, OpType.RESTORE,
+                                            p.indexInfo.userId, p.indexInfo.preserveId,
+                                            p.indexInfo.compressionType, p.indexInfo.cloud, p.indexInfo.backupDir
+                                        )
+                                        if (old != null) appsDao.delete(old.id)
+                                    }
+                                    if (appsDao.query(p.packageName, p.indexInfo.opType, p.userId, p.preserveId, p.indexInfo.compressionType, p.indexInfo.cloud, p.indexInfo.backupDir) == null) {
+                                        appsDao.upsert(p)
                                     }
                                 }
                             }

@@ -2,4 +2,6 @@
 <resources>
     <string name="checksum_mismatch_title">校验失败</string>
     <string name="checksum_mismatch_text">归档 %1$s 的 MD5 校验失败，文件可能已损坏。是否强制恢复？</string>
+    <string name="backup_incomplete_title">备份文件不完整</string>
+    <string name="backup_incomplete_text">以下应用的备份文件不完整（归档缺失），恢复将失败：\n%1$s\n\n是否仍要继续？</string>
 </resources>

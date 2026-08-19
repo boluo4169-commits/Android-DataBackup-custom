@@ -270,6 +270,24 @@ data class PackageEntity(
 
     val pkgUserKey: String
         get() = "${packageName}-${userId}"
+
+    /**
+     * 兼容被旧版本扫描污染的历史配置。
+     *
+     * 旧版扫描（reloadAppsFromLocal12x / reloadAppsFromCloud12x）会把 json 里的 packageName 覆盖成完整目录名
+     * （sanitizedLabel_packageName 格式）并写回 json，导致 json 里的 packageName 不再是真实包名。
+     * 若检测到 packageName == 目录名（被污染），用 label 反推剥离出真实包名。
+     * @return true 表示剥离成功（packageName 已被修正）
+     */
+    fun recoverPackageNameFromDirName(dirName: String): Boolean {
+        val prefix = if (sanitizedLabel.isEmpty()) "" else "${sanitizedLabel}_"
+        return if (prefix.isNotEmpty() && indexInfo.packageName == dirName && dirName.startsWith(prefix)) {
+            indexInfo.packageName = dirName.removePrefix(prefix)
+            true
+        } else {
+            false
+        }
+    }
 }
 
 

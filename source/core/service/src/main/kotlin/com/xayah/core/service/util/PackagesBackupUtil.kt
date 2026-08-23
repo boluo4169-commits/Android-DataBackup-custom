@@ -310,15 +310,15 @@ class PackagesBackupUtil @Inject constructor(
                 DataType.PACKAGE_USER, DataType.PACKAGE_USER_DE -> {
                     // Exclude cache
                     val folders = listOf(".ota", "cache", "lib", "code_cache", "no_backup")
-                    exclusionList.addAll(folders.map { "${SymbolUtil.QUOTE}$packageName/$it${SymbolUtil.QUOTE}" })
+                    exclusionList.addAll(folders.map { "$packageName/$it" })
                 }
 
                 DataType.PACKAGE_DATA, DataType.PACKAGE_OBB, DataType.PACKAGE_MEDIA -> {
                     // Exclude cache
                     val folders = listOf("cache")
-                    exclusionList.addAll(folders.map { "${SymbolUtil.QUOTE}$packageName/$it${SymbolUtil.QUOTE}" })
+                    exclusionList.addAll(folders.map { "$packageName/$it" })
                     // Exclude Backup_*
-                    exclusionList.add("${SymbolUtil.QUOTE}Backup_${SymbolUtil.QUOTE}*")
+                    exclusionList.add("Backup_*")
                 }
 
                 else -> {}

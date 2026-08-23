@@ -17,6 +17,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import java.io.File
+import java.security.MessageDigest
 import javax.inject.Inject
 
 @HiltViewModel
@@ -24,6 +25,19 @@ class DataMigrationImportViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val appsRepo: AppsRepo,
 ) : androidx.lifecycle.ViewModel() {
+
+    companion object {
+        /**
+         * 迁移包内条目名的危险字符黑名单。
+         * 目录名形如「应用名_包名」，应用名可为任意 Unicode，
+         * 因此不能按包名字符集白名单校验；但以下字符一旦出现，
+         * 恢复阶段拼接 root shell 命令时存在注入风险，必须整包拒绝：
+         * 单双引号、反引号、美元符、反斜杠、分号、竖线、与号、换行及控制字符。
+         */
+        private val SHELL_META_REGEX = Regex("['\"`$\\\\;|&\r\n\u0000-\u001f]")
+
+        fun isEntryNameSafe(name: String): Boolean = SHELL_META_REGEX.containsMatchIn(name).not()
+    }
 
     init {
         // 兜底清理历史中断残留的临时迁移包：
@@ -45,8 +59,19 @@ class DataMigrationImportViewModel @Inject constructor(
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
+    /**
+     * 安全拒绝原因（条目名含危险字符 / 校验码不匹配）。
+     * 与通用 error 分开，用于向用户展示具体原因而非笼统的"导入失败"。
+     */
+    private val _detailMessage = MutableStateFlow<String?>(null)
+    val detailMessage: StateFlow<String?> = _detailMessage.asStateFlow()
+
     private val _success = MutableStateFlow(false)
     val success: StateFlow<Boolean> = _success.asStateFlow()
+
+    /** 本机历史导出的校验码记录（时间 + 应用数 + sha），供输入框旁快速选取 */
+    private val _shaHistory = MutableStateFlow<List<MigrationShaRecord>>(emptyList())
+    val shaHistory: StateFlow<List<MigrationShaRecord>> = _shaHistory.asStateFlow()
 
     /**
      * 当前导入阶段（Idle/Parsing/Importing/Success），UI 用于显示顶部进度卡。
@@ -57,12 +82,31 @@ class DataMigrationImportViewModel @Inject constructor(
     private var tmpFilePath: String? = null
 
     /**
-     * 把迁移包拷贝到临时文件，解析出其中包含的应用（apps/ 下的目录名，去重）。
+     * 流式计算文件 SHA-256（迁移包可能数 GB，禁止一次性读入内存）。
      */
-    suspend fun parse(uri: Uri): List<String> = withIOContext {
+    private fun sha256Of(file: File): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+        file.inputStream().use { input ->
+            val buffer = ByteArray(1024 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read == -1) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    /**
+     * 把迁移包拷贝到临时文件，（可选）校验 SHA-256，解析出其中包含的应用（apps/ 下的目录名，去重）。
+     *
+     * @param expectedSha256 发包方提供的校验码；非空则强校验，不匹配直接拒绝导入。
+     */
+    suspend fun parse(uri: Uri, expectedSha256: String? = null): List<String> = withIOContext {
         _isParsing.value = true
         _stage.value = MigrationStage.Processing
         _error.value = null
+        _detailMessage.value = null
         val result = runCatching {
             // 清理上一次可能残留的临时文件
             cleanupTmpFile()
@@ -80,9 +124,18 @@ class DataMigrationImportViewModel @Inject constructor(
             } ?: error("open input stream failed")
             tmpFilePath = tmpFile
 
+            // 可选完整性校验：与导出端展示的 SHA-256 对比
+            if (!expectedSha256.isNullOrBlank()) {
+                val actual = sha256Of(File(tmpFile))
+                val expected = expectedSha256.trim().lowercase().removePrefix("sha256:")
+                if (actual != expected) {
+                    throw SecurityException("SHA-256 校验失败：期望 $expected，实际 $actual")
+                }
+            }
+
             // zstd -d -c "<tmp>" | tar -tf -
             val shellResult = BaseUtil.execute(
-                "zstd", "-d", "-c", "${SymbolUtil.QUOTE}$tmpFile${SymbolUtil.QUOTE}",
+                "zstd", "-d", "-c", SymbolUtil.shellQuote(tmpFile),
                 "|", "tar", "-tf", "-",
             )
             check(shellResult.code == 0) { shellResult.out.joinToString("\n") }
@@ -97,6 +150,16 @@ class DataMigrationImportViewModel @Inject constructor(
                     null
                 }
             }.distinct()
+
+            // 安全门闩：任何条目名携带 shell 元字符即整包拒绝，
+            // 防止恶意迁移包在恢复阶段以 root 权限执行注入命令。
+            val unsafeEntries = apps.filter { !isEntryNameSafe(it) }
+            if (unsafeEntries.isNotEmpty()) {
+                throw SecurityException(
+                    "已拒绝导入：迁移包含危险字符的条目名（${unsafeEntries.joinToString(", ") { it.take(24) }}）"
+                )
+            }
+
             _parsedApps.value = apps
             apps
         }
@@ -106,7 +169,13 @@ class DataMigrationImportViewModel @Inject constructor(
             _stage.value = MigrationStage.Idle
             result.getOrDefault(emptyList())
         } else {
-            _error.value = result.exceptionOrNull()?.message
+            val exception = result.exceptionOrNull()
+            if (exception is SecurityException) {
+                _detailMessage.value = exception.message
+            } else {
+                _error.value = exception?.message
+            }
+            _parsedApps.value = emptyList()
             cleanupTmpFile()
             _stage.value = MigrationStage.Idle
             emptyList()
@@ -125,7 +194,7 @@ class DataMigrationImportViewModel @Inject constructor(
             val backupDir = context.localBackupSaveDir()
             // OS 升级后首次导入（如澎湃 OS3→OS4）目标目录可能尚未创建，先 mkdir -p
             val mkdirShell = com.xayah.core.util.command.BaseUtil.execute(
-                "mkdir", "-p", com.xayah.core.util.SymbolUtil.QUOTE + backupDir + com.xayah.core.util.SymbolUtil.QUOTE,
+                "mkdir", "-p", SymbolUtil.shellQuote(backupDir),
             )
             check(mkdirShell.code == 0) { "mkdir failed: ${mkdirShell.out.joinToString("\n")}" }
             val decompressResult = Tar.decompress(tmpFile, backupDir, CompressionType.ZSTD.decompressPara)
@@ -161,6 +230,15 @@ class DataMigrationImportViewModel @Inject constructor(
 
     fun consumeSuccess() {
         _success.value = false
+    }
+
+    fun consumeDetailMessage() {
+        _detailMessage.value = null
+    }
+
+    /** 重新加载本机导出校验码历史（进入页面或导出完成后调用） */
+    suspend fun loadShaHistory() {
+        _shaHistory.value = MigrationShaHistoryStore.load(context)
     }
 
     /**

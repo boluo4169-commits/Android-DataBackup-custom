@@ -1,21 +1,22 @@
 package com.xayah.core.util.command
 
 import android.os.Build
-import com.xayah.core.util.SymbolUtil.QUOTE
+import com.xayah.core.util.SymbolUtil.shellQuote
 import com.xayah.core.util.model.ShellResult
 
 object Pm {
     private suspend fun execute(vararg args: String): ShellResult = BaseUtil.execute("pm", *args)
+
     suspend fun install(userId: Int, src: String): ShellResult = if (Build.VERSION.SDK_INT < Build.VERSION_CODES.R) {
         // pm install --user "$userId" -r -t -d "$src"
         execute(
             "install",
             "--user",
-            "$QUOTE$userId$QUOTE",
+            "$userId",
             "-r",
             "-t",
             "-d",
-            "$QUOTE$src$QUOTE",
+            shellQuote(src),
         )
     } else if (Build.VERSION.SDK_INT <= Build.VERSION_CODES.TIRAMISU) {
         // pm install -i com.android.vending --user "$userId" -r -t -d "$src"
@@ -24,11 +25,11 @@ object Pm {
             "-i",
             "com.android.vending",
             "--user",
-            "$QUOTE$userId$QUOTE",
+            "$userId",
             "-r",
             "-t",
             "-d",
-            "$QUOTE$src$QUOTE",
+            shellQuote(src),
         )
     } else {
         // pm install --bypass-low-target-sdk-block -i com.android.vending --user "$userId" -r -t -d "$src"
@@ -38,11 +39,11 @@ object Pm {
             "-i",
             "com.android.vending",
             "--user",
-            "$QUOTE$userId$QUOTE",
+            "$userId",
             "-r",
             "-t",
             "-d",
-            "$QUOTE$src$QUOTE",
+            shellQuote(src),
         )
     }
 
@@ -52,7 +53,7 @@ object Pm {
             execute(
                 "install-create",
                 "--user",
-                "$QUOTE$userId$QUOTE",
+                "$userId",
                 "-t",
                 "-d",
                 "|",
@@ -65,7 +66,7 @@ object Pm {
                 "-i",
                 "com.android.vending",
                 "--user",
-                "$QUOTE$userId$QUOTE",
+                "$userId",
                 "-t",
                 "-d",
                 "|",
@@ -79,7 +80,7 @@ object Pm {
                 "-i",
                 "com.android.vending",
                 "--user",
-                "$QUOTE$userId$QUOTE",
+                "$userId",
                 "-t",
                 "-d",
                 "|",
@@ -91,9 +92,9 @@ object Pm {
             // pm install-write "$session" "$srcDir" "$src"
             execute(
                 "install-write",
-                "$QUOTE$session$QUOTE",
-                "$QUOTE$srcName$QUOTE",
-                "$QUOTE$src$QUOTE",
+                shellQuote(session),
+                shellQuote(srcName),
+                shellQuote(src),
             )
         }
 
@@ -101,7 +102,7 @@ object Pm {
             // pm install-commit "$session"
             execute(
                 "install-commit",
-                "$QUOTE$session$QUOTE",
+                shellQuote(session),
             )
         }
     }

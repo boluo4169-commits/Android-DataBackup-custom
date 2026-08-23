@@ -21,6 +21,7 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.update
 import java.io.File
+import java.security.MessageDigest
 import javax.inject.Inject
 
 data class DataMigrationVersionItem(
@@ -88,6 +89,10 @@ class DataMigrationExportViewModel @Inject constructor(
 
     private val _success = MutableStateFlow(false)
     val success: StateFlow<Boolean> = _success.asStateFlow()
+
+    /** 最近一次成功导出的迁移包 SHA-256，供接收方校验完整性 */
+    private val _lastSha256 = MutableStateFlow<String?>(null)
+    val lastSha256: StateFlow<String?> = _lastSha256.asStateFlow()
 
     /**
      * 当前导出阶段（Idle/Processing/Success），UI 用于显示顶部进度卡。
@@ -233,15 +238,34 @@ class DataMigrationExportViewModel @Inject constructor(
             val dstPath = "$tmpDir/DataBackup_migration_${DateUtil.getTimestamp()}.tar.zst"
 
             // tar --totals -cpf - -C "<backupDir>" -- "apps/dir1" "apps/dir2" | zstd ... > "<dstPath>"
-            val srcArgs = selectedDirs.map { "${SymbolUtil.QUOTE}apps/$it${SymbolUtil.QUOTE}" }.toTypedArray()
+            val srcArgs = selectedDirs.map { SymbolUtil.shellQuote("apps/$it") }.toTypedArray()
             val shellResult = BaseUtil.execute(
                 "tar", "--totals", "-cpf", "-",
-                "-C", "${SymbolUtil.QUOTE}$backupDir${SymbolUtil.QUOTE}",
+                "-C", SymbolUtil.shellQuote(backupDir),
                 "--", *srcArgs,
                 "|", "zstd -r -T0 -q --priority=rt",
-                ">", "${SymbolUtil.QUOTE}$dstPath${SymbolUtil.QUOTE}",
+                ">", SymbolUtil.shellQuote(dstPath),
             )
             check(shellResult.code == 0) { shellResult.out.joinToString("\n") }
+
+            // 计算迁移包 SHA-256（流式，数 GB 文件不进内存），导出完成后展示给用户
+            val digest = MessageDigest.getInstance("SHA-256")
+            File(dstPath).inputStream().use { input ->
+                val buffer = ByteArray(1024 * 1024)
+                while (true) {
+                    val read = input.read(buffer)
+                    if (read == -1) break
+                    digest.update(buffer, 0, read)
+                }
+            }
+            _lastSha256.value = digest.digest().joinToString("") { "%02x".format(it) }
+
+            // 写入本机历史记录：时间 + 应用数 + 校验码，供导入页快速回查
+            val appCount = _selectedKeys.value.map { it.substringBeforeLast('/') }.distinct().size
+            MigrationShaHistoryStore.append(
+                context,
+                MigrationShaRecord(time = DateUtil.getTimestamp(), apps = appCount, sha = _lastSha256.value!!),
+            )
 
             // 复制大文件到 SAF：必须 IO 线程 + 大缓冲，否则主线程阻塞导致卡顿/ANR
             context.contentResolver.openOutputStream(uri)?.use { out ->

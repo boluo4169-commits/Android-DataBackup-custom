@@ -1,7 +1,7 @@
 package com.xayah.core.util.command
 
-import com.xayah.core.util.SymbolUtil.QUOTE
-import com.xayah.core.util.SymbolUtil.USD
+import com.xayah.core.util.SymbolUtil
+import com.xayah.core.util.SymbolUtil.shellQuote
 import com.xayah.core.util.command.BaseUtil.execute
 import com.xayah.core.util.model.ShellResult
 
@@ -12,17 +12,20 @@ object PreparationUtil {
             "mount",
             "|",
             "awk",
-            "'${USD}3 ~ ${QUOTE}/mnt/media_rw/[^/]+${USD}${QUOTE} {print ${USD}3}'",
+            "'${SymbolUtil.USD}3 ~ \"/mnt/media_rw/[^/]+${SymbolUtil.USD}\" {print ${SymbolUtil.USD}3}'",
         )
     }
 
     suspend fun getExternalStorageType(path: String): ShellResult = run {
         // mount | awk '$3 == "/mnt/media_rw/6EBF-FE14" {print $5}'
+        // path 嵌入 awk 字符串字面量：反斜杠与双引号需 awk 转义；整个 awk 程序经 shellQuote
+        // 单引号包裹，防止单引号逃逸 root shell。
+        val awkProgram = "\$3 == \"${path.replace("\\", "\\\\").replace("\"", "\\\"")}\" {print \$5}"
         execute(
             "mount",
             "|",
             "awk",
-            "'${USD}3 == ${QUOTE}${path}${QUOTE} {print ${USD}5}'",
+            shellQuote(awkProgram),
         )
     }
 
@@ -44,7 +47,7 @@ object PreparationUtil {
         execute(
             "ime",
             "enable",
-            "${QUOTE}${inputMethods}${QUOTE}",
+            shellQuote(inputMethods),
         ).also { result ->
             isSuccess = result.isSuccess
             out.addAll(result.out)
@@ -54,7 +57,7 @@ object PreparationUtil {
         execute(
             "ime",
             "set",
-            "${QUOTE}${inputMethods}${QUOTE}",
+            shellQuote(inputMethods),
         ).also { result ->
             isSuccess = isSuccess and result.isSuccess
             out.addAll(result.out)
@@ -66,7 +69,7 @@ object PreparationUtil {
             "put",
             "secure",
             "default_input_method",
-            "${QUOTE}${inputMethods}${QUOTE}",
+            shellQuote(inputMethods),
         ).also { result ->
             isSuccess = isSuccess and result.isSuccess
             out.addAll(result.out)
@@ -95,7 +98,7 @@ object PreparationUtil {
             "put",
             "secure",
             "enabled_accessibility_services",
-            "${QUOTE}${accessibilityServices}${QUOTE}",
+            shellQuote(accessibilityServices),
         ).also { result ->
             isSuccess = result.isSuccess
             out.addAll(result.out)

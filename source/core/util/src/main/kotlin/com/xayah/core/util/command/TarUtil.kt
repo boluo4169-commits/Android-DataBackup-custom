@@ -10,28 +10,30 @@ object Tar {
 
     suspend fun compressInCur(cur: String, src: String, dst: String, extra: String): ShellResult {
         // Move to $cur path.
-        BaseUtil.execute("cd", cur)
+        BaseUtil.execute("cd", SymbolUtil.shellQuote(cur))
 
         // Compress
         val result = if (extra.isEmpty()) {
-            // tar --totals -cpf - $src > "$dst"
+            // tar --totals -cpf - "$src" > "$dst"
             execute(
                 "--totals",
                 "-cpf",
-                "- $src",
+                "-",
+                SymbolUtil.shellQuote(src),
                 ">",
-                "${SymbolUtil.QUOTE}$dst${SymbolUtil.QUOTE}",
+                SymbolUtil.shellQuote(dst),
             )
         } else {
-            // tar --totals -cpf - $src | $extra > "$dst"
+            // tar --totals -cpf - "$src" | $extra > "$dst"
             execute(
                 "--totals",
                 "-cpf",
-                "- $src",
+                "-",
+                SymbolUtil.shellQuote(src),
                 "|",
                 extra,
                 ">",
-                "${SymbolUtil.QUOTE}$dst${SymbolUtil.QUOTE}",
+                SymbolUtil.shellQuote(dst),
             )
         }
 
@@ -43,7 +45,7 @@ object Tar {
 
     suspend fun compress(exclusionList: List<String>, h: String, srcDir: String, src: String, dst: String, extra: String): ShellResult =
         run {
-            val exclusion = exclusionList.trim().map { "--exclude=$it" }.toSpaceString()
+            val exclusion = exclusionList.trim().map { "--exclude=${SymbolUtil.shellQuote(it)}" }.toSpaceString()
             if (extra.isEmpty()) {
                 // tar --totals "$exclusion" $h -cpf - -C "$srcDir" -- "$src" > "$dst"
                 execute(
@@ -53,11 +55,11 @@ object Tar {
                     "-cpf",
                     "-",
                     "-C",
-                    "${SymbolUtil.QUOTE}$srcDir${SymbolUtil.QUOTE}",
+                    SymbolUtil.shellQuote(srcDir),
                     "--",
-                    "${SymbolUtil.QUOTE}$src${SymbolUtil.QUOTE}",
+                    SymbolUtil.shellQuote(src),
                     ">",
-                    "${SymbolUtil.QUOTE}$dst${SymbolUtil.QUOTE}",
+                    SymbolUtil.shellQuote(dst),
                 )
             } else {
                 // tar --totals "$exclusion" $h -cpf - -C "$srcDir" -- "$src" | $extra > "$dst"
@@ -68,13 +70,13 @@ object Tar {
                     "-cpf",
                     "-",
                     "-C",
-                    "${SymbolUtil.QUOTE}$srcDir${SymbolUtil.QUOTE}",
+                    SymbolUtil.shellQuote(srcDir),
                     "--",
-                    "${SymbolUtil.QUOTE}$src${SymbolUtil.QUOTE}",
+                    SymbolUtil.shellQuote(src),
                     "|",
                     extra,
                     ">",
-                    "${SymbolUtil.QUOTE}$dst${SymbolUtil.QUOTE}",
+                    SymbolUtil.shellQuote(dst),
                 )
             }
         }
@@ -83,7 +85,7 @@ object Tar {
         // tar -tf "$src" > /dev/null 2>&1
         execute(
             "-tf",
-            "${SymbolUtil.QUOTE}$src${SymbolUtil.QUOTE}",
+            SymbolUtil.shellQuote(src),
             ">",
             "/dev/null",
             "2>&1",
@@ -94,7 +96,7 @@ object Tar {
             "zstd",
             "-d",
             "-c",
-            "${SymbolUtil.QUOTE}$src${SymbolUtil.QUOTE}",
+            SymbolUtil.shellQuote(src),
             "|",
             "tar",
             "-tf",
@@ -111,9 +113,9 @@ object Tar {
             execute(
                 "--totals",
                 "-xmpf",
-                "${SymbolUtil.QUOTE}$src${SymbolUtil.QUOTE}",
+                SymbolUtil.shellQuote(src),
                 "-C",
-                "${SymbolUtil.QUOTE}$dst${SymbolUtil.QUOTE}",
+                SymbolUtil.shellQuote(dst),
             )
         } else {
             // zstd -d -c "$src" | tar --totals -xmpf - -C "$dst"
@@ -121,20 +123,20 @@ object Tar {
                 "zstd",
                 "-d",
                 "-c",
-                "${SymbolUtil.QUOTE}$src${SymbolUtil.QUOTE}",
+                SymbolUtil.shellQuote(src),
                 "|",
                 "tar",
                 "--totals",
                 "-xmpf",
                 "-",
                 "-C",
-                "${SymbolUtil.QUOTE}$dst${SymbolUtil.QUOTE}",
+                SymbolUtil.shellQuote(dst),
             )
         }
     }
 
     suspend fun decompress(exclusionList: List<String>, clear: String, m: Boolean, src: String, dst: String, extra: String): ShellResult = run {
-        val exclusion = exclusionList.trim().map { "--exclude=$it" }.toSpaceString()
+        val exclusion = exclusionList.trim().map { "--exclude=${SymbolUtil.shellQuote(it)}" }.toSpaceString()
         if (extra.isEmpty()) {
             // tar --totals "$exclusion" $clear -xmpf "$src" -C "$dst"
             execute(
@@ -142,9 +144,9 @@ object Tar {
                 exclusion,
                 clear,
                 if (m) "-xmpf" else "-xpf",
-                "${SymbolUtil.QUOTE}$src${SymbolUtil.QUOTE}",
+                SymbolUtil.shellQuote(src),
                 "-C",
-                "${SymbolUtil.QUOTE}$dst${SymbolUtil.QUOTE}",
+                SymbolUtil.shellQuote(dst),
             )
         } else {
             // zstd -d -c "$src" | tar --totals "$exclusion" $clear -xmpf - -C "$dst"
@@ -152,7 +154,7 @@ object Tar {
                 "zstd",
                 "-d",
                 "-c",
-                "${SymbolUtil.QUOTE}$src${SymbolUtil.QUOTE}",
+                SymbolUtil.shellQuote(src),
                 "|",
                 "tar",
                 "--totals",
@@ -161,7 +163,7 @@ object Tar {
                 if (m) "-xmpf" else "-xpf",
                 "-",
                 "-C",
-                "${SymbolUtil.QUOTE}$dst${SymbolUtil.QUOTE}",
+                SymbolUtil.shellQuote(dst),
             )
         }
     }

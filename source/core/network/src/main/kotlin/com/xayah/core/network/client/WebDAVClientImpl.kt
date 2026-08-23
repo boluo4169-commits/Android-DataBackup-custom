@@ -46,6 +46,13 @@ class WebDAVClientImpl(private val entity: CloudEntity, private val extra: WebDA
     }
 
     override fun connect() {
+        // 安全门闩：未显式开启「允许不安全连接」时，拒绝向 http:// 地址发送凭据与备份数据。
+        // FTP/SFTP/SMB 不走 HTTP 栈，不受此全局明文开关约束，故仅需在此处校验 WebDAV。
+        if (extra.insecure.not() && entity.host.trim().startsWith("http://", ignoreCase = true)) {
+            throw IllegalArgumentException(
+                "Insecure HTTP is blocked: switch the server to HTTPS or enable \"Allow insecure connection\" for this account."
+            )
+        }
         val builder = OkHttpClient.Builder()
             .connectTimeout(0, TimeUnit.SECONDS)
             .readTimeout(0, TimeUnit.SECONDS)

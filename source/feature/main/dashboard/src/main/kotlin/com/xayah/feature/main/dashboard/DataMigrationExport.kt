@@ -27,11 +27,13 @@ import androidx.compose.material.icons.rounded.ExpandLess
 import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Badge
+import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -53,9 +55,11 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.input.nestedscroll.nestedScroll
+import androidx.compose.ui.platform.LocalClipboardManager
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.text.AnnotatedString
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.text.font.FontWeight
@@ -99,6 +103,7 @@ fun PageDataMigrationExport(
     val scope = rememberCoroutineScope()
     val snackbarHostState = remember { SnackbarHostState() }
     val dialogState = LocalSlotScope.current!!.dialogSlot
+    val clipboard = LocalClipboardManager.current
 
     val allItems by viewModel.allItems.collectAsStateWithLifecycle()
     val userList by viewModel.userList.collectAsStateWithLifecycle()
@@ -113,6 +118,7 @@ fun PageDataMigrationExport(
     val error by viewModel.error.collectAsStateWithLifecycle()
     val success by viewModel.success.collectAsStateWithLifecycle()
     val stage by viewModel.stage.collectAsStateWithLifecycle()
+    val lastSha256 by viewModel.lastSha256.collectAsStateWithLifecycle()
 
     // 阶段卡：根据 stage 选标题/描述
     val (stageTitle, stageDesc) = when (stage) {
@@ -263,11 +269,36 @@ fun PageDataMigrationExport(
                     }
 
                     MigrationStage.Success -> {
-                        Button(
-                            onClick = { navController.maybePopBackStack() },
-                            modifier = Modifier.fillMaxWidth(),
-                        ) {
-                            Text(text = stringResource(R.string.migration_export_done))
+                        Column(verticalArrangement = Arrangement.spacedBy(SizeTokens.Level8)) {
+                            lastSha256?.let {
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically,
+                                    horizontalArrangement = Arrangement.spacedBy(SizeTokens.Level8),
+                                ) {
+                                    Text(
+                                        text = "SHA-256：$it",
+                                        color = ThemedColorSchemeKeyTokens.OnSurfaceVariant.value,
+                                        maxLines = 2,
+                                        overflow = TextOverflow.Ellipsis,
+                                        modifier = Modifier.weight(1f),
+                                    )
+                                    IconButton(onClick = {
+                                        clipboard.setText(AnnotatedString(it))
+                                        scope.launch { snackbarHostState.showSnackbar("校验码已复制") }
+                                    }) {
+                                        Icon(
+                                            imageVector = Icons.Rounded.ContentCopy,
+                                            contentDescription = "复制校验码",
+                                        )
+                                    }
+                                }
+                            }
+                            Button(
+                                onClick = { navController.maybePopBackStack() },
+                                modifier = Modifier.fillMaxWidth(),
+                            ) {
+                                Text(text = stringResource(R.string.migration_export_done))
+                            }
                         }
                     }
 

@@ -1,7 +1,7 @@
 package com.xayah.core.util.command
 
-import com.xayah.core.util.SymbolUtil.QUOTE
-import com.xayah.core.util.SymbolUtil.USD
+import com.xayah.core.util.SymbolUtil
+import com.xayah.core.util.SymbolUtil.shellQuote
 import com.xayah.core.util.model.ShellResult
 
 object SELinux {
@@ -12,9 +12,9 @@ object SELinux {
         execute(
             "ls",
             "-Zd",
-            "$QUOTE$path$QUOTE",
+            shellQuote(path),
             "|",
-            "awk 'NF>1{print ${USD}1}'"
+            "awk 'NF>1{print ${SymbolUtil.USD}1}'"
         )
     }
 
@@ -23,8 +23,8 @@ object SELinux {
         execute(
             "chown",
             "-hR",
-            "$QUOTE$uid:$gid$QUOTE",
-            "$QUOTE$path/$QUOTE",
+            shellQuote("$uid:$gid"),
+            shellQuote("$path/"),
         )
     }
 
@@ -33,8 +33,8 @@ object SELinux {
         execute(
             "chcon",
             "-hR",
-            "$QUOTE$context$QUOTE",
-            "$QUOTE$path/$QUOTE",
+            shellQuote(context),
+            shellQuote("$path/"),
         )
     }
 
@@ -49,7 +49,7 @@ object SELinux {
             "restorecon",
             "-R",
             "-F",
-            "$QUOTE$path/$QUOTE",
+            shellQuote("$path/"),
         )
     }
 
@@ -61,7 +61,7 @@ object SELinux {
     suspend fun cleanRestore(dst: String): ShellResult = run {
         // find "$dst" -mindepth 1 -maxdepth 1 -not -name lib -not -name cache ... -exec rm -rf {} +
         execute(
-            "find", "$QUOTE$dst$QUOTE",
+            "find", shellQuote(dst),
             "-mindepth", "1", "-maxdepth", "1",
             "-not", "-name", "lib",
             "-not", "-name", "cache",

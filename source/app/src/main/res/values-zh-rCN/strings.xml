@@ -422,8 +422,8 @@
     <string name="migration_export_done">完成</string>
     <string name="insurance_title">加份保险？</string>
     <string name="insurance_desc">导出的迁移包只有一份，万一丢失或损坏，备份数据就全没了。\n\n建议你用 MT 管理器等文件管理器，先把整个 DataBackup 目录打包成压缩包（zip），作为额外保险，再导出迁移包。</string>
-    <string name="insurance_confirm">知道了</string>
-    <string name="insurance_skip">直接导出</string>
+    <string name="insurance_confirm">继续导出</string>
+    <string name="insurance_skip">知道了</string>
     <string name="args_backed_up_at">备份于%1$s</string>
     <string name="args_restored_at">恢复于%1$s</string>
     <string name="task_details">任务详情</string>

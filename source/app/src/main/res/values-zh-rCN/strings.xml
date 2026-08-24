@@ -442,6 +442,16 @@
     <string name="randomize_ssaid_desc">生成一个随机的新Android ID（不恢复旧值），需要在恢复后立即重启以生效</string>
     <string name="randomize_gaid">随机化GAID/GSF</string>
     <string name="randomize_gaid_desc">恢复时随机化Google广告ID（GAID）和Google服务框架ID（GSF）</string>
+    <string name="data_repair">数据修复</string>
+    <string name="fix_data_ownership">修复数据属主</string>
+    <string name="fix_data_ownership_desc">恢复完成后自动校验并修复数据目录属主</string>
+    <string name="fix_data_ownership_help">应用卸载重装后系统会分配新 UID，但外部存储可能残留旧 UID 属主的数据目录，导致游戏等应用无法写入而报错（如 UE4 更新报 556793857）。开启后每次恢复完成会自动校验整棵数据目录树，发现属主不一致就自动修复。</string>
+    <string name="fix_ownership_run">立即检查并修复</string>
+    <string name="fix_ownership_run_desc">扫描所有已安装应用的数据目录，把属主为残留 UID 的目录修复为当前 UID（双开等其他活跃应用的目录不会动）</string>
+    <string name="fix_ownership_run_btn">执行</string>
+    <string name="fix_ownership_running">处理中…</string>
+    <string name="fix_ownership_done">检查完成</string>
+    <string name="fix_ownership_report">共发现 %1$d 个属主错位目录：修复 %2$d 个，失败 %3$d 个</string>
     <string name="device_identity">设备标识</string>
     <string name="clear_device_fingerprint">清除设备指纹</string>
     <string name="clear_device_fingerprint_desc">恢复数据时剔除腾讯系游戏的设备指纹文件（TGPA、CrashReportClient 等），让游戏重新生成全新标识</string>

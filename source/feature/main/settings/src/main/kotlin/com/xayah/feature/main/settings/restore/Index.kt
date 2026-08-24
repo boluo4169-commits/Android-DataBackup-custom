@@ -25,6 +25,7 @@ import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.platform.LocalContext
@@ -33,6 +34,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xayah.core.datastore.KeyCleanRestoring
 import com.xayah.core.datastore.KeyClearDeviceFingerprint
+import com.xayah.core.datastore.KeyFixDataOwnership
 import com.xayah.core.datastore.KeyRandomizeGaid
 import com.xayah.core.datastore.KeyRandomizeSsaid
 import com.xayah.core.datastore.KeyRestorePermissions
@@ -54,6 +56,7 @@ import com.xayah.core.ui.model.DialogRadioItem
 import com.xayah.core.ui.theme.ThemedColorSchemeKeyTokens
 import com.xayah.core.ui.theme.value
 import com.xayah.core.ui.token.SizeTokens
+import com.xayah.core.util.command.Ownership
 import com.xayah.feature.main.settings.R
 import kotlinx.coroutines.launch
 import com.xayah.feature.main.settings.SettingsScaffold
@@ -166,6 +169,70 @@ fun PageRestoreSettings() {
                     defValue = false,
                     title = stringResource(id = R.string.randomize_gaid),
                     checkedText = stringResource(id = R.string.randomize_gaid_desc),
+                )
+            }
+            Title(title = stringResource(id = R.string.data_repair)) {
+                var fixing by remember { mutableStateOf(false) }
+
+                Switchable(
+                    key = KeyFixDataOwnership,
+                    defValue = true,
+                    title = stringResource(id = R.string.fix_data_ownership),
+                    checkedText = stringResource(id = R.string.fix_data_ownership_desc),
+                    titleTrailingContent = {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(SizeTokens.Level16)
+                                .clickable {
+                                    scope.launch {
+                                        dialogState.open(
+                                            initialState = Unit,
+                                            title = context.getString(R.string.fix_data_ownership),
+                                            icon = Icons.Outlined.Info,
+                                            confirmText = context.getString(R.string.got_it),
+                                        ) { _ ->
+                                            Text(text = context.getString(R.string.fix_data_ownership_help))
+                                        }
+                                    }
+                                },
+                        )
+                    },
+                )
+
+                Selectable(
+                    enabled = fixing.not(),
+                    title = stringResource(id = R.string.fix_ownership_run),
+                    desc = stringResource(id = R.string.fix_ownership_run_desc),
+                    current = if (fixing) {
+                        context.getString(R.string.fix_ownership_running)
+                    } else {
+                        context.getString(R.string.fix_ownership_run_btn)
+                    },
+                    onClick = suspend {
+                        fixing = true
+                        val report = try {
+                            Ownership.scanAndFixAll()
+                        } finally {
+                            fixing = false
+                        }
+                        dialogState.open(
+                            initialState = Unit,
+                            title = context.getString(R.string.fix_ownership_done),
+                            icon = Icons.Outlined.Info,
+                            confirmText = context.getString(R.string.got_it),
+                        ) { _ ->
+                            Text(
+                                text = buildString {
+                                    appendLine(context.getString(R.string.fix_ownership_report, report.scanned, report.fixed.size, report.failed.size))
+                                    report.fixed.forEach { appendLine("✓ $it") }
+                                    report.failed.forEach { appendLine("✗ $it") }
+                                }.trim()
+                            )
+                        }
+                        Unit
+                    }
                 )
             }
             Title(title = stringResource(id = R.string.clear_device_fingerprint)) {

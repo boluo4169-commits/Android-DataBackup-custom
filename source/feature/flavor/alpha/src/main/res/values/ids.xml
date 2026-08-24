@@ -1,0 +1,4 @@
+<resources>
+    <!-- 引用 app 模块的多语言 app_name 作为桌面名称（feature 模块引用 app 字符串需先在 ids.xml 声明） -->
+    <item name="app_name" type="string" />
+</resources>

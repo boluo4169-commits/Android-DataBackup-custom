@@ -453,6 +453,16 @@
     <string name="randomize_ssaid_desc">Generate a random new Android ID instead of restoring the old one, needs immediate reboot after restoring to take effect</string>
     <string name="randomize_gaid">Randomize GAID/GSF</string>
     <string name="randomize_gaid_desc">Randomize Google advertising ID (GAID) and Google Services Framework ID (GSF) when restoring</string>
+    <string name="data_repair">Data repair</string>
+    <string name="fix_data_ownership">Fix data ownership</string>
+    <string name="fix_data_ownership_desc">Automatically verify and fix data directory ownership after restoring</string>
+    <string name="fix_data_ownership_help">After an app is uninstalled and reinstalled, the system assigns a new UID, but stale data directories with the old UID may remain in external storage, causing games to fail writing (e.g. UE4 update error 556793857). When enabled, every restore verifies the whole restored directory tree and auto-fixes any ownership mismatch.</string>
+    <string name="fix_ownership_run">Scan and fix now</string>
+    <string name="fix_ownership_run_desc">Scan all installed apps\' data directories and fix directories owned by stale UIDs (directories of active apps like dual-app clones are left untouched)</string>
+    <string name="fix_ownership_run_btn">Run</string>
+    <string name="fix_ownership_running">Working…</string>
+    <string name="fix_ownership_done">Scan complete</string>
+    <string name="fix_ownership_report">Found %1$d mismatched directories: fixed %2$d, failed %3$d</string>
     <string name="device_identity">Device identity</string>
     <string name="clear_device_fingerprint">Clear device fingerprint</string>
     <string name="clear_device_fingerprint_desc">Exclude Tencent games device fingerprint files (TGPA, CrashReportClient, etc.) when restoring data, letting the game regenerate a fresh identifier</string>

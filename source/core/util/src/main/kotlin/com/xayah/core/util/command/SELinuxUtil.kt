@@ -28,6 +28,19 @@ object SELinux {
         )
     }
 
+    /**
+     * 统计目录树下属主不是 [uid] 的文件数量（含目录本身）。
+     * 用于恢复完成后的属主校验：发现不一致时提示上层二次 chown。
+     */
+    suspend fun countNotOwnedBy(path: String, uid: UInt): ShellResult = run {
+        // find "$path/" ! -user "$uid" | wc -l
+        execute(
+            "find", shellQuote("$path/"),
+            "!", "-user", uid.toString(),
+            "|", "wc", "-l",
+        )
+    }
+
     suspend fun chcon(context: String, path: String): ShellResult = run {
         // chcon -hR "$context" "$path/"
         execute(

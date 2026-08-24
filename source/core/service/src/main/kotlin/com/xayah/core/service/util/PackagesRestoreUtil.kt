@@ -12,6 +12,7 @@ import com.xayah.core.database.dao.TaskDao
 import com.xayah.core.datastore.readCleanRestoring
 import com.xayah.core.datastore.readClearDeviceFingerprint
 import com.xayah.core.datastore.readRandomizeSsaid
+import com.xayah.core.datastore.readFixDataOwnership
 import com.xayah.core.datastore.readSelectionType
 import com.xayah.core.model.DataType
 import com.xayah.core.model.OperationState
@@ -430,6 +431,28 @@ class PackagesRestoreUtil @Inject constructor(
                         } else {
                             isSuccess = false
                             out.add(log { "Failed to restore context: $dst" })
+                        }
+                    }
+
+                    // 属主校验修复：目标目录可能混入卸载重装后残留的旧属主文件（FUSE 视图/文件占用
+                    // 也可能导致首轮 chown 个别节点未生效）。复检整树属主，发现不一致自动二次 chown，
+                    // 防止游戏因目录不可写而更新失败（如 UE4 报 556793857）。
+                    if (context.readFixDataOwnership().first()) {
+                        SELinux.countNotOwnedBy(path = dst, uid = uid.toUInt()).also { result ->
+                            val mismatched = result.outString.trim().toIntOrNull() ?: 0
+                            if (mismatched > 0) {
+                                out.add(log { "Ownership mismatch: $mismatched entries not owned by $uid, re-fixing..." })
+                                SELinux.chown(uid = uid.toUInt(), gid = gid, path = dst).also { r ->
+                                    isSuccess = isSuccess && r.isSuccess
+                                    out.addAll(r.out)
+                                }
+                                SELinux.countNotOwnedBy(path = dst, uid = uid.toUInt()).also { r ->
+                                    val left = r.outString.trim().toIntOrNull() ?: 0
+                                    if (left > 0) {
+                                        out.add(log { "Ownership still mismatched after fix: $left entries (files may be occupied)." })
+                                    }
+                                }
+                            }
                         }
                     }
 

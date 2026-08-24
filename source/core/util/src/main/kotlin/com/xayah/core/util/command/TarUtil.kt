@@ -13,23 +13,25 @@ object Tar {
         BaseUtil.execute("cd", SymbolUtil.shellQuote(cur))
 
         // Compress
+        // Note: src 保持裸传（不 shellQuote）——它可能是通配符（如 ./*.apk），需要 shell 展开；
+        // 通配符本身不构成注入面（由调用方硬编码），且引号会阻止展开导致 tar 找不到文件。
         val result = if (extra.isEmpty()) {
-            // tar --totals -cpf - "$src" > "$dst"
+            // tar --totals -cpf - $src > "$dst"
             execute(
                 "--totals",
                 "-cpf",
                 "-",
-                SymbolUtil.shellQuote(src),
+                src,
                 ">",
                 SymbolUtil.shellQuote(dst),
             )
         } else {
-            // tar --totals -cpf - "$src" | $extra > "$dst"
+            // tar --totals -cpf - $src | $extra > "$dst"
             execute(
                 "--totals",
                 "-cpf",
                 "-",
-                SymbolUtil.shellQuote(src),
+                src,
                 "|",
                 extra,
                 ">",

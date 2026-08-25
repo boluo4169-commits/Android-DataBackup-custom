@@ -33,7 +33,11 @@ object LogUtil {
     const val TAG_SHELL_OUT = "SHELL_OUT "
     const val TAG_SHELL_CODE = "SHELL_CODE"
 
-    private fun getLogFileName() = "$LOG_FILE_PREFIX$timestamp.txt"
+    // 文件名内的时间格式（人类可读，替代原先难以辨认的 epoch 毫秒）
+    private val fileNameTime: String
+        get() = DateUtil.formatTimestamp(timestamp, "yyyyMMdd_HHmmss")
+
+    private fun getLogFileName() = "$LOG_FILE_PREFIX$fileNameTime.txt"
 
     fun initialize(context: Context, cacheDir: String) = runCatching {
         // Clear empty log files.
@@ -83,8 +87,42 @@ object LogUtil {
         appendLine("${DateUtil.formatTimestamp(DateUtil.getTimestamp())}$SEPARATOR$TAG_COMMON$SEPARATOR$msg")
     }
 
+    /**
+     * 收集系统级取证信息（需 root，失败静默跳过）：
+     * 1. 全系统 logcat 尾部（诊断「恢复后目标应用闪退」类问题的关键证据）；
+     * 2. 系统 dropbox 中最近的 app crash 条目（目标应用崩溃的官方记录）。
+     */
+    private fun collectSystemEvidence(): String = buildString {
+        appendLine("======== System logcat (tail 1000) ========")
+        runCatching {
+            val r = runBlocking { BaseUtil.execute("logcat", "-d", "-t", "1000", log = false) }
+            appendLine(r.outString)
+        }.onFailure { appendLine("unavailable: ${it.message}") }
+        appendLine("")
+        appendLine("======== System dropbox recent crashes ========")
+        runCatching {
+            val ls = runBlocking { BaseUtil.execute("ls", "-t", "/data/system/dropbox", log = false) }
+            val candidates = ls.out
+                .map { it.trim() }
+                .filter { it.contains("crash", ignoreCase = true) || it.contains("anr", ignoreCase = true) }
+                .take(3)
+            if (candidates.isEmpty()) {
+                appendLine("(no crash entries)")
+            } else {
+                candidates.forEach { name ->
+                    appendLine("---- $name ----")
+                    // 单条目截断 20000 字符，避免超大文件撑爆日志
+                    val cat = runBlocking {
+                        BaseUtil.execute("head", "-c", "20000", com.xayah.core.util.SymbolUtil.shellQuote("/data/system/dropbox/$name"), log = false)
+                    }
+                    appendLine(cat.outString)
+                }
+            }
+        }.onFailure { appendLine("unavailable: ${it.message}") }
+    }
+
     fun createLogsZip(): File? {
-        val zipName = "$LOG_ZIP_PREFIX${DateUtil.getTimestamp()}.zip"
+        val zipName = "$LOG_ZIP_PREFIX${DateUtil.formatTimestamp(DateUtil.getTimestamp(), "yyyyMMdd_HHmmss")}.zip"
         val logFiles = File(cacheDir).listFiles { f ->
             f.isFile && f.name.startsWith(LOG_FILE_PREFIX) && f.name.endsWith(".txt")
         }?.sortedByDescending { it.lastModified() }?.take(MAX_LOG_FILES).orEmpty()
@@ -95,6 +133,13 @@ object LogUtil {
                 logFiles.forEach { f ->
                     zos.putNextEntry(ZipEntry(f.name))
                     f.inputStream().use { it.copyTo(zos) }
+                    zos.closeEntry()
+                }
+                // 系统取证（root 可用时），失败不影响日志导出
+                runCatching {
+                    val evidence = collectSystemEvidence()
+                    zos.putNextEntry(ZipEntry("system_evidence.txt"))
+                    evidence.byteInputStream().use { it.copyTo(zos) }
                     zos.closeEntry()
                 }
             }

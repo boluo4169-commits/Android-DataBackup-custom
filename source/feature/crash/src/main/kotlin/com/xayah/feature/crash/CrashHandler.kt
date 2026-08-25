@@ -46,6 +46,20 @@ class CrashHandler(private val mContext: Context) : Thread.UncaughtExceptionHand
         return true
     }
 
+    /**
+     * 抓取本进程最近的 logcat（无需 root，logcat 读自身进程缓冲不受限）。
+     * 崩溃前的系统警告、Binder 错误、ANR 线索常在这里。失败返回空串不阻塞崩溃处理。
+     */
+    private fun dumpRecentLogcat(): String = runCatching {
+        val pid = android.os.Process.myPid()
+        val process = ProcessBuilder("logcat", "-d", "-t", "300", "--pid", pid.toString())
+            .redirectErrorStream(true)
+            .start()
+        val text = process.inputStream.bufferedReader().use { it.readText() }
+        process.waitFor()
+        text
+    }.getOrDefault("")
+
     private fun getCrashInfo(throwable: Throwable) {
         val stringWriter = StringWriter()
         PrintWriter(stringWriter).apply {
@@ -63,13 +77,19 @@ class CrashHandler(private val mContext: Context) : Thread.UncaughtExceptionHand
             val infoList = mutableListOf(
                 "================================",
                 "Date:     ${DateUtil.formatTimestamp(DateUtil.getTimestamp())}",
-                "Version:  ${BuildConfigUtil.VERSION_NAME}",
-                "Model:    ${Build.MODEL}",
+                "Version:  ${BuildConfigUtil.VERSION_NAME} (${BuildConfigUtil.VERSION_CODE}) ${BuildConfigUtil.FLAVOR_feature}/${BuildConfigUtil.FLAVOR_abi}",
+                "System:   ${Build.DISPLAY} (SDK ${Build.VERSION.SDK_INT})",
+                "Device:   ${Build.MANUFACTURER} ${Build.MODEL}",
                 "ABIs:     ${Build.SUPPORTED_ABIS.joinToString(separator = ", ")}",
-                "SDK:      ${Build.VERSION.SDK_INT}",
                 "================================",
                 stringWriter.toString(),
             )
+            // 附加崩溃前的本进程 logcat，便于还原崩溃上下文
+            val logcat = dumpRecentLogcat()
+            if (logcat.isNotBlank()) {
+                infoList.add("-------- Recent logcat (this pid) --------")
+                infoList.add(logcat)
+            }
             crashInfo = infoList.toLineString().trim()
             // 写入日志文件，便于用户通过「导出日志」提交崩溃堆栈。
             LogUtil.logCrash(crashInfo)

@@ -29,3 +29,6 @@ Thumbs.db
 keystore.properties
 *.jks
 *.keystore
+
+docs/mappings/
+/*.log

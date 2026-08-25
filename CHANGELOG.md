@@ -15,7 +15,7 @@
 
 - **崩溃报告增强**：header 补充 versionCode/flavor/系统版本串/厂商，并自动附带崩溃前本进程最近 300 行 logcat
 - **导出日志新增系统取证**：zip 内新增 system_evidence.txt（root 抓全系统 logcat 尾部 + 系统 dropbox 最近 crash/anr 条目），「恢复后目标应用闪退」类问题无需再抓 adb logcat
-- **日志文件名人类可读**：`log_<epoch毫秒>.txt` → `log_20260825_144401.txt`
+- **日志文件名改为日期时间格式**：`log_<毫秒时间戳>.txt` → `log_20260825_144401.txt`，一眼识别日志归属时段
 - **R8 mapping 归档制度**：新增 gradle task 自动归档混淆映射表到本地 docs/mappings/，用户反馈的混淆崩溃堆栈可精确反解到源码行
 
 ## v3.6.5（2026-08-24）

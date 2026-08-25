@@ -134,7 +134,11 @@ class ListDataRepo @Inject constructor(
         userList,
         userMap,
     ) { s, t, sQuery, sFSheet, sIndex, sType, iUpdating, lIds, sDISheet, filters, uIndex, uList, uMap ->
-        ListData.Apps(s, t, sQuery, sFSheet, sIndex, sType, iUpdating, lIds, sDISheet, filters, uIndex, uList, uMap)
+        // 治本：删除操作可能使 userList 缩短（如删掉双开空间下唯一的备份应用），而 userIndex
+        // 不会自动校正，越界值传到 UI 会导致 TabRow 测量时 IndexOutOfBoundsException。
+        // 在数据层出口统一钳制，保证下游永远拿到合法索引。
+        val safeUserIndex = if (uList.isEmpty()) 0 else uIndex.coerceIn(0, uList.size - 1)
+        ListData.Apps(s, t, sQuery, sFSheet, sIndex, sType, iUpdating, lIds, sDISheet, filters, safeUserIndex, uList, uMap)
     }
 
     private fun getFileListData(): Flow<ListData.Files> = combine(

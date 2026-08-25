@@ -120,12 +120,16 @@ internal fun ListTopBar(
 @Composable
 private fun UserTabs(selected: Int, userList: List<UserInfo>, usersMap: Map<Int, Long>, onTabClick: (index: Int) -> Unit) {
     if (userList.isNotEmpty()) {
+        // 防御：删除应用后 userList 会缩短，外部传入的 selected 若未同步校正，
+        // TabRow 内部 tabPositions[selected] 将越界闪退（实测：删除双开空间（user 999）
+        // 下唯一的备份应用必崩），这里统一钳制到合法区间。
+        val safeSelected = selected.coerceIn(0, userList.size - 1)
         PrimaryScrollableTabRow(
-            selectedTabIndex = selected,
+            selectedTabIndex = safeSelected,
             edgePadding = SizeTokens.Level0,
             indicator = @Composable {
                 TabRowDefaults.PrimaryIndicator(
-                    Modifier.tabIndicatorOffset(selected, matchContentSize = true),
+                    Modifier.tabIndicatorOffset(safeSelected, matchContentSize = true),
                     shape = CircleShape
                 )
             },
@@ -135,7 +139,7 @@ private fun UserTabs(selected: Int, userList: List<UserInfo>, usersMap: Map<Int,
         ) {
             userList.forEachIndexed { index, user ->
                 Tab(
-                    selected = selected == index,
+                    selected = safeSelected == index,
                     onClick = {
                         onTabClick(index)
                     },

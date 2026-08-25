@@ -54,8 +54,8 @@ class PackagesRestoreUtil @Inject constructor(
         private const val CLEAR_FINGERPRINT_TARGET_PACKAGE = "com.tencent.mf.uam"
 
         /**
-         * 生成一个全新的随机 SSAID（Android ID�?4 �?= 16 个十六进制字符）�?
-         * 用于「随机化 Android id」功能，给恢复的应用一个全新身份�?
+         * 生成一个全新的随机 SSAID（Android ID�?4 �?= 16 个十六进制字符）�?
+         * 用于「随机化 Android id」功能，给恢复的应用一个全新身份�?
          */
         private fun generateRandomSsaid(): String {
             val hex = "0123456789abcdef"
@@ -259,8 +259,8 @@ class PackagesRestoreUtil @Inject constructor(
                 rootService.deleteRecursively(tmpApkPath)
 
                 // Check the installation again.
-                // pm install 同步返回 Success 后，PackageManager 内部状态可能还没刷新（尤其跨系统大版本恢复时）�?
-                // 重试等待最�?10 秒，避免恢复 USER/USER_DE �?PackageManager 查不到包而失败�?
+                // pm install 同步返回 Success 后，PackageManager 内部状态可能还没刷新（尤其跨系统大版本恢复时）�?
+                // 重试等待最�?10 秒，避免恢复 USER/USER_DE �?PackageManager 查不到包而失败�?
                 var isInstalled = false
                 repeat(20) {
                     isInstalled = rootService.queryInstalled(packageName = packageName, userId = userId)
@@ -292,8 +292,8 @@ class PackagesRestoreUtil @Inject constructor(
         val src = packageRepository.getArchiveDst(dstDir = srcDir, dataType = dataType, ct = ct)
         val dstDir = packageRepository.getDataSrcDir(dataType, userId)
         val dst = packageRepository.getDataSrc(dstDir, packageName)
-        // 跨系统大版本恢复时，APK 装上�?PackageManager 缓存可能还没刷新�?
-        // 重试等待最�?10 秒拿到真�?uid�?1 表示还没刷新好）�?
+        // 跨系统大版本恢复时，APK 装上�?PackageManager 缓存可能还没刷新�?
+        // 重试等待最�?10 秒拿到真�?uid�?1 表示还没刷新好）�?
         var uid = rootService.getPackageUid(packageName = packageName, userId = userId)
         if (uid == -1) {
             repeat(20) {
@@ -340,17 +340,17 @@ class PackagesRestoreUtil @Inject constructor(
                                 // Exclude Backup_*
                                 exclusionList.add("Backup_*")
                                 // 清除设备指纹：仅对暗区突围（com.tencent.mf.uam）生效，
-                                // 剔除其设备指纹文件，让游戏重新生成全新标识（用于换号防偏框）�?
+                                // 剔除其设备指纹文件，让游戏重新生成全新标识（用于换号防偏框）�?
                                 if (dataType == DataType.PACKAGE_DATA && packageName == CLEAR_FINGERPRINT_TARGET_PACKAGE && context.readClearDeviceFingerprint().first()) {
                                     val fingerprintExclusions = listOf(
-                                        "TGPA",                // 腾讯游戏性能助手�?tgpacloud 设备数据�?
+                                        "TGPA",                // 腾讯游戏性能助手�?tgpacloud 设备数据�?
                                         "g6_player_prefs.ini", // G6 引擎玩家偏好（加密配置）
                                         "pixui",               // PixUI 界面引擎缓存
                                         "AppVersionCache.txt", // 版本缓存
-                                        "program_version.txt", // 版本�?
+                                        "program_version.txt", // 版本�?
                                     )
                                     exclusionList.addAll(fingerprintExclusions.map { "$packageName/files/$it" })
-                                    // UE4 崩溃上报目录（目录名�?DeviceId），basename 匹配任意层级
+                                    // UE4 崩溃上报目录（目录名�?DeviceId），basename 匹配任意层级
                                     exclusionList.add("CrashReportClient")
                                     log { "Clear device fingerprint: excluded fingerprint files for $packageName." }
                                 }
@@ -370,8 +370,8 @@ class PackagesRestoreUtil @Inject constructor(
 
                     log { "Original SELinux context: $pathContext." }
 
-                    // 干净恢复：解压前清空目标目录（排�?lib/cache 等系统目录，避免误删 native 库）�?
-                    // 不再�?tar --recursive-unlink（它会递归删除整个目录，包�?lib）�?
+                    // 干净恢复：解压前清空目标目录（排�?lib/cache 等系统目录，避免误删 native 库）�?
+                    // 不再�?tar --recursive-unlink（它会递归删除整个目录，包�?lib）�?
                     if (context.readCleanRestoring().first()) {
                         SELinux.cleanRestore(dst = dst).also { result ->
                             isSuccess = isSuccess && result.isSuccess
@@ -380,7 +380,7 @@ class PackagesRestoreUtil @Inject constructor(
                     }
 
                     // Decompress the archive.
-                    // m = false �?恢复原始 mtime，减少恢复后文件时间戳残留（避免触发游戏反作弊的 mtime 异常检测）�?
+                    // m = false �?恢复原始 mtime，减少恢复后文件时间戳残留（避免触发游戏反作弊的 mtime 异常检测）�?
                     Tar.decompress(
                         exclusionList = exclusionList,
                         clear = "",
@@ -403,18 +403,20 @@ class PackagesRestoreUtil @Inject constructor(
                         isSuccess = isSuccess && result.isSuccess
                         out.addAll(result.out)
                     }
-                    if (pathContext.isNotEmpty()) {
-                        SELinux.chcon(context = pathContext, path = dst).also { result ->
+                    if (dataType == DataType.PACKAGE_DATA || dataType == DataType.PACKAGE_OBB || dataType == DataType.PACKAGE_MEDIA) {
+                        // 外部存储（Android/{data,obb,media}）：恢复前目录的现有 label 一律不可信——
+                        // MediaProvider 可能已提前创建出无 category 的 media_rw_data_file:s0 目录，
+                        // 照着快照 chcon 会把整树打成错误标签。无条件走 restorecon，让系统按
+                        // file_contexts 规则自动重打正确 context；修复游戏重装后更新资源报
+                        // 「保存路径不可用/磁盘只读」（错误码 556793857）的问题。
+                        SELinux.restorecon(dst).also { result ->
                             isSuccess = isSuccess && result.isSuccess
                             out.addAll(result.out)
                         }
-                    } else if (dataType == DataType.PACKAGE_DATA || dataType == DataType.PACKAGE_OBB || dataType == DataType.PACKAGE_MEDIA) {
-                        // 外部存储�?storage/emulated/0/Android/{data,obb,media}/）：恢复前目录通常不存在，
-                        // 手动 getContext 拿不到正�?context（父目录 context �?fuse/media_rw_data_file�?
-                        // 旧的 system_data_file→app_data_file 替换不生效）。改�?restorecon 让系统按
-                        // file_contexts 规则自动恢复正确 context（含多用�?category）。修复游戏重装后
-                        // 更新资源�?保存路径不可�?磁盘只读"（错误码 556793857）的问题�?
-                        SELinux.restorecon(dst).also { result ->
+                    } else if (pathContext.isNotEmpty()) {
+                        // 内部存储（/data/user/0、/data/user_de/0）：目录由 installd 按当前 uid 创建，
+                        // 快照 label 即正确 label（含 MCS category），chcon 整树恢复。
+                        SELinux.chcon(context = pathContext, path = dst).also { result ->
                             isSuccess = isSuccess && result.isSuccess
                             out.addAll(result.out)
                         }
@@ -434,9 +436,9 @@ class PackagesRestoreUtil @Inject constructor(
                         }
                     }
 
-                    // ����У���޸���Ŀ��Ŀ¼���ܻ���ж����װ������ľ������ļ���FUSE ��ͼ/�ļ�ռ��
-                    // Ҳ���ܵ������� chown ����ڵ�δ��Ч���������������������ֲ�һ���Զ����� chown��
-                    // ��ֹ��Ϸ��Ŀ¼����д������ʧ�ܣ��� UE4 �� 556793857����
+                    // ����У���޸���Ŀ��Ŀ¼���ܻ���ж����װ������ľ������ļ���FUSE ��ͼ/�ļ�ռ��
+                    // Ҳ���ܵ������� chown ����ڵ�δ��Ч���������������������ֲ�һ���Զ����� chown��
+                    // ��ֹ��Ϸ��Ŀ¼����д������ʧ�ܣ��� UE4 �� 556793857����
                     if (context.readFixDataOwnership().first()) {
                         SELinux.countNotOwnedBy(path = dst, uid = uid.toUInt()).also { result ->
                             val mismatched = result.outString.trim().toIntOrNull() ?: 0
@@ -490,23 +492,23 @@ class PackagesRestoreUtil @Inject constructor(
                 permissions.forEach {
                     log { "Permission name: ${it.name}, isGranted: ${it.isGranted}, op: ${it.op}, mode: ${it.mode}" }
                     runCatching {
-                        // 只有 runtime 权限（dangerous/development）才�?grant/revoke�?
-                        // �?runtime 权限（如 REQUEST_INSTALL_PACKAGES、FOREGROUND_SERVICE）只恢复 appop�?
-                        // 跳过 grant/revoke，避免产�?"not a changeable permission type" 的日志噪音�?
+                        // 只有 runtime 权限（dangerous/development）才�?grant/revoke�?
+                        // �?runtime 权限（如 REQUEST_INSTALL_PACKAGES、FOREGROUND_SERVICE）只恢复 appop�?
+                        // 跳过 grant/revoke，避免产�?"not a changeable permission type" 的日志噪音�?
                         if (it.isRuntimePermission()) {
                             if (it.isGranted) {
                                 rootService.grantRuntimePermission(packageName, it.name, user!!)
                             } else {
                                 rootService.revokeRuntimePermission(packageName, it.name, user!!)
-                                // revoke 只清 grant 标志，对�?appop 可能仍为 MODE_DEFAULT�?
-                                // 部分检测工具（�?QQ 安全中心）按 appop mode 判定，MODE_DEFAULT 会被当成「允许」�?
-                                // 额外�?appop 设为 MODE_IGNORED，确保「拒绝」彻底生效�?
+                                // revoke 只清 grant 标志，对�?appop 可能仍为 MODE_DEFAULT�?
+                                // 部分检测工具（�?QQ 安全中心）按 appop mode 判定，MODE_DEFAULT 会被当成「允许」�?
+                                // 额外�?appop 设为 MODE_IGNORED，确保「拒绝」彻底生效�?
                                 if (it.op != AppOpsManagerHidden.OP_NONE) {
                                     rootService.setOpsMode(it.op, uid, packageName, AppOpsManager.MODE_IGNORED)
                                 }
                             }
                         } else if (it.op != AppOpsManagerHidden.OP_NONE) {
-                            // �?runtime 的纯 appop（无对应 runtime 权限），恢复备份�?mode
+                            // �?runtime 的纯 appop（无对应 runtime 权限），恢复备份�?mode
                             rootService.setOpsMode(it.op, uid, packageName, it.mode)
                         }
                     }
@@ -519,8 +521,8 @@ class PackagesRestoreUtil @Inject constructor(
         }
     }
 
-    // runtime 权限 = dangerous(0x1) �?development(flag 0x20)；protectionLevel �?0xF 位是基值，其余�?flags�?
-    // 查不到（权限不存在）时按 runtime 处理，保持旧行为�?
+    // runtime 权限 = dangerous(0x1) �?development(flag 0x20)；protectionLevel �?0xF 位是基值，其余�?flags�?
+    // 查不到（权限不存在）时按 runtime 处理，保持旧行为�?
     private fun PackagePermission.isRuntimePermission(): Boolean = runCatching {
         val level = context.packageManager.getPermissionInfo(name, 0).protectionLevel
         (level and 0xF) == PermissionInfo.PROTECTION_DANGEROUS || (level and 0x20) != 0

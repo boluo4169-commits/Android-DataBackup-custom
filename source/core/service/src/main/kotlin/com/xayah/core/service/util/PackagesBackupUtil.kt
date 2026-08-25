@@ -341,7 +341,16 @@ class PackagesBackupUtil @Inject constructor(
                     dst = dst,
                     extra = ct.getCompressPara(context.readCompressionLevel().first())
                 ).also { result ->
-                    isSuccess = result.isSuccess
+                    // GNU tar 退出码：0=快照一致；1=读取期间源有变动（"file changed as we read it"，
+                    // 典型场景：微信清缓存后后台进程正在重建 emoji 等目录，打包窗口内被写入），
+                    // 此时归档已完整写出，随后的 testArchive 会验证结构完整性；2=致命错误。
+                    // code==1 且仅为 file-changed 告警时降级视为成功，避免大应用备份必报错。
+                    if (result.code == 1 && result.out.any { it.contains("file changed as we read it") }) {
+                        isSuccess = true
+                        log { "Source changed during snapshot (tar exit 1, file changed as we read it); archive kept." }
+                    } else {
+                        isSuccess = result.isSuccess
+                    }
                     out.addAll(result.out)
                 }
                 commonBackupUtil.testArchive(src = dst, ct = ct).also { result ->

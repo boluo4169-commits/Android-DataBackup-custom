@@ -64,7 +64,10 @@ object Ownership {
             for (pkg in dirs) {
                 val cur = uids[pkg] ?: continue
                 val path = "$base/$pkg"
-                val stat = execute("stat", "-c", "%u %g", shellQuote(path))
+                // 格式串必须 shellQuote：BaseUtil.execute 会把参数按空格 join 成一行，
+                // 裸的 "%u %g" 会被拆成两个参数（%g 被当成文件名，stat 报 No such file or directory），
+                // 导致 owner 解析成 "stat:"、所有目录被误报为属主错位。
+                val stat = execute("stat", "-c", shellQuote("%u %g"), shellQuote(path))
                 if (stat.isSuccess.not()) continue
                 val parts = stat.outString.trim().split(Regex("\\s+"))
                 val owner = parts.getOrNull(0) ?: continue

@@ -75,6 +75,14 @@
 - **日志导出**：设置 → 高级 → 导出日志，系统文件管理器选择位置，打包为 zip；v3.6.6 起附带系统取证信息（系统 logcat 尾部 + 系统崩溃档案），文件名含可读时间，应用崩溃堆栈自动写入
 - **关于页面**：捐赠入口区分「定制版作者（微信赞赏码）」与「原作者」，链接指向本仓库
 
+## 🖥️ 配套工具：FTP 数据服务器（Windows）
+
+手机存储不够放备份？USB 2.0 传输太慢？用电脑当中转站：
+
+- **一键部署** FTP 备份服务器（自动配置防火墙 / Python 环境 / 随机密码），双击运行、照着窗口里的连接信息在 App 云备份（FTP）里填写即可
+- 手机 → 电脑无线传输，Wi-Fi 6/7 下远快于 USB；备份直接落在电脑硬盘，不占手机空间
+- 原始创意来自酷安 [@喵脆角12448](https://www.coolapk.com/feed/73346386)（经授权重构），详见 [companion/ftp-server](./companion/ftp-server/README.md)，脚本与说明从 [Releases](https://github.com/boluo4169-commits/Android-DataBackup-custom/releases) 获取
+
 ## 原版功能
 
 * :deciduous_tree: **Root 支持**：支持 [Magisk](https://github.com/topjohnwu/Magisk)、[KernelSU](https://github.com/tiann/KernelSU)、[APatch](https://github.com/bmax121/APatch)

@@ -2,6 +2,22 @@
 
 本文件记录定制版相对原版 [XayahSuSuSu/Android-DataBackup](https://github.com/XayahSuSuSu/Android-DataBackup) 的改动。
 
+## v3.6.6（2026-08-25）
+
+### 修复
+
+- **备份大应用不再误报失败**：打包期间应用后台写入（典型：微信清缓存后系统/后台进程重建表情等目录）触发的 `file changed as we read it` 不再导致备份报错——GNU tar 该场景退出码 1 但归档完整，现自动保留并照常通过结构校验与 MD5；应用数据（USER/USER_DE/DATA/OBB/MEDIA）与媒体备份均已覆盖
+- **删除双开空间应用的闪退**：恢复列表删除 user 999 等多用户空间下唯一的备份应用时，用户 Tab 索引未随列表缩短而校正，Material3 TabRow 测量越界闪退；已在数据层出口与两处 Tab UI 钳制索引
+- **「立即检查并修复」功能失效**：属主扫描的 stat 格式串被按空格拆参，导致所有目录被误报为属主错位、修复全部失败；已修正引号传递
+- **外部存储 SELinux 标签加固**：恢复 Android/{data,obb,media} 时不再信任恢复前残留标签（MediaProvider 可能提前创建出无 category 的错误标签目录），无条件走系统 `restorecon -R -F` 重打正确标签
+
+### 改进（日志与诊断）
+
+- **崩溃报告增强**：header 补充 versionCode/flavor/系统版本串/厂商，并自动附带崩溃前本进程最近 300 行 logcat
+- **导出日志新增系统取证**：zip 内新增 system_evidence.txt（root 抓全系统 logcat 尾部 + 系统 dropbox 最近 crash/anr 条目），「恢复后目标应用闪退」类问题无需再抓 adb logcat
+- **日志文件名人类可读**：`log_<epoch毫秒>.txt` → `log_20260825_144401.txt`
+- **R8 mapping 归档制度**：新增 gradle task 自动归档混淆映射表到本地 docs/mappings/，用户反馈的混淆崩溃堆栈可精确反解到源码行
+
 ## v3.6.5（2026-08-24）
 
 ### 新功能：修复数据属主

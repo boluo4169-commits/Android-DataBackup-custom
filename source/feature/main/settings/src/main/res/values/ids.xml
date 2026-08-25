@@ -60,6 +60,7 @@
     <item name="github" type="string" />
     <item name="contact" type="string" />
     <item name="docs" type="string" />
+    <item name="changelog" type="string" />
     <item name="translators" type="string" />
     <item name="translators_desc" type="string" />
     <item name="unknown" type="string" />

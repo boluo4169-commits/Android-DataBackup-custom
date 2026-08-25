@@ -355,6 +355,7 @@
     <string name="github" translatable="false">GitHub</string>
     <string name="contact">Contact</string>
     <string name="docs">Docs</string>
+    <string name="changelog">Changelog</string>
     <string name="translators">Translators</string>
     <string name="translators_desc">We appreciate their efforts</string>
     <string name="no_root_directory">Please do not select the root directory</string>
@@ -365,7 +366,6 @@
     <string name="kill_app_options_desc">Behavior before backup</string>
     <string name="language">Language</string>
     <string name="download">Download</string>
-    <string name="changelog">Changelog</string>
     <string name="args_update_from">You can update from version %1$s to version %2$s</string>
     <string name="no_item_selected">No item selected</string>
     <string name="apk_selected">APK selected</string>

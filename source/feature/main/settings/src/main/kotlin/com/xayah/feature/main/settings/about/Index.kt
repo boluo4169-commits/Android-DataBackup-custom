@@ -100,6 +100,7 @@ fun PageAboutSettings() {
                         stringResource(id = R.string.version),
                         " ${BuildConfigUtil.VERSION_NAME} ",
                         "(${BuildConfigUtil.VERSION_CODE})",
+                        " · ${BuildConfigUtil.FLAVOR_abi}",
                     ),
                     color = ThemedColorSchemeKeyTokens.OnSurfaceVariant.value
                 )
@@ -147,9 +148,9 @@ fun PageAboutSettings() {
                     FilledTonalIconTextButton(
                         modifier = Modifier.width(SizeTokens.Level128),
                         icon = Icons.Outlined.Assignment,
-                        text = stringResource(id = R.string.docs)
+                        text = stringResource(id = R.string.changelog)
                     ) {
-                        viewModel.emitIntentOnIO(IndexUiIntent.ToBrowser(context, ConstantUtil.DOC_LINK))
+                        viewModel.emitIntentOnIO(IndexUiIntent.ToBrowser(context, ConstantUtil.CHANGELOG_LINK))
                     }
                     OutlinedButtonIconTextButton(
                         modifier = Modifier.width(SizeTokens.Level128),

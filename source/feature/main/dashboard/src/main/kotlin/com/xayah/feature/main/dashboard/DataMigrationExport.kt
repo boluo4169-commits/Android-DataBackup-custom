@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
@@ -28,12 +29,14 @@ import androidx.compose.material.icons.rounded.ExpandMore
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material3.Badge
 import androidx.compose.material.icons.rounded.ContentCopy
+import androidx.compose.material.icons.rounded.CloudUpload
 import androidx.compose.material3.BadgedBox
 import androidx.compose.material3.Button
 import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.SnackbarHost
@@ -68,6 +71,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xayah.core.model.SortType
 import com.xayah.core.model.UserInfo
+import com.xayah.core.model.database.CloudEntity
 import com.xayah.core.model.util.formatSize
 import kotlinx.coroutines.Dispatchers
 import com.xayah.core.ui.component.BodyMediumText
@@ -119,6 +123,7 @@ fun PageDataMigrationExport(
     val success by viewModel.success.collectAsStateWithLifecycle()
     val stage by viewModel.stage.collectAsStateWithLifecycle()
     val lastSha256 by viewModel.lastSha256.collectAsStateWithLifecycle()
+    val clouds by viewModel.clouds.collectAsStateWithLifecycle()
 
     // 阶段卡：根据 stage 选标题/描述
     val (stageTitle, stageDesc) = when (stage) {
@@ -138,6 +143,8 @@ fun PageDataMigrationExport(
 
     var showSortSheet by remember { mutableStateOf(false) }
     val sortSheetState = rememberModalBottomSheetState()
+    var showCloudSheet by remember { mutableStateOf(false) }
+    val cloudSheetState = rememberModalBottomSheetState()
     var expandedKeys by remember { mutableStateOf(setOf<String>()) }
 
     val exportLauncher = rememberLauncherForActivityResult(
@@ -255,6 +262,22 @@ fun PageDataMigrationExport(
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text(text = stringResource(R.string.export_backup))
+                        }
+                        // 导出到云端：选云端账号后直接打包上传（受保护版本勾选与本地导出完全一致）
+                        OutlinedButton(
+                            onClick = { showCloudSheet = true },
+                            enabled = selectedCount > 0 && stage == MigrationStage.Idle,
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.CloudUpload,
+                                contentDescription = null,
+                                modifier = Modifier.size(SizeTokens.Level16),
+                            )
+                            Text(
+                                text = stringResource(R.string.migration_export_to_cloud),
+                                modifier = Modifier.padding(start = SizeTokens.Level8),
+                            )
                         }
                     }
 
@@ -403,6 +426,53 @@ fun PageDataMigrationExport(
                 items = stringArrayResource(R.array.backup_sort_type_items_apps).toList(),
                 onSelect = viewModel::setSortIndex,
             )
+        }
+    }
+
+    // 导出到云端：选择目标云端账号
+    if (showCloudSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showCloudSheet = false },
+            sheetState = cloudSheetState,
+        ) {
+            TitleLargeText(
+                text = stringResource(R.string.migration_select_cloud),
+                modifier = Modifier.paddingHorizontal(SizeTokens.Level24),
+            )
+            if (clouds.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.migration_no_cloud),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(SizeTokens.Level24),
+                    textAlign = TextAlign.Center,
+                    color = ThemedColorSchemeKeyTokens.OnSurfaceVariant.value,
+                )
+            } else {
+                clouds.forEach { cloud ->
+                    Surface(onClick = {
+                        showCloudSheet = false
+                        scope.launch { viewModel.exportToCloud(cloud.name) }
+                    }) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .paddingHorizontal(SizeTokens.Level24)
+                                .padding(vertical = SizeTokens.Level12),
+                            verticalAlignment = Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(SizeTokens.Level12),
+                        ) {
+                            TitleLargeText(text = cloud.name, maxLines = 1)
+                            BodyMediumText(
+                                text = "${cloud.host} (${cloud.type.name})",
+                                color = ThemedColorSchemeKeyTokens.Outline.value,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                }
+            }
+            InnerBottomSpacer(innerPadding = PaddingValues(SizeTokens.Level8))
         }
     }
 }

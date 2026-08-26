@@ -3,8 +3,11 @@ package com.xayah.feature.main.dashboard
 import android.content.Context
 import android.net.Uri
 import com.xayah.core.data.repository.AppsRepo
+import com.xayah.core.data.repository.CloudRepository
 import com.xayah.core.model.CompressionType
+import com.xayah.core.model.database.CloudEntity
 import com.xayah.core.util.DateUtil
+import com.xayah.core.util.PathUtil
 import com.xayah.core.util.SymbolUtil
 import com.xayah.core.util.command.BaseUtil
 import com.xayah.core.util.command.SELinux
@@ -24,6 +27,7 @@ import javax.inject.Inject
 class DataMigrationImportViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     private val appsRepo: AppsRepo,
+    private val cloudRepo: CloudRepository,
 ) : androidx.lifecycle.ViewModel() {
 
     companion object {
@@ -72,6 +76,14 @@ class DataMigrationImportViewModel @Inject constructor(
     /** 本机历史导出的校验码记录（时间 + 应用数 + sha），供输入框旁快速选取 */
     private val _shaHistory = MutableStateFlow<List<MigrationShaRecord>>(emptyList())
     val shaHistory: StateFlow<List<MigrationShaRecord>> = _shaHistory.asStateFlow()
+
+    /** 已配置的云端账号列表，供「从云端导入」选择 */
+    private val _clouds = MutableStateFlow<List<CloudEntity>>(emptyList())
+    val clouds: StateFlow<List<CloudEntity>> = _clouds.asStateFlow()
+
+    /** 当前选中云端根目录 migration/ 下的迁移包列表 */
+    private val _remotePackages = MutableStateFlow<List<CloudMigrationPackage>>(emptyList())
+    val remotePackages: StateFlow<List<CloudMigrationPackage>> = _remotePackages.asStateFlow()
 
     /**
      * 当前导入阶段（Idle/Parsing/Importing/Success），UI 用于显示顶部进度卡。
@@ -123,63 +135,126 @@ class DataMigrationImportViewModel @Inject constructor(
                 }
             } ?: error("open input stream failed")
             tmpFilePath = tmpFile
-
-            // 可选完整性校验：与导出端展示的 SHA-256 对比
-            if (!expectedSha256.isNullOrBlank()) {
-                val actual = sha256Of(File(tmpFile))
-                val expected = expectedSha256.trim().lowercase().removePrefix("sha256:")
-                if (actual != expected) {
-                    throw SecurityException("SHA-256 校验失败：期望 $expected，实际 $actual")
-                }
-            }
-
-            // zstd -d -c "<tmp>" | tar -tf -
-            val shellResult = BaseUtil.execute(
-                "zstd", "-d", "-c", SymbolUtil.shellQuote(tmpFile),
-                "|", "tar", "-tf", "-",
-            )
-            check(shellResult.code == 0) { shellResult.out.joinToString("\n") }
-
-            val apps = shellResult.out.mapNotNull { line ->
-                // libsu Shell 默认会把 stdout 不可打印字节（如 UTF-8 中文）转义成 \NNN 八进制，
-                // 这里反向解码还原成真实 Unicode 字符，避免弹窗里出现 \346\232\227 这类乱码。
-                val decoded = line.decodeShellEscape()
-                if (decoded.startsWith("apps/")) {
-                    decoded.substringAfter("apps/").substringBefore('/').takeIf { it.isNotEmpty() }
-                } else {
-                    null
-                }
-            }.distinct()
-
-            // 安全门闩：任何条目名携带 shell 元字符即整包拒绝，
-            // 防止恶意迁移包在恢复阶段以 root 权限执行注入命令。
-            val unsafeEntries = apps.filter { !isEntryNameSafe(it) }
-            if (unsafeEntries.isNotEmpty()) {
-                throw SecurityException(
-                    "已拒绝导入：迁移包含危险字符的条目名（${unsafeEntries.joinToString(", ") { it.take(24) }}）"
-                )
-            }
-
-            _parsedApps.value = apps
-            apps
+            parseTmpFile(tmpFile, expectedSha256)
         }
+        finishParsing(result)
+    }
+
+    /**
+     * 从云端下载迁移包到本地临时文件并解析。
+     * 与本地 parse 共用同一套解析逻辑：SHA-256 校验、应用列表提取、安全门闩全部一致，
+     * 导入后的受保护版本处理也与本地导入完全相同。
+     */
+    suspend fun parseFromCloud(cloudName: String, remotePath: String, expectedSha256: String? = null): List<String> = withIOContext {
+        _isParsing.value = true
+        _stage.value = MigrationStage.Processing
+        _error.value = null
+        _detailMessage.value = null
+        val result = runCatching {
+            cleanupTmpFile()
+            val tmpFile = "${context.filesDir}/import_${DateUtil.getTimestamp()}.tar.zst"
+            cloudRepo.withClient(cloudName) { client, _ ->
+                // 下载到独立子目录（CloudClient.download 会把文件写到 dst/<文件名>），再移动到统一的 import_ 临时文件
+                val tmpDir = "${context.filesDir}/cloud_import_tmp"
+                File(tmpDir).mkdirs()
+                client.download(src = remotePath, dst = tmpDir) { _, _ -> }
+                val downloaded = "$tmpDir/${PathUtil.getFileName(remotePath)}"
+                check(File(downloaded).renameTo(File(tmpFile))) { "failed to move downloaded migration file" }
+                File(tmpDir).delete()
+            }
+            tmpFilePath = tmpFile
+            parseTmpFile(tmpFile, expectedSha256)
+        }
+        finishParsing(result)
+    }
+
+    /**
+     * 解析本地临时迁移包：SHA-256 校验 + 应用列表提取 + 安全门闩。
+     * 本地导入与云端导入共用（parse / parseFromCloud 都调用这里）。
+     */
+    private suspend fun parseTmpFile(tmpFile: String, expectedSha256: String?): List<String> {
+        // 可选完整性校验：与导出端展示的 SHA-256 对比
+        if (!expectedSha256.isNullOrBlank()) {
+            val actual = sha256Of(File(tmpFile))
+            val expected = expectedSha256.trim().lowercase().removePrefix("sha256:")
+            if (actual != expected) {
+                throw SecurityException("SHA-256 校验失败：期望 $expected，实际 $actual")
+            }
+        }
+
+        // zstd -d -c "<tmp>" | tar -tf -
+        val shellResult = BaseUtil.execute(
+            "zstd", "-d", "-c", SymbolUtil.shellQuote(tmpFile),
+            "|", "tar", "-tf", "-",
+        )
+        check(shellResult.code == 0) { shellResult.out.joinToString("\n") }
+
+        val apps = shellResult.out.mapNotNull { line ->
+            // libsu Shell 默认会把 stdout 不可打印字节（如 UTF-8 中文）转义成 \NNN 八进制，
+            // 这里反向解码还原成真实 Unicode 字符，避免弹窗里出现 \346\232\227 这类乱码。
+            val decoded = line.decodeShellEscape()
+            if (decoded.startsWith("apps/")) {
+                decoded.substringAfter("apps/").substringBefore('/').takeIf { it.isNotEmpty() }
+            } else {
+                null
+            }
+        }.distinct()
+
+        // 安全门闩：任何条目名携带 shell 元字符即整包拒绝，
+        // 防止恶意迁移包在恢复阶段以 root 权限执行注入命令。
+        val unsafeEntries = apps.filter { !isEntryNameSafe(it) }
+        if (unsafeEntries.isNotEmpty()) {
+            throw SecurityException(
+                "已拒绝导入：迁移包含危险字符的条目名（${unsafeEntries.joinToString(", ") { it.take(24) }}）"
+            )
+        }
+
+        _parsedApps.value = apps
+        return apps
+    }
+
+    /** 解析结束统一收尾：成功回 Idle；失败按异常类型分流展示并清理临时文件 */
+    private fun finishParsing(result: Result<List<String>>): List<String> {
         _isParsing.value = false
         if (result.isSuccess) {
             // 解析完成回到 Idle（用户即将在弹窗里点 CONFIRM 触发 import）
             _stage.value = MigrationStage.Idle
-            result.getOrDefault(emptyList())
-        } else {
-            val exception = result.exceptionOrNull()
-            if (exception is SecurityException) {
-                _detailMessage.value = exception.message
-            } else {
-                _error.value = exception?.message
-            }
-            _parsedApps.value = emptyList()
-            cleanupTmpFile()
-            _stage.value = MigrationStage.Idle
-            emptyList()
+            return result.getOrDefault(emptyList())
         }
+        val exception = result.exceptionOrNull()
+        if (exception is SecurityException) {
+            _detailMessage.value = exception.message
+        } else {
+            _error.value = exception?.message
+        }
+        _parsedApps.value = emptyList()
+        cleanupTmpFile()
+        _stage.value = MigrationStage.Idle
+        return emptyList()
+    }
+
+    /** 加载已配置的云端账号列表（从云端导入时选择来源） */
+    suspend fun loadClouds() {
+        _clouds.value = cloudRepo.query()
+    }
+
+    /** 列出指定云端根目录 migration/ 子目录下的迁移包（.tar.zst），按名称排序 */
+    suspend fun loadRemotePackages(cloudName: String) = withIOContext {
+        val result = runCatching {
+            // withClient 的 block 返回 Unit，列表必须经外部变量带出
+            var packages: List<CloudMigrationPackage> = emptyList()
+            cloudRepo.withClient(cloudName) { client, entity ->
+                val remoteDir = "${entity.remote}/migration"
+                if (client.exists(remoteDir)) {
+                    packages = client.walkFileTree(remoteDir).map { it.pathString }
+                        .filter { it.endsWith(".tar.zst") }
+                        .sorted()
+                        .map { CloudMigrationPackage(cloudName = cloudName, remotePath = it) }
+                }
+            }
+            packages
+        }
+        _remotePackages.value = result.getOrDefault(emptyList())
     }
 
     /**
@@ -291,4 +366,12 @@ private fun String.decodeShellEscape(): String {
         }.getOrDefault(step1)
     }
     return step1
+}
+
+/** 云端迁移包：所属云端账号 + 远程完整路径 */
+data class CloudMigrationPackage(
+    val cloudName: String,
+    val remotePath: String,
+) {
+    val fileName: String get() = remotePath.substringAfterLast('/')
 }

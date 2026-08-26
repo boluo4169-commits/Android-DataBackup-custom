@@ -3,19 +3,23 @@ package com.xayah.feature.main.dashboard
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.ExperimentalAnimationApi
+import androidx.compose.foundation.ExperimentalFoundationApi
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.rounded.CloudDownload
 import androidx.compose.material.icons.rounded.ContentCopy
 import androidx.compose.material.icons.rounded.FileDownload
 import androidx.compose.material.icons.rounded.History
@@ -24,6 +28,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedIconButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -31,6 +36,7 @@ import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Text
 import androidx.compose.material3.TopAppBarDefaults
+import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
@@ -53,6 +59,7 @@ import com.xayah.core.ui.component.DismissState
 import com.xayah.core.ui.component.InnerBottomSpacer
 import com.xayah.core.ui.component.InnerTopSpacer
 import com.xayah.core.ui.component.LocalSlotScope
+import com.xayah.core.ui.component.ModalBottomSheet
 import com.xayah.core.ui.component.SecondaryLargeTopBar
 import com.xayah.core.ui.component.Surface
 import com.xayah.core.ui.component.TitleLargeText
@@ -65,7 +72,7 @@ import com.xayah.core.util.DateUtil
 import com.xayah.core.util.maybePopBackStack
 import kotlinx.coroutines.launch
 
-@OptIn(ExperimentalAnimationApi::class, ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalAnimationApi::class, ExperimentalFoundationApi::class, ExperimentalMaterial3Api::class)
 @Composable
 fun PageDataMigrationImport(
     viewModel: DataMigrationImportViewModel = hiltViewModel(),
@@ -89,9 +96,63 @@ fun PageDataMigrationImport(
     var showShaHistory by rememberSaveable { mutableStateOf(false) }
     var showShaGuide by rememberSaveable { mutableStateOf(false) }
     val shaHistory by viewModel.shaHistory.collectAsStateWithLifecycle()
+    val clouds by viewModel.clouds.collectAsStateWithLifecycle()
+    val remotePackages by viewModel.remotePackages.collectAsStateWithLifecycle()
+
+    // 从云端导入：两层选择（云端账号 → 该云端 migration/ 下的迁移包）
+    var showCloudSheet by remember { mutableStateOf(false) }
+    var showRemoteSheet by remember { mutableStateOf(false) }
+    val cloudSheetState = rememberModalBottomSheetState()
+    val remoteSheetState = rememberModalBottomSheetState()
+
+    // 解析完成后统一走确认弹窗 → 导入（本地与云端共用）
+    fun confirmImport(apps: List<String>) {
+        if (apps.isEmpty()) {
+            scope.launch { snackbarHostState.showSnackbar(context.getString(R.string.migration_import_empty)) }
+        } else {
+            scope.launch {
+                val state = dialogState.open(
+                    initialState = Unit,
+                    title = context.getString(R.string.import_backup),
+                    icon = null,
+                    dismissText = context.getString(R.string.cancel),
+                    confirmText = context.getString(R.string.confirm),
+                ) { _ ->
+                    Column(verticalArrangement = Arrangement.spacedBy(SizeTokens.Level8)) {
+                        Text(text = context.getString(R.string.migration_import_parsed, apps.size))
+                        LazyColumn(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .heightIn(max = 240.dp),
+                            verticalArrangement = Arrangement.spacedBy(SizeTokens.Level4),
+                        ) {
+                            items(apps) { app ->
+                                Row(horizontalArrangement = Arrangement.spacedBy(SizeTokens.Level8)) {
+                                    Text(text = "• ")
+                                    Text(
+                                        text = app,
+                                        maxLines = 1,
+                                        overflow = TextOverflow.Ellipsis,
+                                    )
+                                }
+                            }
+                        }
+                        Text(text = context.getString(R.string.migration_import_confirm))
+                    }
+                }.first
+                if (state == DismissState.CONFIRM) {
+                    viewModel.import()
+                } else {
+                    // 用户取消或关闭弹窗，清理临时文件
+                    viewModel.cleanupTmpFile()
+                }
+            }
+        }
+    }
 
     LaunchedEffect(Unit) {
         scope.launch { viewModel.loadShaHistory() }
+        scope.launch { viewModel.loadClouds() }
     }
 
     // 解析中 / 导入中 / 完成 三态文案（区分导出文案）
@@ -113,49 +174,12 @@ fun PageDataMigrationImport(
     ) { uri ->
         uri?.let {
             scope.launch {
-                val apps = viewModel.parse(
-                    uri = it,
-                    expectedSha256 = checksumInput.trim().takeIf { s -> s.isNotEmpty() },
+                confirmImport(
+                    viewModel.parse(
+                        uri = it,
+                        expectedSha256 = checksumInput.trim().takeIf { s -> s.isNotEmpty() },
+                    )
                 )
-                if (apps.isEmpty()) {
-                    snackbarHostState.showSnackbar(context.getString(R.string.migration_import_empty))
-                } else {
-                    val state = dialogState.open(
-                        initialState = Unit,
-                        title = context.getString(R.string.import_backup),
-                        icon = null,
-                        dismissText = context.getString(R.string.cancel),
-                        confirmText = context.getString(R.string.confirm),
-                    ) { _ ->
-                        Column(verticalArrangement = Arrangement.spacedBy(SizeTokens.Level8)) {
-                            Text(text = context.getString(R.string.migration_import_parsed, apps.size))
-                            LazyColumn(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .heightIn(max = 240.dp),
-                                verticalArrangement = Arrangement.spacedBy(SizeTokens.Level4),
-                            ) {
-                                items(apps) { app ->
-                                    Row(horizontalArrangement = Arrangement.spacedBy(SizeTokens.Level8)) {
-                                        Text(text = "• ")
-                                        Text(
-                                            text = app,
-                                            maxLines = 1,
-                                            overflow = TextOverflow.Ellipsis,
-                                        )
-                                    }
-                                }
-                            }
-                            Text(text = context.getString(R.string.migration_import_confirm))
-                        }
-                    }.first
-                    if (state == DismissState.CONFIRM) {
-                        viewModel.import()
-                    } else {
-                        // 用户取消或关闭弹窗，清理临时文件
-                        viewModel.cleanupTmpFile()
-                    }
-                }
             }
         }
     }
@@ -226,6 +250,22 @@ fun PageDataMigrationImport(
                             modifier = Modifier.fillMaxWidth(),
                         ) {
                             Text(text = stringResource(R.string.import_backup))
+                        }
+                        // 从云端导入：从已配置云端账号的 migration/ 目录下载迁移包
+                        OutlinedButton(
+                            onClick = { showCloudSheet = true },
+                            enabled = isImporting.not(),
+                            modifier = Modifier.fillMaxWidth(),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.CloudDownload,
+                                contentDescription = null,
+                                modifier = Modifier.size(SizeTokens.Level16),
+                            )
+                            Text(
+                                text = stringResource(R.string.migration_import_from_cloud),
+                                modifier = Modifier.padding(start = SizeTokens.Level8),
+                            )
                         }
                     }
                 }
@@ -379,6 +419,116 @@ fun PageDataMigrationImport(
                 }
             }
             InnerBottomSpacer(innerPadding = innerPadding)
+        }
+    }
+
+    // 第一步：选择云端账号
+    if (showCloudSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showCloudSheet = false },
+            sheetState = cloudSheetState,
+        ) {
+            TitleLargeText(
+                text = stringResource(R.string.migration_select_cloud),
+                modifier = Modifier.paddingHorizontal(SizeTokens.Level24),
+            )
+            if (clouds.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.migration_no_cloud),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(SizeTokens.Level24),
+                    textAlign = TextAlign.Center,
+                    color = ThemedColorSchemeKeyTokens.OnSurfaceVariant.value,
+                )
+            } else {
+                clouds.forEach { cloud ->
+                    Surface(onClick = {
+                        showCloudSheet = false
+                        scope.launch {
+                            viewModel.loadRemotePackages(cloud.name)
+                            showRemoteSheet = true
+                        }
+                    }) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .paddingHorizontal(SizeTokens.Level24)
+                                .padding(vertical = SizeTokens.Level12),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(SizeTokens.Level12),
+                        ) {
+                            TitleLargeText(text = cloud.name, maxLines = 1)
+                            Text(
+                                text = "${cloud.host} (${cloud.type.name})",
+                                color = ThemedColorSchemeKeyTokens.Outline.value,
+                                maxLines = 1,
+                            )
+                        }
+                    }
+                }
+            }
+            InnerBottomSpacer(innerPadding = PaddingValues(SizeTokens.Level8))
+        }
+    }
+
+    // 第二步：选择该云端的迁移包（migration/ 目录下）
+    if (showRemoteSheet) {
+        ModalBottomSheet(
+            onDismissRequest = { showRemoteSheet = false },
+            sheetState = remoteSheetState,
+        ) {
+            TitleLargeText(
+                text = stringResource(R.string.migration_select_remote_package),
+                modifier = Modifier.paddingHorizontal(SizeTokens.Level24),
+            )
+            if (remotePackages.isEmpty()) {
+                Text(
+                    text = stringResource(R.string.migration_no_remote_package),
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(SizeTokens.Level24),
+                    textAlign = TextAlign.Center,
+                    color = ThemedColorSchemeKeyTokens.OnSurfaceVariant.value,
+                )
+            } else {
+                remotePackages.forEach { pkg ->
+                    Surface(onClick = {
+                        showRemoteSheet = false
+                        scope.launch {
+                            confirmImport(
+                                viewModel.parseFromCloud(
+                                    cloudName = pkg.cloudName,
+                                    remotePath = pkg.remotePath,
+                                    expectedSha256 = checksumInput.trim().takeIf { s -> s.isNotEmpty() },
+                                )
+                            )
+                        }
+                    }) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .paddingHorizontal(SizeTokens.Level24)
+                                .padding(vertical = SizeTokens.Level12),
+                            verticalAlignment = androidx.compose.ui.Alignment.CenterVertically,
+                            horizontalArrangement = Arrangement.spacedBy(SizeTokens.Level12),
+                        ) {
+                            Icon(
+                                imageVector = Icons.Rounded.FileDownload,
+                                contentDescription = null,
+                                tint = ThemedColorSchemeKeyTokens.Primary.value,
+                                modifier = Modifier.size(SizeTokens.Level20),
+                            )
+                            Text(
+                                text = pkg.fileName,
+                                maxLines = 2,
+                                overflow = TextOverflow.Ellipsis,
+                            )
+                        }
+                    }
+                }
+            }
+            InnerBottomSpacer(innerPadding = PaddingValues(SizeTokens.Level8))
         }
     }
 }

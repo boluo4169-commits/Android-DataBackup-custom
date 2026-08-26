@@ -1,38 +1,43 @@
 @echo off
 chcp 65001 >nul
 setlocal EnableExtensions
-set "SCRIPT_VER=1.1"
-title DataBackup Companion - FTP Backup Server v1.1
+set "SCRIPT_VER=1.2"
+title DataBackup Companion - FTP Backup Server v1.2
 
 REM ============================================================
-REM  DataBackup Companion - FTP 数据服务器 (Windows 一键部署)
+REM  DataBackup Companion - FTP Backup Server (Windows)
 REM
-REM  原始创意与初版脚本: 酷安 @喵脆角12448
+REM  Original idea by Coolapk user @miaocuijiao12448
 REM    https://www.coolapk.com/feed/73346386
-REM  重构维护: boluo4169-commits (DataBackup 定制版)
+REM  Maintained by boluo4169-commits (DataBackup custom)
 REM    https://github.com/boluo4169-commits/Android-DataBackup-custom
-REM  许可: MIT
+REM  License: MIT
 REM
-REM  功能:
-REM    1. 自动请求管理员权限(UAC)并配置防火墙放行
-REM    2. 创建 FTP 用户与备份根目录(默认 D:\DataBackupFTP)
-REM    3. 缺少 Python / pyftpdlib 时自动安装(清华镜像回退官方源)
-REM    4. 密码留空时自动生成 8 位随机强密码
-REM    5. 列出本机所有局域网 IP, 手机端照抄连接信息卡片即可
-REM    6. 启动后自动做一次本机上传自检
+REM  Features:
+REM    1. Auto request admin rights (UAC) and configure firewall
+REM    2. Create FTP user and backup root dir (default D:\DataBackupFTP)
+REM    3. Auto install Python / pyftpdlib if missing (mirror fallback)
+REM    4. Auto generate 8-char random password if left empty
+REM    5. List all LAN IPs for the connection card
+REM    6. Run a local upload selftest after startup
+REM    7. Diagnose mode: --diagnose exports environment/file/integrity report
 REM
-REM  用法:
-REM    直接双击运行, 按提示输入(全部可直接回车用默认值)
-REM    命令行: 本脚本.bat <用户名> <密码> <备份目录>
+REM  Usage:
+REM    Double-click to run with interactive prompts (Enter = defaults)
+REM    CLI: this.bat <username> <password> <backup_dir>
+REM    Diagnose: this.bat --diagnose [backup_dir]
 REM ============================================================
 
 REM ---------- request admin rights (firewall rules need them) ----------
+REM Diagnose mode: skip UAC (admin not needed for --diagnose)
+if /i "%~1"=="--diagnose" goto :admin_ok
 net session >nul 2>&1
 if %errorlevel% neq 0 (
     echo 正在请求管理员权限...
     powershell -NoProfile -Command "$a=@(); if('%~1' -ne ''){$a+='%~1'}; if('%~2' -ne ''){$a+='%~2'}; if('%~3' -ne ''){$a+='%~3'}; Start-Process -FilePath '%~f0' -ArgumentList $a -Verb RunAs"
     exit /b
 )
+:admin_ok
 
 echo.
 echo    ____        _           ____                _
@@ -48,12 +53,9 @@ echo   项目地址 : https://github.com/boluo4169-commits/Android-DataBackup-cu
 echo   许可     : MIT
 echo.
 
-REM ---------- check latest release (5s timeout, silent on failure) ----------
-set "LATEST_TAG="
-for /f "usebackq delims=" %%i in (`powershell -NoProfile -Command "try { (Invoke-RestMethod -Uri 'https://api.github.com/repos/boluo4169-commits/Android-DataBackup-custom/releases/latest' -TimeoutSec 5).tag_name } catch {}"`) do set "LATEST_TAG=%%i"
-if defined LATEST_TAG echo   最新版本   : %LATEST_TAG%   （如有更新请到上方 Releases 页下载）
-
 REM ---------- custom username ----------
+REM Diagnose: skip interactive prompts (usage: this.bat --diagnose [backup_dir])
+if /i "%~1"=="--diagnose" goto :diag_no_interactive
 set "FTP_USER=%~1"
 if "%FTP_USER%"=="" set /p "FTP_USER=请输入 FTP 用户名 [databackup]: "
 if "%FTP_USER%"=="" set "FTP_USER=databackup"
@@ -99,6 +101,26 @@ if not exist "%FTP_DIR%" (
     exit /b 1
 )
 echo 备份目录: %FTP_DIR%
+
+REM ---------- diagnose mode: skip interactive prompts ----------
+:diag_no_interactive
+if /i "%~1"=="--diagnose" (
+    set "FTP_DIR=%~2"
+    if "%FTP_DIR%"=="" if exist "D:\" set "FTP_DIR=D:\DataBackupFTP"
+    if "%FTP_DIR%"=="" set "FTP_DIR=C:\DataBackupFTP"
+    set "FTP_USER=%~3"
+    if "%FTP_USER%"=="" set "FTP_USER=databackup"
+    set "FTP_PASS=diagnose"
+    echo [诊断模式] 备份目录: %FTP_DIR%
+)
+
+REM ---------- check latest release ----------
+REM Checked after interactive prompts (no startup delay); keep on one line (no block-wrap)
+if /i "%~1"=="--diagnose" goto :skip_update_check
+set "LATEST_TAG="
+for /f "usebackq delims=" %%i in (`powershell -NoProfile -Command "try { (Invoke-RestMethod -Uri 'https://api.github.com/repos/boluo4169-commits/Android-DataBackup-custom/releases/latest' -TimeoutSec 5).tag_name } catch {}"`) do if not "%%i"=="" set "LATEST_TAG=%%i"
+if defined LATEST_TAG echo   最新版本   : %LATEST_TAG%   （如有更新请到上方 Releases 页下载）
+:skip_update_check
 
 REM ---------- port 2121 pre-check ----------
 netstat -ano | findstr ":2121" >nul 2>&1
@@ -152,12 +174,16 @@ if errorlevel 1 (
 )
 echo pyftpdlib: OK
 
-REM ---------- firewall rules (2121 + passive 60000-60100) ----------
-netsh advfirewall firewall show rule name="DataBackup FTP 2121" >nul 2>&1
-if errorlevel 1 netsh advfirewall firewall add rule name="DataBackup FTP 2121" dir=in action=allow protocol=TCP localport=2121
-netsh advfirewall firewall show rule name="DataBackup FTP Passive 60000-60100" >nul 2>&1
-if errorlevel 1 netsh advfirewall firewall add rule name="DataBackup FTP Passive 60000-60100" dir=in action=allow protocol=TCP localport=60000-60100
-echo 防火墙规则: 已就绪
+REM ---------- firewall rules (2121 + passive 60000-60100); diagnose mode skips ----------
+if /i "%~1"=="--diagnose" (
+    echo 诊断模式: 跳过防火墙配置
+) else (
+    netsh advfirewall firewall show rule name="DataBackup FTP 2121" >nul 2>&1
+    if errorlevel 1 netsh advfirewall firewall add rule name="DataBackup FTP 2121" dir=in action=allow protocol=TCP localport=2121
+    netsh advfirewall firewall show rule name="DataBackup FTP Passive 60000-60100" >nul 2>&1
+    if errorlevel 1 netsh advfirewall firewall add rule name="DataBackup FTP Passive 60000-60100" dir=in action=allow protocol=TCP localport=60000-60100
+    echo 防火墙规则: 已就绪
+)
 
 REM ---------- extract the embedded python script ----------
 set "WKDIR=%TEMP%\DataBackupFTP_server"
@@ -176,11 +202,11 @@ echo   注意: FTP 为明文协议, 请仅在可信的家庭/办公局域网内�
 echo         不要将端口暴露到公网。传输完成后可直接关闭本窗口。
 echo **********************************************************************
 
-REM ---------- start the FTP server ----------
+REM ---------- start the FTP server (--diagnose generates a diagnose zip and exits) ----------
 echo.
 echo 正在启动 FTP 服务器, 请保持本窗口开启(关闭窗口即停止服务)...
 set "PYTHONIOENCODING=utf-8"
-%PYEXE% -X utf8 -u "%WKDIR%\ftp_server.py" --selftest
+%PYEXE% -X utf8 -u "%WKDIR%\ftp_server.py" --selftest %*
 
 echo.
 echo 服务已停止, 可以关闭本窗口
@@ -197,10 +223,16 @@ Run with --selftest to perform a local upload test after startup.
 
 Original idea by Coolapk @喵脆角12448, refactored by boluo4169-commits. MIT.
 """
+import datetime
+import json
 import os
+import platform
+import shutil
 import socket
+import subprocess
 import sys
 import time
+import zipfile
 
 from pyftpdlib.authorizers import DummyAuthorizer
 from pyftpdlib.handlers import FTPHandler
@@ -256,7 +288,260 @@ def run_selftest(user, pw, port):
         return False
 
 
+# ---------------------------------------------------------------------------
+# 诊断模式（--diagnose）：一键导出环境/文件清单/完整性，配合手机端「导出日志」
+# ---------------------------------------------------------------------------
+
+def _human_size(num):
+    try:
+        num = float(num)
+    except Exception:
+        return "?"
+    for unit in ("B", "KiB", "MiB", "GiB", "TiB"):
+        if abs(num) < 1024.0 or unit == "TiB":
+            return "%.1f %s" % (num, unit)
+        num /= 1024.0
+    return "%.1f B" % num
+
+
+def _port_in_use(port):
+    s = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+    try:
+        s.bind(("0.0.0.0", port))
+        return False
+    except OSError:
+        return True
+    finally:
+        s.close()
+
+
+def _collect_environment(backup_dir, port):
+    lines = []
+    lines.append("DataBackup Companion 诊断报告")
+    lines.append("生成时间: %s" % datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"))
+    lines.append("=" * 56)
+    lines.append("[环境]")
+    lines.append("系统: %s" % platform.platform())
+    lines.append("Python: %s" % sys.version.replace("\n", " "))
+    lines.append("主机名: %s" % socket.gethostname())
+    lines.append("局域网 IP: %s" % (" 或 ".join(list_lan_ips())))
+    lines.append("备份目录: %s" % backup_dir)
+    try:
+        usage = shutil.disk_usage(os.path.abspath(backup_dir) if os.path.exists(backup_dir) else ".")
+        lines.append("磁盘空间: 总 %s / 剩余 %s" % (_human_size(usage.total), _human_size(usage.free)))
+    except Exception as e:
+        lines.append("磁盘空间: 读取失败 (%s)" % e)
+    lines.append("端口 %d: %s" % (port, "已被占用（可能有其他 FTP 服务）" if _port_in_use(port) else "空闲"))
+    lines.append("被动端口段: %d ~ %d" % (PASSIVE_PORTS[0], PASSIVE_PORTS[-1]))
+    try:
+        out = subprocess.run(
+            ["netsh", "advfirewall", "show", "currentprofile"],
+            capture_output=True, text=True, timeout=10, errors="replace",
+        ).stdout
+        lines.append("防火墙(当前配置): %s" % " ".join(out.split()) if out.strip() else "无输出")
+    except Exception as e:
+        lines.append("防火墙: 查询失败 (%s)" % e)
+    return "\n".join(lines) + "\n"
+
+
+def _collect_ftp_status(user, port):
+    lines = []
+    lines.append("[FTP 服务]")
+    lines.append("用户名: %s（密码不输出）" % (user or "databackup"))
+    lines.append("监听端口: %d" % port)
+    lines.append("端口状态: %s" % ("已被占用" if _port_in_use(port) else "空闲"))
+    lines.append("自检: 诊断模式未启动服务，跳过（正常启动时会自动自检）")
+    return "\n".join(lines) + "\n"
+
+
+def _walk_entries(root):
+    entries = []
+    if not os.path.isdir(root):
+        return entries
+    for dirpath, dirnames, filenames in os.walk(root):
+        dirnames.sort()
+        rel = os.path.relpath(dirpath, root)
+        for d in sorted(dirnames):
+            entries.append((os.path.join(rel, d) if rel != "." else d, True, 0))
+        for f in sorted(filenames):
+            if f.startswith("DataBackup_diagnose_") and f.endswith(".zip"):
+                continue
+            full = os.path.join(dirpath, f)
+            try:
+                size = os.path.getsize(full)
+            except OSError:
+                size = -1
+            entries.append((os.path.join(rel, f) if rel != "." else f, False, size))
+    return entries
+
+
+def _group_stats(entries):
+    stats = {}
+    for rel, is_dir, size in entries:
+        if is_dir:
+            continue
+        group = rel.split(os.sep)[0] if os.sep in rel else "(根目录)"
+        cnt, total = stats.get(group, (0, 0))
+        stats[group] = (cnt + 1, total + max(size, 0))
+    return stats
+
+
+def _collect_file_inventory(backup_dir):
+    entries = _walk_entries(backup_dir)
+    lines = []
+    lines.append("[备份文件清单]")
+    stats = _group_stats(entries)
+    for group in sorted(stats):
+        cnt, total = stats[group]
+        lines.append("%s/: %d 个文件, 共 %s" % (group, cnt, _human_size(total)))
+    lines.append("")
+    lines.append("[目录树]")
+    for rel, is_dir, size in entries:
+        if is_dir:
+            lines.append("  [目录] %s" % rel)
+        else:
+            lines.append("  %s  (%s)" % (rel, _human_size(size)))
+    zero_files = [rel for rel, is_dir, size in entries if not is_dir and size == 0]
+    lines.append("")
+    lines.append("[0 字节文件]")
+    if zero_files:
+        for f in zero_files:
+            lines.append("  %s" % f)
+    else:
+        lines.append("  无")
+    return "\n".join(lines) + "\n"
+
+
+def _is_valid_json(path):
+    try:
+        with open(path, "r", encoding="utf-8-sig") as fh:
+            json.load(fh)
+        return True
+    except Exception:
+        return False
+
+
+def _collect_integrity(backup_dir):
+    lines = []
+    anomalies = []
+    lines.append("[完整性检查]")
+
+    apps_root = os.path.join(backup_dir, "apps")
+    if os.path.isdir(apps_root):
+        app_dirs = sorted(d for d in os.listdir(apps_root) if os.path.isdir(os.path.join(apps_root, d)))
+        lines.append("应用备份（apps/）: %d 个应用" % len(app_dirs))
+        for app in app_dirs:
+            app_path = os.path.join(apps_root, app)
+            version_dirs = sorted(d for d in os.listdir(app_path) if os.path.isdir(os.path.join(app_path, d)))
+            for ver in version_dirs:
+                ver_path = os.path.join(app_path, ver)
+                files = [f for f in os.listdir(ver_path) if os.path.isfile(os.path.join(ver_path, f))]
+                config_ok = os.path.exists(os.path.join(ver_path, "package_restore_config.json"))
+                archives = [f for f in files if f.endswith((".tar", ".tar.zst", ".zst"))]
+                md5s = [f for f in files if f.endswith(".md5")]
+                archive_no_md5 = [f for f in archives if (f + ".md5") not in md5s]
+                md5_no_archive = [f for f in md5s if f[: -len(".md5")] not in archives]
+                zero = [f for f in files if os.path.getsize(os.path.join(ver_path, f)) == 0]
+                issues = []
+                if not config_ok:
+                    issues.append("config 缺失")
+                if archive_no_md5:
+                    issues.append("归档缺 md5: %s" % ",".join(archive_no_md5))
+                if md5_no_archive:
+                    issues.append("md5 无对应归档: %s" % ",".join(md5_no_archive))
+                if zero:
+                    issues.append("0 字节: %s" % ",".join(zero))
+                cfg_path = os.path.join(ver_path, "package_restore_config.json")
+                if config_ok and not _is_valid_json(cfg_path):
+                    issues.append("config 不是合法 JSON")
+                if issues:
+                    lines.append("  ✗ %s/%s: %s" % (app, ver, "; ".join(issues)))
+                    anomalies.append("%s/%s: %s" % (app, ver, "; ".join(issues)))
+                else:
+                    lines.append("  ✓ %s/%s: %d 归档, md5 配对 OK" % (app, ver, len(archives)))
+    else:
+        lines.append("应用备份（apps/）: 目录不存在（可能从未备份应用）")
+
+    migration_dir = os.path.join(backup_dir, "migration")
+    lines.append("")
+    lines.append("[云端迁移包（migration/）]")
+    if os.path.isdir(migration_dir):
+        pkgs = sorted(f for f in os.listdir(migration_dir) if os.path.isfile(os.path.join(migration_dir, f)))
+        if pkgs:
+            for f in pkgs:
+                size = os.path.getsize(os.path.join(migration_dir, f))
+                lines.append("  %s  (%s)" % (f, _human_size(size)))
+        else:
+            lines.append("  目录为空")
+    else:
+        lines.append("  目录不存在（尚未导出过云端迁移包）")
+
+    lines.append("")
+    lines.append("[异常汇总]")
+    if anomalies:
+        for a in anomalies:
+            lines.append("  ✗ %s" % a)
+    else:
+        lines.append("  无")
+    return "\n".join(lines) + "\n", anomalies
+
+
+def _collect_summary_json(backup_dir, anomalies):
+    entries = _walk_entries(backup_dir)
+    stats = _group_stats(entries)
+    return {
+        "generated_at": datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "platform": platform.platform(),
+        "backup_dir": backup_dir,
+        "lan_ips": list_lan_ips(),
+        "port": LISTEN_PORT,
+        "port_in_use": _port_in_use(LISTEN_PORT),
+        "groups": {k: {"files": v[0], "total_bytes": v[1]} for k, v in stats.items()},
+        "anomalies": anomalies,
+    }
+
+
+def run_diagnose():
+    """非交互生成诊断 zip 到备份目录（FTP_DIR），完成后退出"""
+    print("[诊断] 正在收集环境与文件信息...")
+    backup_dir = BACKUP_DIR
+    os.makedirs(backup_dir, exist_ok=True)
+
+    env_text = _collect_environment(backup_dir, LISTEN_PORT)
+    ftp_text = _collect_ftp_status(FTP_USER, LISTEN_PORT)
+    inv_text = _collect_file_inventory(backup_dir)
+    integrity_text, anomalies = _collect_integrity(backup_dir)
+    summary = _collect_summary_json(backup_dir, anomalies)
+
+    ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    zip_path = os.path.join(backup_dir, "DataBackup_diagnose_%s.zip" % ts)
+    try:
+        with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+            zf.writestr("environment.txt", env_text)
+            zf.writestr("ftp_status.txt", ftp_text)
+            zf.writestr("file_inventory.txt", inv_text)
+            zf.writestr("integrity_check.txt", integrity_text)
+            zf.writestr("diagnose.json", json.dumps(summary, ensure_ascii=False, indent=2))
+    except Exception as e:
+        print("[诊断] 写入诊断包失败: %s" % e)
+        sys.exit(1)
+
+    print("=" * 56)
+    print("[诊断] 完成")
+    print("  诊断包: %s" % zip_path)
+    print("  异常数: %d" % len(anomalies))
+    for a in anomalies[:20]:
+        print("    ✗ %s" % a)
+    if len(anomalies) > 20:
+        print("    ... 共 %d 条，详见 integrity_check.txt" % len(anomalies))
+    print("  请将该 zip 发给维护者，配合手机端「导出日志」使用。")
+    print("=" * 56)
+
+
 def main():
+    if "--diagnose" in sys.argv[1:]:
+        run_diagnose()
+        sys.exit(0)
     lan_ips = list_lan_ips()
     primary_ip = lan_ips[0]
     os.makedirs(BACKUP_DIR, exist_ok=True)

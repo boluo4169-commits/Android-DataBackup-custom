@@ -17,6 +17,7 @@ dependencies {
     implementation(project(":core:data"))
     implementation(project(":core:util"))
     implementation(project(":core:network"))
+    implementation(project(":core:rootservice"))
 
     // Compose Navigation
     implementation(libs.androidx.navigation.compose)

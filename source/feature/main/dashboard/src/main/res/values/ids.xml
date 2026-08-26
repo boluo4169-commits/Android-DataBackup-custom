@@ -60,6 +60,12 @@
     <item name="migration_stage_import_success_title" type="string" />
     <item name="migration_stage_import_success_desc" type="string" />
     <item name="migration_export_done" type="string" />
+    <item name="migration_export_to_cloud" type="string" />
+    <item name="migration_import_from_cloud" type="string" />
+    <item name="migration_select_cloud" type="string" />
+    <item name="migration_no_cloud" type="string" />
+    <item name="migration_select_remote_package" type="string" />
+    <item name="migration_no_remote_package" type="string" />
     <item name="insurance_title" type="string" />
     <item name="insurance_desc" type="string" />
     <item name="insurance_confirm" type="string" />

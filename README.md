@@ -54,6 +54,7 @@
 
 - **导出备份**：勾选应用（支持搜索、用户空间筛选、排序、全选/反选）→ 系统文件选择器选位置 → 弹窗提示「加份保险」（建议用文件管理器把整个备份目录打包 zip 做额外保障）→ 后台打包成迁移包（tar.zst）→ 进度卡显示，完成后手动返回；完成页展示 SHA-256 校验码
 - **导入备份**：独立导入页，选择迁移包 → 自动解析（进度条 + 应用列表确认）→ 解压到本机备份目录 → 自动刷新恢复列表；可选粘贴 SHA-256 校验码强校验，危险条目名整包拒绝
+- **云端导出/导入（v3.6.7 新增）**：导出页可「导出到云端」（迁移包直接上传到云端 `migration/` 目录，手机直连云备份，无需电脑中转）；导入页可「从云端导入」（列出云端迁移包 → 下载导入），流程与本地一致
 - 迁移包包含应用的**主备份 + 受保护版本**，导入后原样保留
 - 导入/导出全程 IO 线程执行，8GB 级别大迁移包流畅不卡；中断残留的临时文件下次进入自动清理
 
@@ -81,7 +82,15 @@
 
 - **一键部署** FTP 备份服务器（自动配置防火墙 / Python 环境 / 随机密码），双击运行、照着窗口里的连接信息在 App 云备份（FTP）里填写即可
 - 手机 → 电脑无线传输，Wi-Fi 6/7 下远快于 USB；备份直接落在电脑硬盘，不占手机空间
-- 原始创意来自酷安 [@喵脆角12448](https://www.coolapk.com/feed/73346386)（经授权重构），详见 [companion/ftp-server](./companion/ftp-server/README.md)，脚本与说明从 [Releases](https://github.com/boluo4169-commits/Android-DataBackup-custom/releases) 获取
+- **故障诊断**：反馈问题时运行 `DataBackupFTPServer.exe --diagnose`，一键导出环境信息 + 备份文件清单 + 完整性检查（zip），配合手机端「导出日志」形成完整反馈材料
+- 原始创意来自酷安 [@喵脆角12448](https://www.coolapk.com/feed/73346386)（经授权重构，重构者酷安 @骏冲冲），详见 [companion/ftp-server](./companion/ftp-server/README.md)，脚本与说明从 [Releases](https://github.com/boluo4169-commits/Android-DataBackup-custom/releases) 获取
+
+## ⚙️ 运行环境要求
+
+- **Root 权限**：必须已 root（支持 [Magisk](https://github.com/topjohnwu/Magisk) / [KernelSU](https://github.com/tiann/KernelSU) / [APatch](https://github.com/bmax121/APatch)），无 root 无法备份与恢复应用数据
+- **系统版本**：Android 7.0+（API 24），推荐 Android 10 及以上
+- **存储空间**：备份目录默认在内部存储 `DataBackup/`，备份体积约等于应用数据体积，请预留充足空间
+- **云备份**：可选功能；使用云备份（WebDAV / FTP / SMB / SFTP）需自行准备对应服务器，或使用本仓库配套的 [FTP 数据服务器](#🖥️-配套工具ftp-数据服务器windows)（Windows 端，需管理员权限、与手机同一局域网）
 
 ## 原版功能
 

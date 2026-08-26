@@ -21,6 +21,15 @@ jobs:
       - name: Install dependencies
         run: pip install pyftpdlib pyinstaller
 
+      - name: Inject tool version (App release tag, e.g. v3.6.7)
+        shell: pwsh
+        run: |
+          $tag = if ($env:GITHUB_EVENT_NAME -eq 'release') { $env:RELEASE_TAG } else { "dev-" + $env:GITHUB_SHA.Substring(0, 7) }
+          Set-Content -Path companion/ftp-server/src/_tool_version.py -Value "TOOL_VERSION = `"$tag`""
+          Get-Content companion/ftp-server/src/_tool_version.py
+        env:
+          RELEASE_TAG: ${{ github.event.release.tag_name }}
+
       - name: Build single-file exe
         run: >
           pyinstaller --onefile --console --name DataBackupFTPServer

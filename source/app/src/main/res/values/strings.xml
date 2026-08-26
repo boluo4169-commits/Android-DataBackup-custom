@@ -435,6 +435,12 @@
     <string name="insurance_desc">The migration file is your only copy. If it is lost or corrupted, all backup data is gone.\n\nTip: use MT Manager or any file manager to pack the whole DataBackup folder into a zip archive as an extra insurance before exporting.</string>
     <string name="insurance_confirm">Continue export</string>
     <string name="insurance_skip">Got it</string>
+    <string name="migration_export_to_cloud">Export to cloud</string>
+    <string name="migration_import_from_cloud">Import from cloud</string>
+    <string name="migration_select_cloud">Select cloud account</string>
+    <string name="migration_no_cloud">No cloud accounts configured</string>
+    <string name="migration_select_remote_package">Select a migration file in cloud</string>
+    <string name="migration_no_remote_package">No migration files in cloud</string>
     <string name="args_backed_up_at">Backed up at %1$s</string>
     <string name="args_restored_at">Restored at %1$s</string>
     <string name="task_details">Task details</string>

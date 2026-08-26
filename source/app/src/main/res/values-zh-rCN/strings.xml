@@ -420,6 +420,12 @@
     <string name="migration_stage_import_success_title">导入成功</string>
     <string name="migration_stage_import_success_desc">迁移包已恢复，备份列表已刷新</string>
     <string name="migration_export_done">完成</string>
+    <string name="migration_export_to_cloud">导出到云端</string>
+    <string name="migration_import_from_cloud">从云端导入</string>
+    <string name="migration_select_cloud">选择云端账号</string>
+    <string name="migration_no_cloud">未配置云端账号</string>
+    <string name="migration_select_remote_package">选择云端的迁移文件</string>
+    <string name="migration_no_remote_package">云端暂无迁移文件</string>
     <string name="insurance_title">加份保险？</string>
     <string name="insurance_desc">导出的迁移包只有一份，万一丢失或损坏，备份数据就全没了。\n\n建议你用 MT 管理器等文件管理器，先把整个 DataBackup 目录打包成压缩包（zip），作为额外保险，再导出迁移包。</string>
     <string name="insurance_confirm">继续导出</string>

@@ -3,11 +3,13 @@ package com.xayah.feature.main.dashboard
 import android.content.Context
 import android.net.Uri
 import com.xayah.core.data.repository.AppsRepo
+import com.xayah.core.data.repository.CloudRepository
 import com.xayah.core.data.repository.PackageRepository
 import com.xayah.core.data.repository.UsersRepo
 import com.xayah.core.model.OpType
 import com.xayah.core.model.SortType
 import com.xayah.core.model.UserInfo
+import com.xayah.core.model.database.CloudEntity
 import com.xayah.core.util.DateUtil
 import com.xayah.core.util.SymbolUtil
 import com.xayah.core.util.command.BaseUtil
@@ -52,10 +54,15 @@ class DataMigrationExportViewModel @Inject constructor(
     private val appsRepo: AppsRepo,
     private val packageRepository: PackageRepository,
     private val usersRepo: UsersRepo,
+    private val cloudRepo: CloudRepository,
 ) : androidx.lifecycle.ViewModel() {
 
     private val _allItems = MutableStateFlow<List<DataMigrationExportItem>>(emptyList())
     val allItems: StateFlow<List<DataMigrationExportItem>> = _allItems.asStateFlow()
+
+    /** 已配置的云端账号列表（WebDAV/FTP/SFTP），供「导出到云端」选择 */
+    private val _clouds = MutableStateFlow<List<CloudEntity>>(emptyList())
+    val clouds: StateFlow<List<CloudEntity>> = _clouds.asStateFlow()
 
     private val _userList = MutableStateFlow<List<UserInfo>>(emptyList())
     val userList: StateFlow<List<UserInfo>> = _userList.asStateFlow()
@@ -105,9 +112,14 @@ class DataMigrationExportViewModel @Inject constructor(
         _isLoading.value = true
         _error.value = null
         runCatching {
+            // 云端账号列表（导出到云端时选择目标）
+            _clouds.value = cloudRepo.query()
             // 扫描本地备份目录，确保列表最新（与恢复页刷新逻辑一致）
             appsRepo.load(null) { _, _, _ -> }
-            val packages = packageRepository.queryPackages(OpType.RESTORE, false)
+            // 只列本地备份记录（cloud 为空 = 本地目录备份）：
+            // 云端恢复时会把云端记录写入数据库（cloud 非空），但本地 /storage/emulated/0/DataBackup/apps
+            // 下没有对应目录，勾选导出会报 tar "Cannot stat"。云端备份请走云备份恢复，不参与本地迁移打包。
+            val packages = packageRepository.queryPackages(OpType.RESTORE, "", context.localBackupSaveDir())
             val groups = packages.groupBy { it.archivesRelativeDir.substringBeforeLast('/') }
             val itemList = groups.map { (dir, entities) ->
                 DataMigrationExportItem(
@@ -225,47 +237,14 @@ class DataMigrationExportViewModel @Inject constructor(
 
     /**
      * 把勾选的版本目录（apps/<label_pkg>/<user_0...>）打包成迁移包并写入用户选择的 uri。
+     * 本地模式：打包 → 复制到 SAF 目标位置 → 删除临时文件。
      */
     suspend fun export(uri: Uri): Boolean = withIOContext {
         _isExporting.value = true
         _stage.value = MigrationStage.Processing
         _error.value = null
         val result = runCatching {
-            val selectedDirs = _selectedKeys.value
-            check(selectedDirs.isNotEmpty()) { "no selected" }
-            val backupDir = context.localBackupSaveDir()
-            val tmpDir = context.filesDir
-            val dstPath = "$tmpDir/DataBackup_migration_${DateUtil.getTimestamp()}.tar.zst"
-
-            // tar --totals -cpf - -C "<backupDir>" -- "apps/dir1" "apps/dir2" | zstd ... > "<dstPath>"
-            val srcArgs = selectedDirs.map { SymbolUtil.shellQuote("apps/$it") }.toTypedArray()
-            val shellResult = BaseUtil.execute(
-                "tar", "--totals", "-cpf", "-",
-                "-C", SymbolUtil.shellQuote(backupDir),
-                "--", *srcArgs,
-                "|", "zstd -r -T0 -q --priority=rt",
-                ">", SymbolUtil.shellQuote(dstPath),
-            )
-            check(shellResult.code == 0) { shellResult.out.joinToString("\n") }
-
-            // 计算迁移包 SHA-256（流式，数 GB 文件不进内存），导出完成后展示给用户
-            val digest = MessageDigest.getInstance("SHA-256")
-            File(dstPath).inputStream().use { input ->
-                val buffer = ByteArray(1024 * 1024)
-                while (true) {
-                    val read = input.read(buffer)
-                    if (read == -1) break
-                    digest.update(buffer, 0, read)
-                }
-            }
-            _lastSha256.value = digest.digest().joinToString("") { "%02x".format(it) }
-
-            // 写入本机历史记录：时间 + 应用数 + 校验码，供导入页快速回查
-            val appCount = _selectedKeys.value.map { it.substringBeforeLast('/') }.distinct().size
-            MigrationShaHistoryStore.append(
-                context,
-                MigrationShaRecord(time = DateUtil.getTimestamp(), apps = appCount, sha = _lastSha256.value!!),
-            )
+            val dstPath = buildMigrationPackage()
 
             // 复制大文件到 SAF：必须 IO 线程 + 大缓冲，否则主线程阻塞导致卡顿/ANR
             context.contentResolver.openOutputStream(uri)?.use { out ->
@@ -290,6 +269,91 @@ class DataMigrationExportViewModel @Inject constructor(
             _stage.value = MigrationStage.Idle
             false
         }
+    }
+
+    /**
+     * 导出到云端：打包后直接上传到云端根目录的 migration/ 子目录（与 apps/files/configs 平级）。
+     * 上传成功后 CloudRepository.upload 会自动删除本地临时迁移包，无需手动清理。
+     * 受保护版本的处理与本地导出完全一致（共用 buildMigrationPackage 的勾选与打包逻辑）。
+     */
+    suspend fun exportToCloud(cloudName: String): Boolean = withIOContext {
+        _isExporting.value = true
+        _stage.value = MigrationStage.Processing
+        _error.value = null
+        val result = runCatching {
+            val dstPath = buildMigrationPackage()
+            cloudRepo.withClient(cloudName) { client, entity ->
+                val remoteMigrationDir = "${entity.remote}/migration"
+                // 首次上传时目标目录可能不存在（如刚配置的云端），先逐级创建
+                client.mkdirRecursively(remoteMigrationDir)
+                val uploadResult = cloudRepo.upload(client = client, src = dstPath, dstDir = remoteMigrationDir)
+                check(uploadResult.code == 0) { uploadResult.out.joinToString("\n") }
+            }
+        }
+        _isExporting.value = false
+        if (result.isSuccess) {
+            _success.value = true
+            _stage.value = MigrationStage.Success
+            true
+        } else {
+            _error.value = result.exceptionOrNull()?.message
+            _stage.value = MigrationStage.Idle
+            false
+        }
+    }
+
+    /**
+     * 打包勾选的版本目录到本地临时文件（含 SHA-256 计算与历史记录写入），返回临时文件路径。
+     * 本地导出与云端导出共用，保证受保护版本的勾选语义与打包内容完全一致。
+     */
+    private suspend fun buildMigrationPackage(): String = withIOContext {
+        val selectedDirs = _selectedKeys.value
+        check(selectedDirs.isNotEmpty()) { "no selected" }
+        val backupDir = context.localBackupSaveDir()
+
+        // 预检：勾选的版本目录必须真实存在于本地备份目录。
+        // 数据库可能残留云端恢复写入的记录（本地无对应目录）或已被手动删除的目录，
+        // 直接打包会得到 tar 的模糊 "Cannot stat" 错误，这里提前给出明确提示。
+        val missing = selectedDirs.filter { dir -> File("$backupDir/apps/$dir").exists().not() }
+        check(missing.isEmpty()) {
+            "以下备份目录不存在，无法打包（可能来自云端备份或已被删除）：\n" +
+                missing.joinToString("\n") { "• ${it.substringBeforeLast('/')}" }
+        }
+
+        // 迁移包文件名用可读的北京时间（与本地导出 SAF 默认文件名一致），
+        // 云端目录里一眼可分辨新旧；不用 epoch 毫秒（一串数字无法辨认时间）。
+        val dstPath = "${context.filesDir}/DataBackup_migration_${DateUtil.formatTimestamp(DateUtil.getTimestamp(), "yyyyMMdd_HHmmss")}.tar.zst"
+
+        // tar --totals -cpf - -C "<backupDir>" -- "apps/dir1" "apps/dir2" | zstd ... > "<dstPath>"
+        val srcArgs = selectedDirs.map { SymbolUtil.shellQuote("apps/$it") }.toTypedArray()
+        val shellResult = BaseUtil.execute(
+            "tar", "--totals", "-cpf", "-",
+            "-C", SymbolUtil.shellQuote(backupDir),
+            "--", *srcArgs,
+            "|", "zstd -r -T0 -q --priority=rt",
+            ">", SymbolUtil.shellQuote(dstPath),
+        )
+        check(shellResult.code == 0) { shellResult.out.joinToString("\n") }
+
+        // 计算迁移包 SHA-256（流式，数 GB 文件不进内存），导出完成后展示给用户
+        val digest = MessageDigest.getInstance("SHA-256")
+        File(dstPath).inputStream().use { input ->
+            val buffer = ByteArray(1024 * 1024)
+            while (true) {
+                val read = input.read(buffer)
+                if (read == -1) break
+                digest.update(buffer, 0, read)
+            }
+        }
+        _lastSha256.value = digest.digest().joinToString("") { "%02x".format(it) }
+
+        // 写入本机历史记录：时间 + 应用数 + 校验码，供导入页快速回查
+        val appCount = _selectedKeys.value.map { it.substringBeforeLast('/') }.distinct().size
+        MigrationShaHistoryStore.append(
+            context,
+            MigrationShaRecord(time = DateUtil.getTimestamp(), apps = appCount, sha = _lastSha256.value!!),
+        )
+        dstPath
     }
 
     /**

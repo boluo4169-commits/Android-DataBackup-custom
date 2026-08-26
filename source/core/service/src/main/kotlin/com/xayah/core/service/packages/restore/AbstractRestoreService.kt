@@ -117,27 +117,34 @@ internal abstract class AbstractRestoreService : AbstractPackagesService() {
         ChecksumConfirmation.reset()
 
         // 备份完整性检查：恢复前扫描每个应用的备份目录，.md5 存在但归档本体缺失（或目录为空）时提示用户
-        val integrityIssues = mutableListOf<IntegrityIssue>()
-        val checkedDirs = mutableSetOf<String>()
-        mPkgEntities.forEach { pkg ->
-            val p = pkg.packageEntity
-            // 兼容旧目录：新格式（应用名_包名）不存在则回退纯包名
-            val newSrcDir = "${mAppsDir}/${p.archivesRelativeDir}"
-            val srcDir = if (mRootService.exists(newSrcDir)) newSrcDir else "${mAppsDir}/${p.legacyArchivesRelativeDir}"
-            // 同一应用勾选多个版本时目录可能重复，只检查一次
-            if (checkedDirs.add(srcDir)) {
-                IntegrityChecker.checkDir(
-                    rootService = mRootService,
-                    srcDir = srcDir,
-                    label = p.packageInfo.label,
-                    packageName = p.packageName,
-                )?.let { integrityIssues.add(it) }
+        // 云端恢复跳过此检查：检查对象是本地临时目录，而文件尚未从云端下载，必然误报「无备份文件」
+        // （实测：FTP 恢复 1688 弹「备份文件不完整」，点确定后下载 + MD5 校验一切正常）；
+        // 云端的安全性由每包下载后的 ChecksumUtil.verify（MD5 校验）兜底，不损失防护。
+        if (this is RestoreServiceCloudImpl) {
+            log { "Cloud restore: skip pre-download integrity check (files not downloaded yet; per-package MD5 verify still applies)." }
+        } else {
+            val integrityIssues = mutableListOf<IntegrityIssue>()
+            val checkedDirs = mutableSetOf<String>()
+            mPkgEntities.forEach { pkg ->
+                val p = pkg.packageEntity
+                // 兼容旧目录：新格式（应用名_包名）不存在则回退纯包名
+                val newSrcDir = "${mAppsDir}/${p.archivesRelativeDir}"
+                val srcDir = if (mRootService.exists(newSrcDir)) newSrcDir else "${mAppsDir}/${p.legacyArchivesRelativeDir}"
+                // 同一应用勾选多个版本时目录可能重复，只检查一次
+                if (checkedDirs.add(srcDir)) {
+                    IntegrityChecker.checkDir(
+                        rootService = mRootService,
+                        srcDir = srcDir,
+                        label = p.packageInfo.label,
+                        packageName = p.packageName,
+                    )?.let { integrityIssues.add(it) }
+                }
             }
-        }
-        if (integrityIssues.isNotEmpty()) {
-            if (IntegrityConfirmation.awaitDecision(IntegrityReport(integrityIssues)).not()) {
-                log { "Restore cancelled by user: incomplete backup archives." }
-                return
+            if (integrityIssues.isNotEmpty()) {
+                if (IntegrityConfirmation.awaitDecision(IntegrityReport(integrityIssues)).not()) {
+                    log { "Restore cancelled by user: incomplete backup archives." }
+                    return
+                }
             }
         }
 

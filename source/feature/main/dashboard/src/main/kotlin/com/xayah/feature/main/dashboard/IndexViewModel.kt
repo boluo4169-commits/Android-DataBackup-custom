@@ -41,9 +41,12 @@ class IndexViewModel @Inject constructor(
                 directoryRepo.updateSelected()
 
                 runCatching {
-                    val release = githubRepo.getLatestRelease()
+                    // 只在应用版本（tag 以 v 开头，如 v3.6.6）中找最新版；
+                    // 排除配套工具等其他 release（如 companion-v1.0），避免手机端收到无关更新通知
+                    val release = githubRepo.getReleases()
+                        .firstOrNull { it.tagName.matches(Regex("^v\\d+")) }
                     // tag 形如 "v3.0.0"，versionName 形如 "3.0.0"，去掉 v 前缀后对比
-                    if (release.tagName.removePrefix("v") != BuildConfigUtil.VERSION_NAME) {
+                    if (release != null && release.tagName.removePrefix("v") != BuildConfigUtil.VERSION_NAME) {
                         emitState(state.copy(latestRelease = release))
                     } else {
                         emitState(state.copy(latestRelease = null))

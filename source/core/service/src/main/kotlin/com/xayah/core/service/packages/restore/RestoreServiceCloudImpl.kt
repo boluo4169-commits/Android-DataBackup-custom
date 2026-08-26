@@ -94,6 +94,13 @@ internal class RestoreServiceCloudImpl @Inject constructor() : AbstractRestoreSe
     override val mAppsDir by lazy { mPathUtil.getCloudTmpAppsDir() }
     override val mConfigsDir by lazy { mPathUtil.getCloudTmpConfigsDir() }
 
+    // 云端恢复完成后清理下载的临时文件（与备份侧对齐）。
+    // 此前未实现 clear()，下载的归档会永久残留在 DataBackupTmpDir 占用空间。
+    override suspend fun clear() {
+        mRootService.deleteRecursively(mRootDir)
+        mClient.disconnect()
+    }
+
     @Inject
     lateinit var mCloudRepo: CloudRepository
 

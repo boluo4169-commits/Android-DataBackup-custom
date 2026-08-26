@@ -34,3 +34,5 @@ docs/mappings/
 /*.log
 
 companion/ftp-server/dist/
+
+__pycache__/

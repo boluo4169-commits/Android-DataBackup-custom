@@ -43,31 +43,45 @@ echo     *   重构维护: boluo4169-commits                     *
 echo     ****************************************************
 echo.
 
-REM ---------- custom username / password / backup folder ----------
+REM ---------- custom username ----------
 set "FTP_USER=%~1"
-set "FTP_PASS=%~2"
-set "FTP_DIR=%~3"
-
 if "%FTP_USER%"=="" set /p "FTP_USER=请输入 FTP 用户名 [databackup]: "
 if "%FTP_USER%"=="" set "FTP_USER=databackup"
 
-set "PASS_IS_RANDOM=0"
-if "%FTP_PASS%"=="" set /p "FTP_PASS=请输入 FTP 密码 [留空自动生成随机密码]: "
+REM ---------- password: random or manual ----------
+set "FTP_PASS=%~2"
+set "PASS_MODE=1"
+if "%FTP_PASS%"=="" (
+    echo.
+    echo 请选择密码方式:
+    echo   [1] 自动生成随机密码（推荐, 8 位字母数字）
+    echo   [2] 手动输入密码
+    set /p "PASS_MODE=选择 [1]: "
+)
+if "%FTP_PASS%"=="" if "%PASS_MODE%"=="2" set /p "FTP_PASS=请输入密码: "
 if "%FTP_PASS%"=="" (
     for /f %%i in ('powershell -NoProfile -Command "-join((48..57)+(65..90)+(97..122) | Get-Random -Count 8 | ForEach-Object {[char]$_})"') do set "FTP_PASS=%%i"
-    set "PASS_IS_RANDOM=1"
+    echo 已生成随机密码: %FTP_PASS%   （连接信息卡片中也会显示）
 )
-if "%PASS_IS_RANDOM%"=="1" echo 已为您自动生成密码: %FTP_PASS%   （请记好, 下方连接信息中也会显示）
+if "%FTP_PASS%"=="" (
+    for /f %%i in ('powershell -NoProfile -Command "-join((48..57)+(65..90)+(97..122) | Get-Random -Count 8 | ForEach-Object {[char]$_})"') do set "FTP_PASS=%%i"
+    echo 未输入有效密码, 已改用随机密码: %FTP_PASS%
+)
 
-if "%FTP_DIR%"=="" set /p "FTP_DIR=请设置备份保存路径 [D:\DataBackupFTP]: "
+REM ---------- backup folder: default or folder picker ----------
+set "FTP_DIR=%~3"
+set "DIR_MODE=1"
 if "%FTP_DIR%"=="" (
-    if exist "D:\" (
-        set "FTP_DIR=D:\DataBackupFTP"
-    ) else (
-        echo [提示] 未检测到 D 盘, 改为 C:\DataBackupFTP
-        set "FTP_DIR=C:\DataBackupFTP"
-    )
+    echo.
+    echo 请选择备份保存位置:
+    echo   [1] 默认路径（有 D 盘用 D:\DataBackupFTP, 否则 C:\DataBackupFTP）
+    echo   [2] 浏览文件夹...
+    set /p "DIR_MODE=选择 [1]: "
 )
+if "%FTP_DIR%"=="" if "%DIR_MODE%"=="2" for /f "delims=" %%i in ('powershell -STA -NoProfile -Command "Add-Type -AssemblyName System.Windows.Forms; $f=New-Object System.Windows.Forms.FolderBrowserDialog; $f.Description='选择备份保存目录'; if($f.ShowDialog() -eq [System.Windows.Forms.DialogResult]::OK){$f.SelectedPath}"') do set "FTP_DIR=%%i"
+if "%FTP_DIR%"=="" echo 未选择文件夹或已取消, 使用默认路径。
+if "%FTP_DIR%"=="" if exist "D:\" set "FTP_DIR=D:\DataBackupFTP"
+if "%FTP_DIR%"=="" set "FTP_DIR=C:\DataBackupFTP"
 if not exist "%FTP_DIR%" mkdir "%FTP_DIR%" 2>nul
 if not exist "%FTP_DIR%" (
     echo [错误] 无法创建备份目录: %FTP_DIR%

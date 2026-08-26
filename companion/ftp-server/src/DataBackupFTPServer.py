@@ -82,6 +82,22 @@ def run_selftest(user, pw, port):
         return False
 
 
+def pick_folder():
+    """Open a native folder-picker dialog. Returns path or None."""
+    try:
+        import tkinter as tk
+        from tkinter import filedialog
+        root = tk.Tk()
+        root.withdraw()
+        root.attributes("-topmost", True)
+        path = filedialog.askdirectory(title="选择备份保存目录")
+        root.destroy()
+        return path or None
+    except Exception:
+        print("（无法打开文件夹选择窗口）")
+        return None
+
+
 def main():
     # Separate flags (--xxx) from positional arguments (user/password/dir)
     raw = sys.argv[1:]
@@ -94,12 +110,32 @@ def main():
     password = positional[1]
     backup_dir = positional[2].strip()
 
+    # 密码: 随机生成 or 手动输入
     if not password:
-        password = gen_password()
-        print("已为您自动生成密码: %s   （连接信息卡片中也会显示）" % password)
+        print("\n请选择密码方式:")
+        print("  [1] 自动生成随机密码（推荐, 8 位字母数字）")
+        print("  [2] 手动输入密码")
+        mode = input("选择 [1]: ").strip()
+        if mode == "2":
+            password = input("请输入密码: ").strip()
+        if not password:
+            password = gen_password()
+            print("已生成随机密码: %s   （连接信息卡片中也会显示）" % password)
+
+    # 目录: 默认 or 文件夹选择对话框
+    if not backup_dir:
+        print("\n请选择备份保存位置:")
+        print("  [1] 默认路径（有 D 盘用 D:\\DataBackupFTP, 否则 C:\\DataBackupFTP）")
+        print("  [2] 浏览文件夹...")
+        mode = input("选择 [1]: ").strip()
+        if mode == "2":
+            backup_dir = pick_folder() or ""
+            if backup_dir:
+                print("备份保存到: %s" % backup_dir)
+        if not backup_dir:
+            print("未选择文件夹或已取消, 使用默认路径。")
     if not backup_dir:
         backup_dir = r"D:\DataBackupFTP" if os.path.exists("D:\\") else r"C:\DataBackupFTP"
-        print("备份保存路径: %s" % backup_dir)
 
     os.makedirs(backup_dir, exist_ok=True)
     lan_ips = list_lan_ips()

@@ -1,8 +1,8 @@
 name: Build Companion (FTP Server exe)
 
 on:
-  push:
-    tags: ["companion-v*"]
+  release:
+    types: [published]
   workflow_dispatch:
 
 permissions:
@@ -27,20 +27,23 @@ jobs:
           --distpath dist --workpath build --specpath build
           companion/ftp-server/src/DataBackupFTPServer.py
 
-      - name: Smoke test (--exit-after-selftest)
+      - name: Smoke test (--exit-after-selftest, positional args skip interactive prompts)
         run: |
-          $proc = Start-Process -FilePath "dist\DataBackupFTPServer.exe" -ArgumentList "--exit-after-selftest" -PassThru -NoNewWindow -RedirectStandardOutput "out.txt"
+          New-Item -ItemType Directory -Force "$env:TEMP\smokedir" | Out-Null
+          $proc = Start-Process -FilePath "dist\DataBackupFTPServer.exe" -ArgumentList "--exit-after-selftest databackup smokepass $env:TEMP\smokedir" -PassThru -NoNewWindow -RedirectStandardOutput "out.txt"
           $proc.WaitForExit(60000) | Out-Null
           Get-Content out.txt
           if ($proc.ExitCode -ne 0) { exit 1 }
+
+      # App Release 发布时自动把 exe 附加到同一个 Release 的 Assets
+      # （与 APK 同页展示；workflow_dispatch 手动触发时不附加）
+      - name: Attach exe to the App release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release upload ${{ github.event.release.tag_name }} dist/DataBackupFTPServer.exe --clobber
 
       - uses: actions/upload-artifact@v4
         with:
           name: DataBackupFTPServer
           path: dist/DataBackupFTPServer.exe
-
-      - name: Attach to release
-        if: startsWith(github.ref, 'refs/tags/')
-        uses: softprops/action-gh-release@v2
-        with:
-          files: dist/DataBackupFTPServer.exe

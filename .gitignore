@@ -38,3 +38,5 @@ companion/ftp-server/dist/
 __pycache__/
 
 /·şÎñÆ÷/
+
+companion/ftp-server/src/_tool_version.py

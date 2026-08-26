@@ -1,7 +1,8 @@
 @echo off
 chcp 65001 >nul
 setlocal EnableExtensions
-title DataBackup Companion - FTP Backup Server v1.0
+set "SCRIPT_VER=1.1"
+title DataBackup Companion - FTP Backup Server v1.1
 
 REM ============================================================
 REM  DataBackup Companion - FTP 数据服务器 (Windows 一键部署)
@@ -34,14 +35,23 @@ if %errorlevel% neq 0 (
 )
 
 echo.
-echo     ****************************************************
-echo     *          DataBackup Companion                    *
-echo     *          FTP 数据服务器  v1.0                     *
-echo     *                                                  *
-echo     *   原始创意: 酷安 @喵脆角12448                     *
-echo     *   重构维护: boluo4169-commits                     *
-echo     ****************************************************
+echo    ____        _           ____                _
+echo   ^|  _ \  __ _^| ^|_ __ _   ^|  _ \ _   _  __ _^| ^|  _ __ ___
+echo  ^| ^| ^| ^|^/ _` ^| __/ _` ^|  ^| ^|_) ^| ^| ^| ^|^/ _` ^| ^| ^| '_ ` _ \
+echo  ^| ^|_^| ^| (_^| ^| ^|^| (_^| ^|  ^|  _ ^<^| ^|_^| ^| (_^| ^| ^| ^| ^| ^| ^| ^| ^|
+echo  ^|____/ \__,_^\__\__,_^|  ^|_^| \_\\__,_^\__,_^|_^| ^|_^| ^|_^| ^|_^|
+echo   DataBackup Companion - FTP 数据服务器  v%SCRIPT_VER%
+echo   ------------------------------------------------------
+echo   原始创意 : 酷安 @喵脆角12448
+echo   重构维护 : boluo4169-commits (酷安 @骏冲冲)
+echo   项目地址 : https://github.com/boluo4169-commits/Android-DataBackup-custom
+echo   许可     : MIT
 echo.
+
+REM ---------- check latest release (5s timeout, silent on failure) ----------
+set "LATEST_TAG="
+for /f "usebackq delims=" %%i in (`powershell -NoProfile -Command "try { (Invoke-RestMethod -Uri 'https://api.github.com/repos/boluo4169-commits/Android-DataBackup-custom/releases/latest' -TimeoutSec 5).tag_name } catch {}"`) do set "LATEST_TAG=%%i"
+if defined LATEST_TAG echo   最新版本   : %LATEST_TAG%   （如有更新请到上方 Releases 页下载）
 
 REM ---------- custom username ----------
 set "FTP_USER=%~1"

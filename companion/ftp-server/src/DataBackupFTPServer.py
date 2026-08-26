@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 """DataBackup Companion — FTP Backup Server (standalone executable).
 
-Original idea by Coolapk @喵脆角12448, refactored by boluo4169-commits. MIT.
+Original idea by Coolapk @喵脆角12448, refactored by boluo4169-commits (Coolapk @骏冲冲). MIT.
 
 Usage:
     DataBackupFTPServer.exe [username] [password] [backup_dir]
@@ -35,6 +35,51 @@ except ImportError:
 LISTEN_PORT = int(os.environ.get("FTP_PORT", "2121"))
 PASSIVE_MIN = int(os.environ.get("FTP_PASSIVE_MIN", "60000"))
 PASSIVE_PORTS = range(PASSIVE_MIN, PASSIVE_MIN + 101)
+
+
+try:
+    from _tool_version import TOOL_VERSION  # injected at CI build time (e.g. "v3.6.6")
+except Exception:
+    TOOL_VERSION = "dev"
+
+REPO_URL = "https://github.com/boluo4169-commits/Android-DataBackup-custom"
+BANNER = r"""
+  ____        _           ____                _
+ |  _ \  __ _| |_ __ _   |  _ \ _   _  __ _| |  _ __ ___
+ | | | |/ _` | __/ _` |  | |_) | | | |/ _` | | | '_ ` _ \
+ | |_| | (_| | || (_| |  |  _ <| |_| | (_| | | | | | | | |
+ |____/ \__,_|\__\__,_|  |_| \_\\__,_|\__,_|_| |_| |_| |_|
+ DataBackup Companion - FTP 数据服务器  v{ver}
+ ----------------------------------------------------------
+ 原始创意 : 酷安 @喵脆角12448
+ 重构维护 : boluo4169-commits (酷安 @骏冲冲)
+ 项目地址 : {repo}
+ 许可     : MIT
+"""
+
+
+def print_banner():
+    print(BANNER.format(ver=TOOL_VERSION, repo=REPO_URL))
+
+
+def check_update():
+    """Background: compare latest App release tag with the injected tool version."""
+    if TOOL_VERSION == "dev":
+        return
+    try:
+        import json
+        import urllib.request
+        req = urllib.request.Request(
+            REPO_URL.replace("https://", "https://api.") + "/releases/latest",
+            headers={"User-Agent": "DataBackupCompanion"},
+        )
+        with urllib.request.urlopen(req, timeout=8) as r:
+            data = json.load(r)
+        tag = data.get("tag_name", "")
+        if tag and tag != TOOL_VERSION:
+            print("  [更新提示] 检测到新版本 %s（当前 %s）, 下载: %s/releases" % (tag, TOOL_VERSION, REPO_URL))
+    except Exception:
+        pass
 
 
 def list_lan_ips():
@@ -100,6 +145,11 @@ def pick_folder():
 
 
 def main():
+    print_banner()
+
+    import threading
+    threading.Thread(target=check_update, daemon=True).start()
+
     # Separate flags (--xxx) from positional arguments (user/password/dir)
     raw = sys.argv[1:]
     flags = [a for a in raw if a.startswith("--")]

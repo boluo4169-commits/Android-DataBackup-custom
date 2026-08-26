@@ -57,6 +57,7 @@ if "%FTP_PASS%"=="" (
     for /f %%i in ('powershell -NoProfile -Command "-join((48..57)+(65..90)+(97..122) | Get-Random -Count 8 | ForEach-Object {[char]$_})"') do set "FTP_PASS=%%i"
     set "PASS_IS_RANDOM=1"
 )
+if "%PASS_IS_RANDOM%"=="1" echo 已为您自动生成密码: %FTP_PASS%   （请记好, 下方连接信息中也会显示）
 
 if "%FTP_DIR%"=="" set /p "FTP_DIR=请设置备份保存路径 [D:\DataBackupFTP]: "
 if "%FTP_DIR%"=="" (
@@ -137,7 +138,7 @@ echo 防火墙规则: 已就绪
 REM ---------- extract the embedded python script ----------
 set "WKDIR=%TEMP%\DataBackupFTP_server"
 if not exist "%WKDIR%" mkdir "%WKDIR%"
-powershell -NoProfile -Command "$l = Get-Content -LiteralPath '%~f0'; $m = ($l | Select-String '^###PYCODE###$').LineNumber; if(-not $m){ Write-Error 'PYCODE marker not found'; exit 1 }; [IO.File]::WriteAllLines('%WKDIR%\ftp_server.py', $l[$m..($l.Count-1)])"
+powershell -NoProfile -Command "$l = Get-Content -LiteralPath '%~f0' -Encoding UTF8; $m = ($l | Select-String '^###PYCODE###$').LineNumber; if(-not $m){ Write-Error 'PYCODE marker not found'; exit 1 }; [IO.File]::WriteAllLines('%WKDIR%\ftp_server.py', $l[$m..($l.Count-1)])"
 if errorlevel 1 (
     echo [错误] 内嵌服务端代码提取失败
     pause

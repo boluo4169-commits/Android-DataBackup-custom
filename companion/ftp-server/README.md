@@ -10,12 +10,17 @@ Windows 上一键部署 FTP 备份服务器,配合 [DataBackup 定制版](https:
 
 ## 快速开始
 
-1. 下载本目录的 `DataBackupFTPServer.bat`(或从 Releases 获取)
-2. 双击运行(会自动请求管理员权限),按提示回车/输入即可
-3. 启动完成后,窗口会显示**连接信息卡片**(地址/端口/用户名/密码)
-4. 手机 DataBackup → 云备份 → FTP,照卡片填写即可
+**方式一（推荐，零依赖）**：从 [Releases](https://github.com/boluo4169-commits/Android-DataBackup-custom/releases) 下载 `DataBackupFTPServer.exe`，双击运行——无需安装 Python。
 
-全部选项支持直接回车用默认值;密码留空会自动生成 8 位随机强密码。
+**方式二（透明可审）**：下载/查看本目录的 `DataBackupFTPServer.bat` 脚本版（需要联网自动安装 Python 环境）。
+
+两者之后：
+
+1. 按提示回车/输入即可（会自动请求管理员权限）
+2. 启动完成后，窗口会显示**连接信息卡片**（地址/端口/用户名/密码）
+3. 手机 DataBackup → 云备份 → FTP，照卡片填写即可
+
+全部选项支持直接回车用默认值；密码留空会自动生成 8 位随机强密码并当场显示。
 
 ## 手机端配置对照
 

@@ -32,3 +32,5 @@ keystore.properties
 
 docs/mappings/
 /*.log
+
+companion/ftp-server/dist/

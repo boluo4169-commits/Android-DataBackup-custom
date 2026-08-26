@@ -1,0 +1,46 @@
+name: Build Companion (FTP Server exe)
+
+on:
+  push:
+    tags: ["companion-v*"]
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: pip install pyftpdlib pyinstaller
+
+      - name: Build single-file exe
+        run: >
+          pyinstaller --onefile --console --name DataBackupFTPServer
+          --distpath dist --workpath build --specpath build
+          companion/ftp-server/src/DataBackupFTPServer.py
+
+      - name: Smoke test (--exit-after-selftest)
+        run: |
+          $proc = Start-Process -FilePath "dist\DataBackupFTPServer.exe" -ArgumentList "--exit-after-selftest" -PassThru -NoNewWindow -RedirectStandardOutput "out.txt"
+          $proc.WaitForExit(60000) | Out-Null
+          Get-Content out.txt
+          if ($proc.ExitCode -ne 0) { exit 1 }
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: DataBackupFTPServer
+          path: dist/DataBackupFTPServer.exe
+
+      - name: Attach to release
+        if: startsWith(github.ref, 'refs/tags/')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/DataBackupFTPServer.exe

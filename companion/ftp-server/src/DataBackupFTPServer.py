@@ -32,8 +32,9 @@ except ImportError:
     input("按回车退出...")
     sys.exit(1)
 
-LISTEN_PORT = 2121
-PASSIVE_PORTS = range(60000, 60101)
+LISTEN_PORT = int(os.environ.get("FTP_PORT", "2121"))
+PASSIVE_MIN = int(os.environ.get("FTP_PASSIVE_MIN", "60000"))
+PASSIVE_PORTS = range(PASSIVE_MIN, PASSIVE_MIN + 101)
 
 
 def list_lan_ips():
@@ -106,7 +107,11 @@ def main():
     while len(positional) < 3:
         positional.append("")
 
-    user = positional[0].strip() or "databackup"
+    user = positional[0].strip()
+    if not user:
+        user = input("请输入 FTP 用户名 [databackup]: ").strip()
+    if not user:
+        user = "databackup"
     password = positional[1]
     backup_dir = positional[2].strip()
 
@@ -158,7 +163,9 @@ def main():
         server = FTPServer(("0.0.0.0", LISTEN_PORT), handler)
     except OSError as e:
         print("错误: 端口 %d 绑定失败 (%s)。可能已有 FTP 服务在运行。" % (LISTEN_PORT, e))
-        input("按回车退出...")
+        print("提示: 可用环境变量 FTP_PORT / FTP_PASSIVE_MIN 换端口后重试。")
+        try: input("按回车退出...")
+        except Exception: pass
         sys.exit(1)
 
     print("请在手机 DataBackup（云备份 -> FTP）中填写:")

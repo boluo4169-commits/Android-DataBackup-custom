@@ -43,10 +43,15 @@ PASSIVE_MIN = int(os.environ.get("FTP_PASSIVE_MIN", "60000"))
 PASSIVE_PORTS = range(PASSIVE_MIN, PASSIVE_MIN + 101)
 
 
+# companion 自身的版本号（独立于 App；更新时手动 bump 这里）
+COMPANION_VERSION = "v1.2"
+
 try:
-    from _tool_version import TOOL_VERSION  # injected at CI build time (e.g. "v3.6.6")
+    # CI 构建时注入「构建所对应的 App release tag」（如 v3.6.7），
+    # 仅用于更新检测（配套 App 更新提示），不影响 companion 自身版本显示
+    from _tool_version import APP_BUILD_TAG
 except Exception:
-    TOOL_VERSION = "dev"
+    APP_BUILD_TAG = "dev"
 
 REPO_URL = "https://github.com/boluo4169-commits/Android-DataBackup-custom"
 BANNER = r"""
@@ -65,12 +70,14 @@ BANNER = r"""
 
 
 def print_banner():
-    print(BANNER.format(ver=TOOL_VERSION, repo=REPO_URL))
+    print(BANNER.format(ver=COMPANION_VERSION, repo=REPO_URL))
 
 
 def check_update():
-    """Background: compare latest App release tag with the injected tool version."""
-    if TOOL_VERSION == "dev":
+    """Background: companion 跟随 App 发布节奏（exe 附加在 App release）。
+    检测 App 是否有比本构建更新的 release；有则提示去 Releases 下载最新配套工具。
+    """
+    if APP_BUILD_TAG == "dev":
         return
     try:
         import json
@@ -82,8 +89,11 @@ def check_update():
         with urllib.request.urlopen(req, timeout=8) as r:
             data = json.load(r)
         tag = data.get("tag_name", "")
-        if tag and tag != TOOL_VERSION:
-            print("  [更新提示] 检测到新版本 %s（当前 %s）, 下载: %s/releases" % (tag, TOOL_VERSION, REPO_URL))
+        if tag and tag != APP_BUILD_TAG:
+            print(
+                "  [更新提示] 配套 DataBackup 已更新到 %s（本工具构建基于 %s），"
+                "最新配套工具请到 %s/releases 下载" % (tag, APP_BUILD_TAG, REPO_URL)
+            )
     except Exception:
         pass
 

@@ -9,6 +9,7 @@ import com.xayah.core.database.dao.DirectoryDao
 import com.xayah.core.database.dao.LabelDao
 import com.xayah.core.database.dao.MediaDao
 import com.xayah.core.database.dao.PackageDao
+import com.xayah.core.database.dao.ScheduleDao
 import com.xayah.core.database.dao.TaskDao
 import com.xayah.core.database.util.StringListConverters
 import com.xayah.core.model.database.CloudEntity
@@ -19,12 +20,13 @@ import com.xayah.core.model.database.LabelFileCrossRefEntity
 import com.xayah.core.model.database.MediaEntity
 import com.xayah.core.model.database.PackageEntity
 import com.xayah.core.model.database.ProcessingInfoEntity
+import com.xayah.core.model.database.ScheduleEntity
 import com.xayah.core.model.database.TaskDetailMediaEntity
 import com.xayah.core.model.database.TaskDetailPackageEntity
 import com.xayah.core.model.database.TaskEntity
 
 @Database(
-    version = 7,
+    version = 8,
     exportSchema = true,
     entities = [
         PackageEntity::class,
@@ -38,6 +40,7 @@ import com.xayah.core.model.database.TaskEntity
         LabelEntity::class,
         LabelAppCrossRefEntity::class,
         LabelFileCrossRefEntity::class,
+        ScheduleEntity::class,
     ],
     autoMigrations = [
         AutoMigration(from = 1, to = 2),
@@ -46,6 +49,7 @@ import com.xayah.core.model.database.TaskEntity
         AutoMigration(from = 4, to = 5),
         AutoMigration(from = 5, to = 6, spec = DatabaseMigrations.Schema5to6::class),
         AutoMigration(from = 6, to = 7),
+        AutoMigration(from = 7, to = 8),
     ]
 )
 @TypeConverters(StringListConverters::class)
@@ -56,4 +60,5 @@ abstract class AppDatabase : RoomDatabase() {
     abstract fun directoryDao(): DirectoryDao
     abstract fun cloudDao(): CloudDao
     abstract fun labelDao(): LabelDao
+    abstract fun scheduleDao(): ScheduleDao
 }

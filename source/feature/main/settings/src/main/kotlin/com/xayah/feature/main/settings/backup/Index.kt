@@ -17,6 +17,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Info
+import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
 import androidx.compose.material3.Text
@@ -50,6 +51,7 @@ import com.xayah.core.datastore.saveMaxPreserveCount
 import com.xayah.core.model.CompressionType
 import com.xayah.core.model.KillAppOption
 import com.xayah.core.model.util.indexOf
+import com.xayah.core.ui.component.Clickable
 import com.xayah.core.ui.component.InnerBottomSpacer
 import com.xayah.core.ui.component.LocalSlotScope
 import com.xayah.core.ui.component.Selectable
@@ -57,7 +59,10 @@ import com.xayah.core.ui.component.Slideable
 import com.xayah.core.ui.component.Switchable
 import com.xayah.core.ui.component.select
 import com.xayah.core.ui.model.DialogRadioItem
+import com.xayah.core.ui.route.MainRoutes
 import com.xayah.core.ui.token.SizeTokens
+import com.xayah.core.ui.util.LocalNavController
+import com.xayah.core.util.navigateSingle
 import com.xayah.feature.main.settings.R
 import com.xayah.feature.main.settings.SettingsScaffold
 import kotlinx.coroutines.launch
@@ -175,6 +180,15 @@ fun PageBackupSettings() {
                     if (state.isConfirm) {
                         context.saveKillAppOption(dialogItems[selectedIndex].enum!!)
                     }
+                }
+
+                val navController = LocalNavController.current!!
+                Clickable(
+                    title = stringResource(id = R.string.schedules),
+                    value = stringResource(id = R.string.schedules_desc),
+                    trailingIcon = Icons.Rounded.KeyboardArrowRight,
+                ) {
+                    navController.navigateSingle(MainRoutes.Schedules.route)
                 }
 
                 Switchable(

@@ -1,20 +1,24 @@
 package com.xayah.feature.main.list
 
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.outlined.Cloud
+import androidx.compose.material.icons.outlined.UnfoldMore
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FilterChip
 import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -25,10 +29,12 @@ import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
+import androidx.compose.ui.unit.dp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xayah.core.data.repository.Filters
@@ -45,9 +51,12 @@ import com.xayah.core.ui.component.CheckBox
 import com.xayah.core.ui.component.DataChips
 import com.xayah.core.ui.component.ModalBottomSheet
 import com.xayah.core.ui.component.RadioButtons
+import com.xayah.core.ui.component.SortDirectionRow
 import com.xayah.core.ui.component.Title
-import com.xayah.core.ui.component.TitleSort
+import com.xayah.core.ui.component.TitleLargeText
 import com.xayah.core.ui.component.paddingHorizontal
+import com.xayah.core.ui.theme.ThemedColorSchemeKeyTokens
+import com.xayah.core.ui.theme.value
 import com.xayah.core.ui.token.SizeTokens
 import com.xayah.core.util.localBackupSaveDir
 import com.xayah.core.work.WorkManagerInitializer
@@ -96,10 +105,12 @@ internal fun ListBottomSheet(
                 sortType = uiState.sortType,
                 labelEntities = uiState.labelEntities,
                 labels = uiState.labels,
+                defaultBackupAll = uiState.defaultBackupAll,
                 onClickLabel = viewModel::addOrRemoveLabel,
                 setFilters = viewModel::setFilters,
                 onSortByType = viewModel::setSortByType,
                 onSortByIndex = viewModel::setSortByIndex,
+                onDefaultBackupAllChange = viewModel::setDefaultBackupAll,
                 onDismissRequest = onDismissRequest,
             )
 
@@ -128,9 +139,11 @@ internal fun ListBottomSheet(
                 sortType = uiState.sortType,
                 labelEntities = uiState.labelEntities,
                 labels = uiState.labels,
+                defaultBackupAll = uiState.defaultBackupAll,
                 onClickLabel = viewModel::addOrRemoveLabel,
                 onSortByType = viewModel::setSortByType,
                 onSortByIndex = viewModel::setSortByIndex,
+                onDefaultBackupAllChange = viewModel::setDefaultBackupAll,
                 onDismissRequest = onDismissRequest,
             )
         }
@@ -245,10 +258,12 @@ internal fun AppsFilterSheet(
     sortType: SortType,
     labelEntities: List<LabelEntity>,
     labels: Set<String>,
+    defaultBackupAll: Boolean,
     onClickLabel: (String) -> Unit,
     setFilters: (Filters) -> Unit,
     onSortByType: () -> Unit,
     onSortByIndex: (Int) -> Unit,
+    onDefaultBackupAllChange: (Boolean) -> Unit,
     onDismissRequest: () -> Unit,
 ) {
     val context = LocalContext.current
@@ -287,7 +302,7 @@ internal fun AppsFilterSheet(
                 LabelsFlow(labelEntities = labelEntities, labels = labels, onClick = onClickLabel)
             }
 
-            TitleSort(text = stringResource(id = R.string.sort), sortType = sortType, onSort = onSortByType)
+            SortDirectionRow(text = stringResource(id = R.string.sort), sortType = sortType, onClick = onSortByType)
             RadioButtons(selected = sortIndex, items = stringArrayResource(id = R.array.backup_sort_type_items_apps).toList(), onSelect = onSortByIndex)
         }
     }
@@ -302,9 +317,11 @@ internal fun FilesFilterSheet(
     sortType: SortType,
     labelEntities: List<LabelEntity>,
     labels: Set<String>,
+    defaultBackupAll: Boolean,
     onClickLabel: (String) -> Unit,
     onSortByType: () -> Unit,
     onSortByIndex: (Int) -> Unit,
+    onDefaultBackupAllChange: (Boolean) -> Unit,
     onDismissRequest: () -> Unit,
 ) {
     if (isShow) {
@@ -314,7 +331,7 @@ internal fun FilesFilterSheet(
                 LabelsFlow(labelEntities = labelEntities, labels = labels, onClick = onClickLabel)
             }
 
-            TitleSort(text = stringResource(id = R.string.sort), sortType = sortType, onSort = onSortByType)
+            SortDirectionRow(text = stringResource(id = R.string.sort), sortType = sortType, onClick = onSortByType)
             RadioButtons(
                 selected = sortIndex,
                 items = stringArrayResource(id = R.array.backup_sort_type_items_files).toList(),

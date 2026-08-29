@@ -106,6 +106,16 @@ class PackageRepository @Inject constructor(
         }
     }
 
+    private fun sortByLastUpdateTimeNew(type: SortType): Comparator<PackageEntity> = when (type) {
+        SortType.ASCENDING -> {
+            compareBy { p -> p.packageInfo.lastUpdateTime }
+        }
+
+        SortType.DESCENDING -> {
+            compareByDescending { p -> p.packageInfo.lastUpdateTime }
+        }
+    }
+
     private fun sortByDataSizeNew(type: SortType): Comparator<PackageEntity> = when (type) {
         SortType.ASCENDING -> {
             compareBy { p -> p.storageStatsBytes }
@@ -138,7 +148,8 @@ class PackageRepository @Inject constructor(
 
     fun getSortComparatorNew(sortIndex: Int, sortType: SortType): Comparator<in PackageEntity> = when (sortIndex) {
         1 -> sortByInstallTimeNew(sortType)
-        2 -> sortByDataSizeNew(sortType)
+        2 -> sortByLastUpdateTimeNew(sortType)
+        3 -> sortByDataSizeNew(sortType)
         else -> sortByAlphabetNew(sortType)
     }
 

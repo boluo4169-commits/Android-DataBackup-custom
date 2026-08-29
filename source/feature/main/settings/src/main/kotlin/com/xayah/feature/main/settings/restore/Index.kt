@@ -28,6 +28,7 @@ import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
@@ -52,14 +53,15 @@ import com.xayah.core.ui.component.Selectable
 import com.xayah.core.ui.component.Switchable
 import com.xayah.core.ui.component.Title
 import com.xayah.core.ui.component.select
+import com.xayah.core.ui.material3.CircularProgressIndicator
 import com.xayah.core.ui.model.DialogRadioItem
 import com.xayah.core.ui.theme.ThemedColorSchemeKeyTokens
 import com.xayah.core.ui.theme.value
 import com.xayah.core.ui.token.SizeTokens
 import com.xayah.core.util.command.Ownership
 import com.xayah.feature.main.settings.R
-import kotlinx.coroutines.launch
 import com.xayah.feature.main.settings.SettingsScaffold
+import kotlinx.coroutines.launch
 
 @ExperimentalLayoutApi
 @ExperimentalAnimationApi
@@ -210,6 +212,14 @@ fun PageRestoreSettings() {
                     } else {
                         context.getString(R.string.fix_ownership_run_btn)
                     },
+                    trailingExtra = if (fixing) {
+                        {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(SizeTokens.Level18),
+                                strokeCap = StrokeCap.Round,
+                            )
+                        }
+                    } else null,
                     onClick = suspend {
                         fixing = true
                         val report = try {

@@ -31,6 +31,10 @@
     <item name="apps_which_have_no_backups" type="string" />
     <item name="installed" type="string" />
     <item name="not_installed" type="string" />
+    <item name="sort_asc" type="string" />
+    <item name="sort_desc" type="string" />
+    <item name="default_backup_all" type="string" />
+    <item name="default_backup_all_desc" type="string" />
 
     <item name="backup_sort_type_items_apps" type="array" />
     <item name="backup_sort_type_items_files" type="array" />

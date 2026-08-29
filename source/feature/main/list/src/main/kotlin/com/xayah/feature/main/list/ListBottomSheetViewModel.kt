@@ -48,7 +48,8 @@ class ListBottomSheetViewModel @Inject constructor(
             listDataRepo.getAppList(),
             labelsRepo.getLabelsFlow(),
             cloudRepo.clouds,
-        ) { lData, aList, labels, clouds ->
+            listDataRepo.defaultBackupAll,
+        ) { lData, aList, labels, clouds, defaultBackupAll ->
             val listData = lData.castTo<ListData.Apps>()
             Success.Apps(
                 opType = opType,
@@ -60,15 +61,17 @@ class ListBottomSheetViewModel @Inject constructor(
                 showDataItemsSheet = listData.showDataItemsSheet,
                 filters = listData.filters,
                 appList = aList,
-                clouds = clouds
+                clouds = clouds,
+                defaultBackupAll = defaultBackupAll,
             )
         }
 
         Target.Files -> combine(
             listDataRepo.getListData(),
             listDataRepo.getFileList(),
-            labelsRepo.getLabelsFlow()
-        ) { lData, fList, labels ->
+            labelsRepo.getLabelsFlow(),
+            listDataRepo.defaultBackupAll,
+        ) { lData, fList, labels, defaultBackupAll ->
             val listData = lData.castTo<ListData.Files>()
             Success.Files(
                 opType = opType,
@@ -78,6 +81,7 @@ class ListBottomSheetViewModel @Inject constructor(
                 labelEntities = labels,
                 labels = listData.labels,
                 fileList = fList,
+                defaultBackupAll = defaultBackupAll,
             )
         }
     }.stateIn(
@@ -119,6 +123,11 @@ class ListBottomSheetViewModel @Inject constructor(
 
     fun setSortByIndex(index: Int) {
         viewModelScope.launchOnDefault {
+            // "最近更新"(index 2)默认 DESCENDING（新→旧），符合用户直觉（最近装/更新的应用排在最上面）。
+            // 其他排序项保持用户上次选的方向不变。
+            if (index == 2 && listDataRepo.sortTypeFlow.value == SortType.ASCENDING) {
+                listDataRepo.setSortType { SortType.DESCENDING }
+            }
             listDataRepo.setSortIndex { index }
         }
     }
@@ -144,6 +153,12 @@ class ListBottomSheetViewModel @Inject constructor(
             }
         }
     }
+
+    fun setDefaultBackupAll(value: Boolean) {
+        viewModelScope.launchOnDefault {
+            listDataRepo.setDefaultBackupAll(value)
+        }
+    }
 }
 
 sealed interface ListBottomSheetUiState {
@@ -167,6 +182,7 @@ sealed interface ListBottomSheetUiState {
             val filters: Filters,
             val appList: List<App>,
             val clouds: List<CloudEntity>,
+            val defaultBackupAll: Boolean,
         ) : Success(opType, showFilterSheet, sortIndex, sortType, labelEntities, labels)
 
         data class Files(
@@ -177,6 +193,7 @@ sealed interface ListBottomSheetUiState {
             override val labelEntities: List<LabelEntity>,
             override val labels: Set<String>,
             val fileList: List<File>,
+            val defaultBackupAll: Boolean,
         ) : Success(opType, showFilterSheet, sortIndex, sortType, labelEntities, labels)
     }
 }

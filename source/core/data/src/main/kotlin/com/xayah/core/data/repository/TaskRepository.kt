@@ -21,6 +21,12 @@ class TaskRepository @Inject constructor(
     fun queryTaskFlow(id: Long) = taskDao.queryTaskFlow(id)
     fun queryTasksFlow() = taskDao.queryTasksFlow()
 
+    /** 是否有任务正在处理（定时备份用：与手动备份串行，避免并发写归档）。 */
+    suspend fun hasProcessingTask(): Boolean = taskDao.countProcessing() > 0
+
+    /** 冷启动清理残留的「处理中」尸体任务（进程死亡后不可能仍在备份）。 */
+    suspend fun clearStaleProcessing() = taskDao.clearProcessing()
+
     fun queryProcessingInfoFlow(taskId: Long, type: ProcessingType) = taskDao.queryProcessingInfoFlow(taskId, type)
     fun queryProcessingInfoFlow(taskId: Long) = taskDao.queryProcessingInfoFlow(taskId)
     fun queryPackageFlow(taskId: Long) = taskDao.queryPackageFlow(taskId)

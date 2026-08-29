@@ -32,12 +32,15 @@ import javax.inject.Inject
 class ListViewModel @Inject constructor(
     @ApplicationContext private val context: Context,
     savedStateHandle: SavedStateHandle,
-    listDataRepo: ListDataRepo,
+    private val listDataRepo: ListDataRepo,
 ) : ViewModel() {
     private val target: Target = Target.valueOf(savedStateHandle.get<String>(MainRoutes.ARG_TARGET)!!.decodeURL().trim())
     private val opType: OpType = OpType.of(savedStateHandle.get<String>(MainRoutes.ARG_OP_TYPE)?.decodeURL()?.trim())
     private val cloudName: String = savedStateHandle.get<String>(MainRoutes.ARG_ACCOUNT_NAME)?.decodeURL()?.trim() ?: ""
     private val backupDir: String = savedStateHandle.get<String>(MainRoutes.ARG_ACCOUNT_REMOTE)?.decodeURL()?.trim()?.ifEmpty { context.localBackupSaveDir() } ?: context.localBackupSaveDir()
+
+    /** 从备份引导页进入时为 true：FAB「继续」= 返回引导页（引导页重新扫描最新选择），而非进入对应处理流程。 */
+    private val returnToSetup: Boolean = savedStateHandle.get<Boolean>(MainRoutes.ARG_RETURN_TO_SETUP) ?: false
 
     init {
         // Reset list data
@@ -103,10 +106,18 @@ class ListViewModel @Inject constructor(
 
                 else -> {}
             }
+            // "默认全量备份"开关：进入备份页时自动 selectAll 所有应用/文件。
+            // 关闭开关时此调用直接 return，不动用户已选。
+            listDataRepo.autoSelectAllIfEnabled(opType = opType, target = target)
         }
     }
 
     fun toNextPage(navController: NavHostController) {
+        if (returnToSetup) {
+            // 一键备份引导页带入的列表：返回引导页重新扫描，不进入处理流程
+            navController.popBackStack()
+            return
+        }
         when (target) {
             Target.Apps -> {
                 when (opType) {

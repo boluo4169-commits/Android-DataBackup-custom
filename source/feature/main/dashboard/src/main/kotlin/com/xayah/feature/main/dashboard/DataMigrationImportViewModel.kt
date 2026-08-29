@@ -60,6 +60,36 @@ class DataMigrationImportViewModel @Inject constructor(
     private val _isImporting = MutableStateFlow(false)
     val isImporting: StateFlow<Boolean> = _isImporting.asStateFlow()
 
+    /**
+     * 分段进度：解析阶段 3 段（下载/校验/解析），导入阶段 1 段（解压与恢复）。
+     * Processing 阶段外保持为空列表。
+     */
+    private val _importStages = MutableStateFlow<List<String>>(emptyList())
+    val importStages: StateFlow<List<String>> = _importStages.asStateFlow()
+
+    private val _importCurrentStage = MutableStateFlow(0)
+    val importCurrentStage: StateFlow<Int> = _importCurrentStage.asStateFlow()
+
+    private val _importStageProgress = MutableStateFlow(0f)
+    val importStageProgress: StateFlow<Float> = _importStageProgress.asStateFlow()
+
+    /** 解析阶段 3 段索引。 */
+    private val importStageDownloading = 0
+    private val importStageVerifying = 1
+    private val importStageParsingList = 2
+
+    /** 切换分段 + 段内进度。 */
+    private fun setImportStage(index: Int, progress: Float = 0f) {
+        _importCurrentStage.value = index
+        _importStageProgress.value = progress
+    }
+
+    private fun endImportStages() {
+        _importStages.value = emptyList()
+        _importCurrentStage.value = 0
+        _importStageProgress.value = 0f
+    }
+
     private val _error = MutableStateFlow<String?>(null)
     val error: StateFlow<String?> = _error.asStateFlow()
 
@@ -114,16 +144,19 @@ class DataMigrationImportViewModel @Inject constructor(
      *
      * @param expectedSha256 发包方提供的校验码；非空则强校验，不匹配直接拒绝导入。
      */
-    suspend fun parse(uri: Uri, expectedSha256: String? = null): List<String> = withIOContext {
+    suspend fun parse(uri: Uri, expectedSha256: String? = null, stageLabels: List<String>): List<String> = withIOContext {
         _isParsing.value = true
         _stage.value = MigrationStage.Processing
         _error.value = null
         _detailMessage.value = null
+        // 解析阶段用 3 段：下载 / 校验 / 解析
+        _importStages.value = stageLabels.take(3)
+        setImportStage(importStageDownloading, progress = 0f)
         val result = runCatching {
             // 清理上一次可能残留的临时文件
             cleanupTmpFile()
             val tmpFile = "${context.filesDir}/import_${DateUtil.getTimestamp()}.tar.zst"
-            // 迁移包可能数 GB，用大缓冲 + IO 线程复制，避免主线程阻塞
+            // 段 0：迁移包可能数 GB，用大缓冲 + IO 线程复制，避免主线程阻塞
             context.contentResolver.openInputStream(uri)?.use { input ->
                 File(tmpFile).outputStream().use { output ->
                     val buffer = ByteArray(1024 * 1024)
@@ -134,8 +167,14 @@ class DataMigrationImportViewModel @Inject constructor(
                     }
                 }
             } ?: error("open input stream failed")
+            setImportStage(importStageDownloading, progress = 1f)
             tmpFilePath = tmpFile
-            parseTmpFile(tmpFile, expectedSha256)
+            // 段 1 + 2 的校验 / 解析在 parseTmpFile 内推进
+            parseTmpFile(tmpFile, expectedSha256,
+                onVerifying = { setImportStage(importStageVerifying, progress = 0f) },
+                onParsing = { setImportStage(importStageParsingList, progress = 0f) },
+                onDone = { setImportStage(importStageParsingList, progress = 1f) },
+            )
         }
         finishParsing(result)
     }
@@ -145,11 +184,14 @@ class DataMigrationImportViewModel @Inject constructor(
      * 与本地 parse 共用同一套解析逻辑：SHA-256 校验、应用列表提取、安全门闩全部一致，
      * 导入后的受保护版本处理也与本地导入完全相同。
      */
-    suspend fun parseFromCloud(cloudName: String, remotePath: String, expectedSha256: String? = null): List<String> = withIOContext {
+    suspend fun parseFromCloud(cloudName: String, remotePath: String, expectedSha256: String? = null, stageLabels: List<String>): List<String> = withIOContext {
         _isParsing.value = true
         _stage.value = MigrationStage.Processing
         _error.value = null
         _detailMessage.value = null
+        // 解析阶段用 3 段：下载 / 校验 / 解析
+        _importStages.value = stageLabels.take(3)
+        setImportStage(importStageDownloading, progress = 0f)
         val result = runCatching {
             cleanupTmpFile()
             val tmpFile = "${context.filesDir}/import_${DateUtil.getTimestamp()}.tar.zst"
@@ -162,8 +204,13 @@ class DataMigrationImportViewModel @Inject constructor(
                 check(File(downloaded).renameTo(File(tmpFile))) { "failed to move downloaded migration file" }
                 File(tmpDir).delete()
             }
+            setImportStage(importStageDownloading, progress = 1f)
             tmpFilePath = tmpFile
-            parseTmpFile(tmpFile, expectedSha256)
+            parseTmpFile(tmpFile, expectedSha256,
+                onVerifying = { setImportStage(importStageVerifying, progress = 0f) },
+                onParsing = { setImportStage(importStageParsingList, progress = 0f) },
+                onDone = { setImportStage(importStageParsingList, progress = 1f) },
+            )
         }
         finishParsing(result)
     }
@@ -172,9 +219,16 @@ class DataMigrationImportViewModel @Inject constructor(
      * 解析本地临时迁移包：SHA-256 校验 + 应用列表提取 + 安全门闩。
      * 本地导入与云端导入共用（parse / parseFromCloud 都调用这里）。
      */
-    private suspend fun parseTmpFile(tmpFile: String, expectedSha256: String?): List<String> {
+    private suspend fun parseTmpFile(
+        tmpFile: String,
+        expectedSha256: String?,
+        onVerifying: () -> Unit = {},
+        onParsing: () -> Unit = {},
+        onDone: () -> Unit = {},
+    ): List<String> {
         // 可选完整性校验：与导出端展示的 SHA-256 对比
         if (!expectedSha256.isNullOrBlank()) {
+            onVerifying()
             val actual = sha256Of(File(tmpFile))
             val expected = expectedSha256.trim().lowercase().removePrefix("sha256:")
             if (actual != expected) {
@@ -182,6 +236,7 @@ class DataMigrationImportViewModel @Inject constructor(
             }
         }
 
+        onParsing()
         // zstd -d -c "<tmp>" | tar -tf -
         val shellResult = BaseUtil.execute(
             "zstd", "-d", "-c", SymbolUtil.shellQuote(tmpFile),
@@ -209,6 +264,7 @@ class DataMigrationImportViewModel @Inject constructor(
             )
         }
 
+        onDone()
         _parsedApps.value = apps
         return apps
     }
@@ -216,8 +272,9 @@ class DataMigrationImportViewModel @Inject constructor(
     /** 解析结束统一收尾：成功回 Idle；失败按异常类型分流展示并清理临时文件 */
     private fun finishParsing(result: Result<List<String>>): List<String> {
         _isParsing.value = false
+        // 解析完成回到 Idle，Card 消失，弹窗确认后再走 import 重新设置 stages
+        endImportStages()
         if (result.isSuccess) {
-            // 解析完成回到 Idle（用户即将在弹窗里点 CONFIRM 触发 import）
             _stage.value = MigrationStage.Idle
             return result.getOrDefault(emptyList())
         }
@@ -260,10 +317,13 @@ class DataMigrationImportViewModel @Inject constructor(
     /**
      * 把临时迁移包解压到备份目录，修正 SELinux，刷新备份列表。
      */
-    suspend fun import(): Boolean = withIOContext {
+    suspend fun import(stageLabels: List<String>): Boolean = withIOContext {
         _isImporting.value = true
         _stage.value = MigrationStage.Processing
         _error.value = null
+        // 导入阶段只 1 段：解压与恢复（解析阶段已在 confirmImport 前完成）
+        _importStages.value = listOf(stageLabels.getOrNull(3) ?: "")
+        setImportStage(0, progress = 0f)
         val result = runCatching {
             val tmpFile = tmpFilePath ?: error("no tmp file")
             val backupDir = context.localBackupSaveDir()
@@ -280,6 +340,7 @@ class DataMigrationImportViewModel @Inject constructor(
 
             // 刷新，让恢复列表识别新导入的备份
             appsRepo.load(null) { _, _, _ -> }
+            setImportStage(0, progress = 1f)
         }
         // 无论成功失败都清理临时文件，避免残留
         cleanupTmpFile()

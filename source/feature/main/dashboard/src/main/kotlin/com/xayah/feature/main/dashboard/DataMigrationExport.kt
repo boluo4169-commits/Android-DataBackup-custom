@@ -85,9 +85,9 @@ import com.xayah.core.ui.component.PackageIconImage
 import com.xayah.core.ui.component.RadioButtons
 import com.xayah.core.ui.component.SearchBar
 import com.xayah.core.ui.component.SecondaryTopBar
+import com.xayah.core.ui.component.SortDirectionRow
 import com.xayah.core.ui.component.Surface
 import com.xayah.core.ui.component.TitleLargeText
-import com.xayah.core.ui.component.TitleSort
 import com.xayah.core.ui.component.paddingHorizontal
 import com.xayah.core.ui.component.paddingVertical
 import com.xayah.core.ui.theme.ThemedColorSchemeKeyTokens
@@ -124,15 +124,40 @@ fun PageDataMigrationExport(
     val stage by viewModel.stage.collectAsStateWithLifecycle()
     val lastSha256 by viewModel.lastSha256.collectAsStateWithLifecycle()
     val clouds by viewModel.clouds.collectAsStateWithLifecycle()
+    val exportStages by viewModel.exportStages.collectAsStateWithLifecycle()
+    val exportCurrentStage by viewModel.exportCurrentStage.collectAsStateWithLifecycle()
+    val exportStageProgress by viewModel.exportStageProgress.collectAsStateWithLifecycle()
 
-    // 阶段卡：根据 stage 选标题/描述
+    // 阶段卡：Processing 时根据 currentStage 动态显示「第 X / N 步 + 当前段名（带 Shimmer）」
     val (stageTitle, stageDesc) = when (stage) {
-        MigrationStage.Processing -> context.getString(R.string.migration_stage_processing_title) to
-            context.getString(R.string.migration_stage_processing_desc)
+        MigrationStage.Processing -> {
+            val labels = exportStages
+            val idx = exportCurrentStage.coerceIn(0, (labels.size - 1).coerceAtLeast(0))
+            val stepText = if (labels.isNotEmpty()) {
+                context.getString(
+                    R.string.migration_stage_segment_format,
+                    idx + 1,
+                    labels.size,
+                )
+            } else {
+                context.getString(R.string.migration_stage_processing_title)
+            }
+            // description 给 Card 的 BodyLargeText（无 Shimmer，中性文案）；Shimmer 文字由 Card 内部根据 stages[currentStageIndex] 渲染
+            stepText to context.getString(R.string.migration_stage_processing_desc)
+        }
         MigrationStage.Success -> context.getString(R.string.migration_stage_success_title) to
             context.getString(R.string.migration_stage_success_desc)
         else -> context.getString(R.string.migration_stage_idle_title) to
             context.getString(R.string.migration_stage_idle_desc)
+    }
+
+    val exportStageLabels = remember(context) {
+        listOf(
+            context.getString(R.string.migration_stage_segment_validating),
+            context.getString(R.string.migration_stage_segment_packing),
+            context.getString(R.string.migration_stage_segment_hashing),
+            context.getString(R.string.migration_stage_segment_uploading),
+        )
     }
 
     val displayItems = remember(allItems, userList, userIndex, searchQuery, sortIndex, sortType) {
@@ -162,7 +187,7 @@ fun PageDataMigrationExport(
                     Text(text = context.getString(R.string.insurance_desc))
                 }.first
                 // 导出含打包+压缩+复制大文件，必须在 IO 线程执行，否则主线程阻塞 → 卡顿/ANR
-                viewModel.export(it)
+                viewModel.export(it, exportStageLabels)
             }
         }
     }
@@ -331,19 +356,22 @@ fun PageDataMigrationExport(
         }
     ) { innerPadding ->
         if (stage != MigrationStage.Idle) {
-            // 导出中/完成：整页只显示进度卡（仿处理页）
-            Column(
+            // 导出中/完成：整页只显示进度卡（仿处理页）。内容垂直居中,长内容溢出可滚
+            androidx.compose.foundation.layout.Box(
                 modifier = Modifier
                     .fillMaxSize()
-                    .verticalScroll(rememberScrollState()),
+                    .verticalScroll(rememberScrollState())
+                    .padding(innerPadding),
+                contentAlignment = Alignment.Center,
             ) {
-                InnerTopSpacer(innerPadding = innerPadding)
                 MigrationStageCard(
                     stage = stage,
                     title = stageTitle,
                     description = stageDesc,
+                    stages = exportStages,
+                    currentStageIndex = exportCurrentStage,
+                    currentStageProgress = exportStageProgress,
                 )
-                InnerBottomSpacer(innerPadding = innerPadding)
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -416,10 +444,10 @@ fun PageDataMigrationExport(
             onDismissRequest = { showSortSheet = false },
             sheetState = sortSheetState,
         ) {
-            TitleSort(
+            SortDirectionRow(
                 text = stringResource(R.string.sort),
                 sortType = sortType,
-                onSort = viewModel::toggleSortType,
+                onClick = viewModel::toggleSortType,
             )
             RadioButtons(
                 selected = sortIndex,
@@ -452,7 +480,7 @@ fun PageDataMigrationExport(
                 clouds.forEach { cloud ->
                     Surface(onClick = {
                         showCloudSheet = false
-                        scope.launch { viewModel.exportToCloud(cloud.name) }
+                        scope.launch { viewModel.exportToCloud(cloud.name, exportStageLabels) }
                     }) {
                         Row(
                             modifier = Modifier

@@ -226,7 +226,7 @@ fun PageDashboard() {
                         QuickActionsButton(
                             modifier = Modifier.fillMaxWidth(),
                             enabled = nullBackupDir.not(),
-                            title = stringResource(id = R.string.data_migration),
+                            title = stringResource(id = R.string.backup_and_migration),
                             icon = Icons.Rounded.SwapHoriz,
                             colorContainer = ThemedColorSchemeKeyTokens.GreenPrimaryContainer,
                             colorL80D20 = ThemedColorSchemeKeyTokens.GreenL80D20,

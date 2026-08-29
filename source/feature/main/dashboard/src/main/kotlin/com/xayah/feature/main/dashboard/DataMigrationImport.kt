@@ -9,6 +9,7 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
@@ -90,6 +91,19 @@ fun PageDataMigrationImport(
     val detailMessage by viewModel.detailMessage.collectAsStateWithLifecycle()
     val success by viewModel.success.collectAsStateWithLifecycle()
     val stage by viewModel.stage.collectAsStateWithLifecycle()
+    val importStages by viewModel.importStages.collectAsStateWithLifecycle()
+    val importCurrentStage by viewModel.importCurrentStage.collectAsStateWithLifecycle()
+    val importStageProgress by viewModel.importStageProgress.collectAsStateWithLifecycle()
+
+    // 解析/导入 共用 4 段（段 0~2 解析阶段：读取 / 校验 / 解析；段 3 导入阶段：解压与恢复）
+    val importStageLabels = remember(context) {
+        listOf(
+            context.getString(R.string.migration_stage_import_segment_downloading),
+            context.getString(R.string.migration_stage_import_segment_verifying),
+            context.getString(R.string.migration_stage_import_segment_parsing),
+            context.getString(R.string.migration_stage_import_segment_extracting),
+        )
+    }
 
     // 可选的 SHA-256 校验码：导出端成功页会展示，粘贴到这里即可在导入前强校验完整性
     var checksumInput by rememberSaveable { mutableStateOf("") }
@@ -141,7 +155,7 @@ fun PageDataMigrationImport(
                     }
                 }.first
                 if (state == DismissState.CONFIRM) {
-                    viewModel.import()
+                    viewModel.import(importStageLabels)
                 } else {
                     // 用户取消或关闭弹窗，清理临时文件
                     viewModel.cleanupTmpFile()
@@ -155,18 +169,26 @@ fun PageDataMigrationImport(
         scope.launch { viewModel.loadClouds() }
     }
 
-    // 解析中 / 导入中 / 完成 三态文案（区分导出文案）
-    val stageTitle = when {
-        stage == MigrationStage.Processing && isParsing -> context.getString(R.string.migration_stage_parsing_title)
-        stage == MigrationStage.Processing && isImporting -> context.getString(R.string.migration_stage_importing_title)
-        stage == MigrationStage.Success -> context.getString(R.string.migration_stage_import_success_title)
-        else -> context.getString(R.string.migration_stage_import_idle_title)
-    }
-    val stageDesc = when {
-        stage == MigrationStage.Processing && isParsing -> context.getString(R.string.migration_stage_parsing_desc)
-        stage == MigrationStage.Processing && isImporting -> context.getString(R.string.migration_stage_importing_desc)
-        stage == MigrationStage.Success -> context.getString(R.string.migration_stage_import_success_desc)
-        else -> context.getString(R.string.migration_stage_import_idle_desc)
+    // Processing 时根据 importStages 动态显示「第 X / N 步 + 当前段名」
+    val (stageTitle, stageDesc) = when (stage) {
+        MigrationStage.Processing -> {
+            val labels = importStages
+            val idx = importCurrentStage.coerceIn(0, (labels.size - 1).coerceAtLeast(0))
+            val stepText = if (labels.isNotEmpty()) {
+                context.getString(
+                    R.string.migration_stage_segment_format,
+                    idx + 1,
+                    labels.size,
+                )
+            } else {
+                context.getString(R.string.migration_stage_processing_title)
+            }
+            stepText to context.getString(R.string.migration_stage_processing_desc)
+        }
+        MigrationStage.Success -> context.getString(R.string.migration_stage_import_success_title) to
+            context.getString(R.string.migration_stage_import_success_desc)
+        else -> context.getString(R.string.migration_stage_import_idle_title) to
+            context.getString(R.string.migration_stage_import_idle_desc)
     }
 
     val importLauncher = rememberLauncherForActivityResult(
@@ -178,6 +200,7 @@ fun PageDataMigrationImport(
                     viewModel.parse(
                         uri = it,
                         expectedSha256 = checksumInput.trim().takeIf { s -> s.isNotEmpty() },
+                        stageLabels = importStageLabels,
                     )
                 )
             }
@@ -272,19 +295,31 @@ fun PageDataMigrationImport(
             }
         }
     ) { innerPadding ->
-        Column(
-            modifier = Modifier
-                .verticalScroll(rememberScrollState())
-                .paddingHorizontal(SizeTokens.Level24),
-        ) {
-            InnerTopSpacer(innerPadding = innerPadding)
-            if (stage != MigrationStage.Idle) {
+        if (stage != MigrationStage.Idle) {
+            // 解析中 / 导入中 / 完成：整页只显示进度卡（仿导出页）。内容垂直居中,长内容溢出可滚
+            androidx.compose.foundation.layout.Box(
+                modifier = Modifier
+                    .fillMaxSize()
+                    .verticalScroll(rememberScrollState())
+                    .padding(innerPadding),
+                contentAlignment = androidx.compose.ui.Alignment.Center,
+            ) {
                 MigrationStageCard(
                     stage = stage,
                     title = stageTitle,
                     description = stageDesc,
+                    stages = importStages,
+                    currentStageIndex = importCurrentStage,
+                    currentStageProgress = importStageProgress,
                 )
-            } else {
+            }
+        } else {
+            Column(
+                modifier = Modifier
+                    .verticalScroll(rememberScrollState())
+                    .paddingHorizontal(SizeTokens.Level24),
+            ) {
+                InnerTopSpacer(innerPadding = innerPadding)
                 // 未开始时引导用户选择迁移包
                 androidx.compose.foundation.layout.Box(
                     modifier = Modifier
@@ -501,6 +536,7 @@ fun PageDataMigrationImport(
                                     cloudName = pkg.cloudName,
                                     remotePath = pkg.remotePath,
                                     expectedSha256 = checksumInput.trim().takeIf { s -> s.isNotEmpty() },
+                                    stageLabels = importStageLabels,
                                 )
                             )
                         }

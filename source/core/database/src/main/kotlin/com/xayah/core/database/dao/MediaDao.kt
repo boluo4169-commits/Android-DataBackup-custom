@@ -113,6 +113,12 @@ interface MediaDao {
     )
     suspend fun setBlocked(id: Long, blocked: Boolean)
 
+    @Query("UPDATE MediaEntity SET mediaInfo_displayBytes = :bytes WHERE id = :id")
+    suspend fun updateDisplayBytes(id: Long, bytes: Long)
+
+    @Query("UPDATE MediaEntity SET extraInfo_existed = :existed WHERE id = :id")
+    suspend fun setExisted(id: Long, existed: Boolean)
+
     @Delete(entity = MediaEntity::class)
     suspend fun delete(item: MediaEntity)
 

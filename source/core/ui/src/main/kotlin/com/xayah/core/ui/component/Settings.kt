@@ -220,6 +220,7 @@ fun Selectable(
     value: String? = null,
     desc: String? = null,
     current: String,
+    trailingExtra: (@Composable RowScope.() -> Unit)? = null,
     onClick: suspend () -> Unit = suspend {}
 ) {
     val scope = rememberCoroutineScope()
@@ -233,8 +234,13 @@ fun Selectable(
         },
         trailingContent = {
             FilledTonalButton(enabled = enabled, onClick = { scope.launch { onClick() } }) {
-
-                Text(text = current)
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(SizeTokens.Level8),
+                ) {
+                    Text(text = current)
+                    trailingExtra?.invoke(this)
+                }
             }
         },
         onClick = { scope.launch { onClick() } }

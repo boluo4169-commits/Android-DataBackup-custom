@@ -36,11 +36,16 @@ import kotlinx.coroutines.sync.withLock
 
 internal abstract class AbstractProcessingService : Service() {
     override fun onBind(intent: Intent): IBinder {
-        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
-            startForeground(1, NotificationUtil.getForegroundNotification(applicationContext), FOREGROUND_SERVICE_TYPE_DATA_SYNC)
-        } else {
-            startForeground(1, NotificationUtil.getForegroundNotification(applicationContext))
-        }
+        // 屏幕熄灭/App 处于后台时系统禁止启动 FGS（Android 12+ ForegroundServiceStartNotAllowedException），
+        // 不捕获会让 App 直接崩溃。降级为普通绑定服务继续执行：
+        // 刚从前台离开的进程短时间内不会被冻结，root 归档任务也能继续跑。
+        runCatching {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.UPSIDE_DOWN_CAKE) {
+                startForeground(1, NotificationUtil.getForegroundNotification(applicationContext), FOREGROUND_SERVICE_TYPE_DATA_SYNC)
+            } else {
+                startForeground(1, NotificationUtil.getForegroundNotification(applicationContext))
+            }
+        }.withLog()
         return mBinder
     }
 

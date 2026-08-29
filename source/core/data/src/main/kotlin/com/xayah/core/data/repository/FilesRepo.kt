@@ -75,12 +75,24 @@ class FilesRepo @Inject constructor(
     fun countFiles(opType: OpType) = filesDao.countFilesFlow(opType = opType, existed = true, blocked = false)
     fun countSelectedFiles(opType: OpType) = filesDao.countActivatedFilesFlow(opType = opType, existed = true, blocked = false)
 
+    /** 备份引导页用：取激活中的文件备份条目（与文件备份页全选同集合语义）。 */
+    suspend fun queryActivatedBackupFiles() = filesDao.queryActivated(OpType.BACKUP).filter { it.extraInfo.existed }
+
     suspend fun selectFile(id: Long, selected: Boolean) {
         filesDao.activateById(id, selected)
     }
 
     suspend fun selectAll(ids: List<Long>) {
         filesDao.activateByIds(ids, true)
+    }
+
+    /**
+     * 定时备份/一键备份用：全选文件备份列表（与文件备份页全选同集合语义：
+     * BACKUP + blocked=false + existed=true，目录暂时不存在的条目跳过）。
+     */
+    suspend fun activateAllForBackup() {
+        val files = filesDao.query(opType = OpType.BACKUP, blocked = false).filter { it.extraInfo.existed }
+        filesDao.activateByIds(files.map { it.id }, true)
     }
 
     suspend fun unselectAll(ids: List<Long>) {
@@ -155,7 +167,12 @@ class FilesRepo @Inject constructor(
         files.forEach { m ->
             val size = rootService.calculateSize(m.path)
             val existed = rootService.exists(m.path)
-            filesDao.upsert(m.copy(mediaInfo = m.mediaInfo.copy(displayBytes = size), extraInfo = m.extraInfo.copy(existed = existed, activated = m.extraInfo.activated && existed)))
+            // 本扫描只负责 displayBytes/existed 两个字段,必须用定向 UPDATE,不能整行 upsert:
+            // 快照在扫描开始时拍,若期间 autoSelectAllIfEnabled 并发 selectAll,整行回写会用快照里的
+            // 旧 activated 覆盖新写入的选择(文件页"闪一下没勾上"根因,2026-08-28)。
+            // selected 独立于文件存在性:existed=false 不清 activated,备份列表只显示 existed=true。
+            filesDao.updateDisplayBytes(m.id, size)
+            filesDao.setExisted(m.id, existed)
         }
     }
 

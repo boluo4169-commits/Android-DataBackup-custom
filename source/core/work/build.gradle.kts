@@ -14,6 +14,7 @@ dependencies {
     implementation(project(":core:data"))
     implementation(project(":core:util"))
     implementation(project(":core:model"))
+    implementation(project(":core:service"))
 
     // Work manager
     implementation(libs.androidx.work.runtime.ktx)

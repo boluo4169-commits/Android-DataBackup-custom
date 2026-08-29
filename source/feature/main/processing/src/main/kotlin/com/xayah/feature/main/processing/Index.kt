@@ -87,7 +87,8 @@ fun PageProcessing(
     finishedTitleId: Int,
     finishedSubtitleId: Int,
     finishedWithErrorsSubtitleId: Int,
-    viewModel: AbstractProcessingViewModel
+    viewModel: AbstractProcessingViewModel,
+    onFinished: () -> Unit = {},
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -115,6 +116,15 @@ fun PageProcessing(
 
     LaunchedEffect(null) {
         viewModel.emitIntentOnIO(ProcessingUiIntent.Initialize)
+    }
+
+    // 处理完成（到达「完成」阶段）后立即回调，供调用方接续流程（如一键备份 → 文件备份）。
+    // 条件用 >=：应用一个都没选时 dataItems 为空，处理完成后 processingIndex 同样会到达 size+2，
+    // 不能用 isNotEmpty 守卫（否则空应用备份完成后不会接续文件备份）。
+    LaunchedEffect(task?.processingIndex, dataItems.size) {
+        if (task != null && task!!.processingIndex >= dataItems.size + 2) {
+            onFinished()
+        }
     }
 
     LaunchedEffect(checksumRequest) {

@@ -4,4 +4,7 @@
     <item name="loading_backups" type="string" />
     <item name="updating_file_list" type="string" />
     <item name="wait_for_remaining_data_processing" type="string" />
+    <item name="schedule_done" type="string" />
+    <item name="schedule_failed" type="string" />
+    <item name="one_click_backup" type="string" />
 </resources>

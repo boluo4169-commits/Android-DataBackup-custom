@@ -156,6 +156,18 @@ class AppsRepo @Inject constructor(
         appsDao.activateByIds(ids, true)
     }
 
+    /**
+     * 定时备份/一键备份用：全选备份列表（与备份页 UI 全选同集合语义）。
+     * 与 ListDataRepo 的过滤对齐：BACKUP + blocked=false + 系统应用按「显示系统应用」开关过滤。
+     */
+    suspend fun activateAllForBackup() {
+        val loadSystemApps = context.readLoadSystemApps().first()
+        val apps = appsDao.queryPackages(OpType.BACKUP, blocked = false).filter {
+            loadSystemApps || ((it.packageInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0)
+        }
+        appsDao.activateByIds(apps.map { it.id }, true)
+    }
+
     suspend fun unselectAll(ids: List<Long>) {
         appsDao.activateByIds(ids, false)
     }

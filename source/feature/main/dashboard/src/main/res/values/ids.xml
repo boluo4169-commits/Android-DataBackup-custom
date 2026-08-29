@@ -22,6 +22,7 @@
     <item name="args_update_from" type="string" />
     <item name="history" type="string" />
     <item name="data_migration" type="string" />
+    <item name="backup_and_migration" type="string" />
     <item name="import_backup" type="string" />
     <item name="export_backup" type="string" />
     <item name="export_backup_desc" type="string" />
@@ -49,6 +50,15 @@
     <item name="migration_stage_idle_desc" type="string" />
     <item name="migration_stage_processing_title" type="string" />
     <item name="migration_stage_processing_desc" type="string" />
+    <item name="migration_stage_segment_validating" type="string" />
+    <item name="migration_stage_segment_packing" type="string" />
+    <item name="migration_stage_segment_hashing" type="string" />
+    <item name="migration_stage_segment_uploading" type="string" />
+    <item name="migration_stage_segment_format" type="string" />
+    <item name="migration_stage_import_segment_downloading" type="string" />
+    <item name="migration_stage_import_segment_verifying" type="string" />
+    <item name="migration_stage_import_segment_parsing" type="string" />
+    <item name="migration_stage_import_segment_extracting" type="string" />
     <item name="migration_stage_success_title" type="string" />
     <item name="migration_stage_success_desc" type="string" />
     <item name="migration_stage_import_idle_title" type="string" />
@@ -70,6 +80,8 @@
     <item name="insurance_desc" type="string" />
     <item name="insurance_confirm" type="string" />
     <item name="insurance_skip" type="string" />
+    <item name="one_click_backup" type="string" />
+    <item name="one_click_backup_desc" type="string" />
 
     <item name="ic_rounded_package_2" type="drawable" />
     <item name="ic_rounded_folder_open" type="drawable" />

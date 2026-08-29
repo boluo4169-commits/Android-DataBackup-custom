@@ -22,7 +22,8 @@ val KeyRandomizeSsaid = booleanPreferencesKey("randomize_ssaid")
 val KeyRandomizeGaid = booleanPreferencesKey("randomize_gaid")
 val KeyClearDeviceFingerprint = booleanPreferencesKey("clear_device_fingerprint")
 val KeyPreserveBackups = booleanPreferencesKey("preserve_backups")
-val KeyFixDataOwnership = booleanPreferencesKey("fix_data_ownership")
+    val KeyFixDataOwnership = booleanPreferencesKey("fix_data_ownership")
+    val KeyDefaultBackupAll = booleanPreferencesKey("default_backup_all")
 
 // -----------------------------------------Read-----------------------------------------
 fun Context.readMonet() = readStoreBoolean(key = KeyMonet, defValue = true)
@@ -44,6 +45,7 @@ fun Context.readRandomizeGaid() = readStoreBoolean(key = KeyRandomizeGaid, defVa
 fun Context.readClearDeviceFingerprint() = readStoreBoolean(key = KeyClearDeviceFingerprint, defValue = false)
 fun Context.readPreserveBackups() = readStoreBoolean(key = KeyPreserveBackups, defValue = false)
 fun Context.readFixDataOwnership() = readStoreBoolean(key = KeyFixDataOwnership, defValue = true)
+fun Context.readDefaultBackupAll() = readStoreBoolean(key = KeyDefaultBackupAll, defValue = false)
 
 // -----------------------------------------Write-----------------------------------------
 suspend fun Context.saveMonet(value: Boolean) = saveStoreBoolean(key = KeyMonet, value = value)
@@ -65,3 +67,4 @@ suspend fun Context.saveRandomizeGaid(value: Boolean) = saveStoreBoolean(key = K
 suspend fun Context.saveClearDeviceFingerprint(value: Boolean) = saveStoreBoolean(key = KeyClearDeviceFingerprint, value = value)
 suspend fun Context.savePreserveBackups(value: Boolean) = saveStoreBoolean(key = KeyPreserveBackups, value = value)
 suspend fun Context.saveFixDataOwnership(value: Boolean) = saveStoreBoolean(key = KeyFixDataOwnership, value = value)
+suspend fun Context.saveDefaultBackupAll(value: Boolean) = saveStoreBoolean(key = KeyDefaultBackupAll, value = value)

@@ -15,6 +15,8 @@ import androidx.compose.material.icons.rounded.Delete
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.RestartAlt
+import androidx.compose.material.icons.rounded.CheckCircle
+import androidx.compose.material.icons.rounded.RadioButtonUnchecked
 import androidx.compose.material.icons.rounded.Rule
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -71,6 +73,7 @@ internal fun ListActions(
             target = target,
             opType = uiState.opType,
             selected = uiState.selected,
+            defaultBackupAll = uiState.defaultBackupAll,
             viewModel = viewModel,
         )
 
@@ -120,7 +123,7 @@ private fun FilterAction(onFilter: () -> Unit) {
 }
 
 @Composable
-private fun ListAction(target: Target, opType: OpType, selected: Long, viewModel: ListActionsViewModel) {
+private fun ListAction(target: Target, opType: OpType, selected: Long, defaultBackupAll: Boolean, viewModel: ListActionsViewModel) {
     var checkListExpanded by remember { mutableStateOf(false) }
     var checkListSelectedExpanded by remember { mutableStateOf(false) }
     Box(modifier = Modifier.wrapContentSize(Alignment.TopStart)) {
@@ -141,6 +144,14 @@ private fun ListAction(target: Target, opType: OpType, selected: Long, viewModel
                 UnselectAllItem {
                     checkListExpanded = false
                     viewModel.unselectAll()
+                }
+                // "默认全选"开关：仅备份页显示(恢复页不触发自动预选)。
+                // 放在「全部不选」下方,整行可点切换。
+                if (opType == OpType.BACKUP) {
+                    DefaultBackupAllItem(
+                        checked = defaultBackupAll,
+                        onCheckedChange = { viewModel.setDefaultBackupAll(it) },
+                    )
                 }
                 ReverseItem {
                     checkListExpanded = false
@@ -287,6 +298,21 @@ private fun UnselectAllItem(onClick: () -> Unit) {
         text = stringResource(id = R.string.unselect_all),
         leadingIcon = Icons.Rounded.CheckBoxOutlineBlank,
         onClick = onClick,
+    )
+}
+
+/**
+ * "默认全选"开关菜单项：DropdownMenuItem 整行可点切换。
+ * 替代原弹窗 Switch 设计,点行内任意位置触发 onCheckedChange。
+ * leadingIcon 根据 checked 状态切换(check_circle vs check_circle_outline),
+ * 视觉上给用户「开/关」的明确反馈。
+ */
+@Composable
+private fun DefaultBackupAllItem(checked: Boolean, onCheckedChange: (Boolean) -> Unit) {
+    DropdownMenuItem(
+        text = stringResource(id = R.string.default_backup_all),
+        leadingIcon = if (checked) Icons.Rounded.CheckCircle else Icons.Rounded.RadioButtonUnchecked,
+        onClick = { onCheckedChange(!checked) },
     )
 }
 

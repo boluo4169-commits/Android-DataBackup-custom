@@ -102,13 +102,12 @@ class MediumBackupUtil @Inject constructor(
                 dst = dst,
                 extra = ct.getCompressPara(context.readCompressionLevel().first())
             ).also { result ->
-                // GNU tar 退出码：0=快照一致；1=读取期间源有变动（"file changed as we read it"，
-                // 典型场景：备份媒体时相册 App 正在写入新照片/缩略图），归档本身已完整写出，
-                // 随后的 testArchive 会验证结构完整性；2=致命错误。
-                // code==1 且仅为 file-changed 告警时降级视为成功。
-                if (result.code == 1 && result.out.any { it.contains("file changed as we read it") }) {
+                // GNU tar 退出码 1 = 读取期间源有变动（措辞有多种：file changed / file removed before
+                // we read it / file shrank 等），归档已完整写出；由紧随其后的 testArchive 裁定成败，
+                // 不逐条枚举警告文案（枚举必漏，实测抖音 btm_scope_config "File removed before we read it" 翻车）。
+                if (result.code == 1) {
                     isSuccess = true
-                    log { "Source changed during snapshot (tar exit 1, file changed as we read it); archive kept." }
+                    log { "Source changed during snapshot (tar exit 1); archive kept, verdict by testArchive." }
                 } else {
                     isSuccess = result.isSuccess
                 }

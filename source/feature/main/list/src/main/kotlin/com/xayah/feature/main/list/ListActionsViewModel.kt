@@ -44,27 +44,31 @@ class ListActionsViewModel @Inject constructor(
     val uiState: StateFlow<ListActionsUiState> = when (target) {
         Target.Apps -> combine(
             listDataRepo.getListData(),
-            listDataRepo.getAppList()
-        ) { lData, aList ->
+            listDataRepo.getAppList(),
+            listDataRepo.defaultBackupAll,
+        ) { lData, aList, defaultBackupAll ->
             val listData = lData.castTo<ListData.Apps>()
             Success.Apps(
                 opType = opType,
                 selected = listData.selected,
                 isUpdating = listData.isUpdating,
                 appList = aList,
+                defaultBackupAll = defaultBackupAll,
             )
         }
 
         Target.Files -> combine(
             listDataRepo.getListData(),
-            listDataRepo.getFileList()
-        ) { lData, fList ->
+            listDataRepo.getFileList(),
+            listDataRepo.defaultBackupAll,
+        ) { lData, fList, defaultBackupAll ->
             val listData = lData.castTo<ListData.Files>()
             Success.Files(
                 opType = opType,
                 selected = listData.selected,
                 isUpdating = listData.isUpdating,
                 fileList = fList,
+                defaultBackupAll = defaultBackupAll,
             )
         }
     }.stateIn(
@@ -225,6 +229,12 @@ class ListActionsViewModel @Inject constructor(
             filesRepo.addFiles(pathList)
         }
     }
+
+    fun setDefaultBackupAll(value: Boolean) {
+        viewModelScope.launchOnDefault {
+            listDataRepo.setDefaultBackupAll(value)
+        }
+    }
 }
 
 sealed interface ListActionsUiState {
@@ -233,19 +243,22 @@ sealed interface ListActionsUiState {
         open val opType: OpType,
         open val selected: Long,
         open val isUpdating: Boolean,
+        open val defaultBackupAll: Boolean,
     ) : ListActionsUiState {
         data class Apps(
             override val opType: OpType,
             override val selected: Long,
             override val isUpdating: Boolean,
+            override val defaultBackupAll: Boolean,
             val appList: List<App>,
-        ) : Success(opType, selected, isUpdating)
+        ) : Success(opType, selected, isUpdating, defaultBackupAll)
 
         data class Files(
             override val opType: OpType,
             override val selected: Long,
             override val isUpdating: Boolean,
+            override val defaultBackupAll: Boolean,
             val fileList: List<File>,
-        ) : Success(opType, selected, isUpdating)
+        ) : Success(opType, selected, isUpdating, defaultBackupAll)
     }
 }

@@ -106,6 +106,32 @@
     <item name="max_preserve_count" type="string" />
     <item name="max_preserve_count_desc" type="string" />
     <item name="args_current_count" type="string" />
+    <item name="schedules" type="string" />
+    <item name="schedules_desc" type="string" />
+    <item name="add_schedule" type="string" />
+    <item name="schedule_frequency" type="string" />
+    <item name="schedule_daily" type="string" />
+    <item name="schedule_weekly" type="string" />
+    <item name="schedule_monthly" type="string" />
+    <item name="schedule_time" type="string" />
+    <item name="schedule_day_of_week" type="string" />
+    <item name="schedule_day_of_month" type="string" />
+    <item name="schedule_scope" type="string" />
+    <item name="schedule_scope_apps" type="string" />
+    <item name="schedule_scope_apps_files" type="string" />
+    <item name="schedule_scope_files" type="string" />
+    <item name="schedule_conditions" type="string" />
+    <item name="require_charging" type="string" />
+    <item name="require_battery_not_low" type="string" />
+    <item name="require_unmetered" type="string" />
+    <item name="next_trigger_at" type="string" />
+    <item name="run_once" type="string" />
+    <item name="confirm_delete_schedule" type="string" />
+    <item name="schedule_empty" type="string" />
+    <item name="schedule_never_ran" type="string" />
+    <item name="confirm" type="string" />
+    <item name="delete" type="string" />
+    <item name="edit" type="string" />
 
     <item name="ic_rounded_acute" type="drawable" />
     <item name="ic_rounded_history" type="drawable" />

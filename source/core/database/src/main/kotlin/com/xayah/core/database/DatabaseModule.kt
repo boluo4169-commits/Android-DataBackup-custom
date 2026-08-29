@@ -7,6 +7,7 @@ import com.xayah.core.database.dao.DirectoryDao
 import com.xayah.core.database.dao.LabelDao
 import com.xayah.core.database.dao.MediaDao
 import com.xayah.core.database.dao.PackageDao
+import com.xayah.core.database.dao.ScheduleDao
 import com.xayah.core.database.dao.TaskDao
 import dagger.Module
 import dagger.Provides
@@ -48,4 +49,8 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideLabelDao(database: AppDatabase): LabelDao = database.labelDao()
+
+    @Provides
+    @Singleton
+    fun provideScheduleDao(database: AppDatabase): ScheduleDao = database.scheduleDao()
 }

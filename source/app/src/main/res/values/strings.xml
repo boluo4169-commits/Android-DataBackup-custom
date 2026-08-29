@@ -156,6 +156,10 @@
     <string name="alphabet" translatable="false">A-Z</string>
     <string name="installation_time">Installation time</string>
     <string name="data_size">Data size</string>
+    <string name="sort_asc">Ascending</string>
+    <string name="sort_desc">Descending</string>
+    <string name="default_backup_all">Default: select all</string>
+    <string name="default_backup_all_desc">When opened, automatically select all apps each time the backup page loads</string>
     <string name="selected">Selected</string>
     <string name="not_selected">Not selected</string>
     <string name="third_party">Third party</string>
@@ -402,6 +406,7 @@
     <string name="args_files_restored_and_failed">%1$s files restored, %2$s failed</string>
     <string name="history">History</string>
     <string name="data_migration">Data migration</string>
+    <string name="backup_and_migration">Backup &amp; migration</string>
     <string name="import_backup">Import backup</string>
     <string name="export_backup">Export backup</string>
     <string name="export_backup_desc">Package backup data into a migration file for transfer to a new device</string>
@@ -420,6 +425,15 @@
     <string name="migration_stage_idle_desc">Select apps, then tap Export at the bottom</string>
     <string name="migration_stage_processing_title">Exporting…</string>
     <string name="migration_stage_processing_desc">Packing the migration file, please wait</string>
+    <string name="migration_stage_segment_validating">Preparing</string>
+    <string name="migration_stage_segment_packing">Packing</string>
+    <string name="migration_stage_segment_hashing">Generating checksum</string>
+    <string name="migration_stage_segment_uploading">Uploading</string>
+    <string name="migration_stage_segment_format">Step %1$d of %2$d</string>
+    <string name="migration_stage_import_segment_downloading">Reading file</string>
+    <string name="migration_stage_import_segment_verifying">Verifying checksum</string>
+    <string name="migration_stage_import_segment_parsing">Reading app list</string>
+    <string name="migration_stage_import_segment_extracting">Extracting and restoring</string>
     <string name="migration_stage_success_title">Export complete</string>
     <string name="migration_stage_success_desc">Migration file saved to the selected location</string>
     <string name="migration_stage_import_idle_title">Select a migration file</string>
@@ -498,4 +512,33 @@
     <string name="notification_desc">This is needed to post necessary notifications</string>
     <string name="permission_is_denied">Permission is denied</string>
     <string name="root_denied_msg">Please check your root manager and restart app</string>
+
+    <string name="one_click_backup">One-click backup</string>
+    <string name="one_click_backup_desc">Select all apps and files, then open the backup page; file backup starts automatically after apps finish</string>
+    <string name="schedules">Scheduled backup</string>
+    <string name="schedules_desc">Back up automatically at the time you set</string>
+    <string name="add_schedule">Add schedule</string>
+    <string name="schedule_frequency">Frequency</string>
+    <string name="schedule_daily">Daily</string>
+    <string name="schedule_weekly">Weekly</string>
+    <string name="schedule_monthly">Monthly</string>
+    <string name="schedule_time">Time</string>
+    <string name="schedule_day_of_week">Repeat on</string>
+    <string name="schedule_day_of_month">Day of month</string>
+    <string name="schedule_scope">Scope</string>
+    <string name="schedule_scope_apps">All apps</string>
+    <string name="schedule_scope_apps_files">All apps + files</string>
+    <string name="schedule_scope_files">Files only</string>
+    <string name="schedule_conditions">Conditions</string>
+    <string name="require_charging">Only while charging</string>
+    <string name="require_battery_not_low">Only when battery is not low</string>
+    <string name="require_unmetered">Only on Wi-Fi</string>
+    <string name="next_trigger_at">Next run: %s</string>
+    <string name="run_once">Run now</string>
+    <string name="confirm_delete_schedule">Delete this schedule?</string>
+    <string name="schedule_empty">No schedules yet. Tap "Add schedule" to create one.</string>
+    <string name="schedule_done">Scheduled backup finished</string>
+    <string name="schedule_failed">Scheduled backup failed</string>
+    <string name="schedule_never_ran">Not run yet</string>
+    <string name="nothing_to_backup">Nothing selected to back up</string>
 </resources>

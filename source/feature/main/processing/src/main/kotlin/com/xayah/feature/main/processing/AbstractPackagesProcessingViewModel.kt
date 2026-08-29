@@ -16,7 +16,12 @@ import kotlinx.coroutines.flow.map
 
 data object UpdateApps : ProcessingUiIntent()
 data class SetCloudEntity(val name: String) : ProcessingUiIntent()
-data class FinishSetup(val navController: NavController) : ProcessingUiIntent()
+
+/**
+ * @param mainNavController 主导航控制器（处理图为嵌套图，跳到图外目的地如文件备份图时用它）。
+ * 传 null 则只能走图内跳转。
+ */
+data class FinishSetup(val navController: NavController, val mainNavController: NavController? = null) : ProcessingUiIntent()
 data object GetUsers : ProcessingUiIntent()
 
 @ExperimentalCoroutinesApi

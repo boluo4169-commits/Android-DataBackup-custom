@@ -1,5 +1,8 @@
 package com.xayah.core.data.repository
 
+import android.content.Context
+import com.xayah.core.datastore.readDefaultBackupAll
+import com.xayah.core.datastore.saveDefaultBackupAll
 import com.xayah.core.model.App
 import com.xayah.core.model.File
 import com.xayah.core.model.OpType
@@ -9,16 +12,25 @@ import com.xayah.core.model.UserInfo
 import com.xayah.core.model.database.LabelAppCrossRefEntity
 import com.xayah.core.model.database.LabelFileCrossRefEntity
 import com.xayah.core.util.module.combine
+import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
+import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
+import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
+import kotlinx.coroutines.withTimeoutOrNull
 import javax.inject.Inject
 import javax.inject.Singleton
 
 @Singleton
 class ListDataRepo @Inject constructor(
+    @ApplicationContext private val context: Context,
     private val usersRepo: UsersRepo,
     private val appsRepo: AppsRepo,
     private val filesRepo: FilesRepo,
@@ -33,6 +45,50 @@ class ListDataRepo @Inject constructor(
     private lateinit var showFilterSheet: MutableStateFlow<Boolean>
     private lateinit var sortIndex: MutableStateFlow<Int>
     private lateinit var sortType: MutableStateFlow<SortType>
+
+    /** 对外只读视图,供 ViewModel 读取当前 sortType（setSortIndex 触发"smart default"时用） */
+    val sortTypeFlow: StateFlow<SortType> get() = sortType
+    val sortIndexFlow: StateFlow<Int> get() = sortIndex
+
+    /**
+     * "默认备份全部"开关（datastore 持久化，APK 重启后保留）。
+     * 打开后：进入备份页自动全选 / 文件备份页自动全选 / 定时备份对话框默认范围 = 全部。
+     * 关闭后：不动用户已选（避免误操作清空）。
+     * 初始值通过 runBlocking 从 datastore 同步读(构造器一次性调用,App 启动主线程短暂阻塞可接受)。
+     */
+    private val _defaultBackupAll: MutableStateFlow<Boolean> =
+        MutableStateFlow(runBlocking { context.readDefaultBackupAll().first() })
+    val defaultBackupAll: StateFlow<Boolean> = _defaultBackupAll.asStateFlow()
+
+    suspend fun setDefaultBackupAll(value: Boolean) {
+        _defaultBackupAll.value = value
+        context.saveDefaultBackupAll(value)
+    }
+
+    /**
+     * 如果"默认全量备份"开关打开,自动 selectAll 所有应用(备份)或所有文件(备份)。
+     * 只在 opType == BACKUP 时执行;RESTORE 不动(用户主动选应用)。
+     * 实现:等 appList / fileList 第一次 emit(等 DB 初始化)拿到全量 id,然后 selectAll。
+     * 加 5s 超时兜底防 Flow 永远不 emit 的异常情况;开关关闭时直接 return,不动用户已选。
+     */
+    suspend fun autoSelectAllIfEnabled(opType: OpType, target: Target) {
+        if (!_defaultBackupAll.value) return
+        if (opType != OpType.BACKUP) return
+        withTimeoutOrNull(5_000) {
+            when (target) {
+                Target.Apps -> {
+                    val first = appList.first()
+                    val ids = first.map { it.id }
+                    if (ids.isNotEmpty()) appsRepo.selectAll(ids)
+                }
+                Target.Files -> {
+                    val first = fileList.first()
+                    val ids = first.map { it.id }
+                    if (ids.isNotEmpty()) filesRepo.selectAll(ids)
+                }
+            }
+        }
+    }
     private lateinit var isUpdating: Flow<Boolean>
     private lateinit var labels: MutableStateFlow<Set<String>>
 

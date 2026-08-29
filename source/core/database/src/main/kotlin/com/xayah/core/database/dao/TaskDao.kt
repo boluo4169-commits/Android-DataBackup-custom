@@ -41,4 +41,14 @@ interface TaskDao {
 
     @Query("SELECT * FROM TaskDetailMediaEntity WHERE taskId = :taskId")
     fun queryMediaFlow(taskId: Long): Flow<List<TaskDetailMediaEntity>>
+
+    @Query("SELECT COUNT(*) FROM TaskEntity WHERE isProcessing = 1")
+    suspend fun countProcessing(): Int
+
+    /**
+     * 冷启动清理：进程死亡后备份不可能仍在运行，残留的 isProcessing=1 必然是尸体任务；
+     * 不清理会让 hasProcessingTask() 永远返回 true，定时备份串行检查永久重试。
+     */
+    @Query("UPDATE TaskEntity SET isProcessing = 0 WHERE isProcessing = 1")
+    suspend fun clearProcessing()
 }

@@ -10,12 +10,14 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.compose.material3.Icon
 import androidx.compose.material3.SegmentedButton
 import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
@@ -39,7 +41,9 @@ import androidx.navigation.NavHostController
 import com.xayah.core.datastore.KeyAutoScreenOff
 import com.xayah.core.datastore.KeyResetBackupList
 import com.xayah.core.datastore.KeyBackupConfigs
+import com.xayah.core.model.OpType
 import com.xayah.core.model.StorageMode
+import com.xayah.core.model.Target
 import com.xayah.core.ui.component.Clickable
 import com.xayah.core.ui.component.LocalSlotScope
 import com.xayah.core.ui.component.PackageIcons
@@ -50,6 +54,7 @@ import com.xayah.core.ui.component.paddingHorizontal
 import com.xayah.core.ui.component.paddingTop
 import com.xayah.core.ui.component.paddingVertical
 import com.xayah.core.ui.component.select
+import com.xayah.core.ui.material3.CircularProgressIndicator
 import com.xayah.core.ui.route.MainRoutes
 import com.xayah.core.ui.token.SizeTokens
 import com.xayah.core.ui.util.LocalNavController
@@ -77,6 +82,8 @@ fun PagePackagesBackupProcessingSetup(localNavController: NavHostController, vie
     val isTesting by viewModel.isTesting.collectAsStateWithLifecycle()
     val packages by viewModel.packages.collectAsStateWithLifecycle()
     val packagesSize by viewModel.packagesSize.collectAsStateWithLifecycle()
+    val filesSize by viewModel.filesSize.collectAsStateWithLifecycle()
+    val isUpdating by viewModel.isUpdating.collectAsStateWithLifecycle()
 
     LaunchedEffect(null) {
         viewModel.emitIntentOnIO(UpdateApps)
@@ -97,7 +104,7 @@ fun PagePackagesBackupProcessingSetup(localNavController: NavHostController, vie
                 Button(
                     enabled = uiState.storageType == StorageMode.Local || (uiState.cloudEntity != null && isTesting.not()),
                     onClick = {
-                        viewModel.emitIntentOnIO(FinishSetup(navController = localNavController))
+                        viewModel.emitIntentOnIO(FinishSetup(navController = localNavController, mainNavController = navController))
                     }) {
                     Text(text = stringResource(id = R.string._continue))
                 }
@@ -169,13 +176,55 @@ fun PagePackagesBackupProcessingSetup(localNavController: NavHostController, vie
                 val interactionSource = remember { MutableInteractionSource() }
                 Clickable(
                     title = stringResource(id = R.string.apps),
-                    value = packagesSize,
-                    leadingIcon = ImageVector.vectorResource(id = R.drawable.ic_rounded_apps),
+                    value = if (isUpdating) stringResource(id = R.string.processing) else packagesSize,
+                    leadingIcon = {
+                        Icon(imageVector = ImageVector.vectorResource(id = R.drawable.ic_rounded_apps), contentDescription = null)
+                    },
+                    trailingIcon = {
+                        if (isUpdating) {
+                            CircularProgressIndicator(
+                                modifier = Modifier.size(SizeTokens.Level24),
+                                strokeWidth = SizeTokens.Level2,
+                            )
+                        } else {
+                            Icon(imageVector = Icons.Rounded.KeyboardArrowRight, contentDescription = null)
+                        }
+                    },
                     interactionSource = interactionSource,
                     content = {
                         PackageIcons(modifier = Modifier.paddingTop(SizeTokens.Level8), packages = packages)
-                    }
+                    },
+                    // 点进备份列表微调勾选（一键备份=已全选，可取消不必要的应用）；「继续」返回本页重新扫描
+                    onClick = {
+                        navController.navigateSingle(MainRoutes.List.getRoute(Target.Apps, OpType.BACKUP, returnToSetup = true))
+                    },
                 )
+                // 「文件」行仅一键备份流程显示：手动备份应用时文件不参与，显示出来会误导
+                if (viewModel.chainFileBackup) {
+                    val filesInteractionSource = remember { MutableInteractionSource() }
+                    Clickable(
+                        title = stringResource(id = R.string.files),
+                        value = if (isUpdating) stringResource(id = R.string.processing) else filesSize,
+                        leadingIcon = {
+                            Icon(imageVector = ImageVector.vectorResource(id = R.drawable.ic_rounded_folder_open), contentDescription = null)
+                        },
+                        trailingIcon = {
+                            if (isUpdating) {
+                                CircularProgressIndicator(
+                                    modifier = Modifier.size(SizeTokens.Level24),
+                                    strokeWidth = SizeTokens.Level2,
+                                )
+                            } else {
+                                Icon(imageVector = Icons.Rounded.KeyboardArrowRight, contentDescription = null)
+                            }
+                        },
+                        interactionSource = filesInteractionSource,
+                        // 点进文件备份列表微调勾选；「继续」返回本页重新扫描（而非进入文件备份流程）
+                        onClick = {
+                            navController.navigateSingle(MainRoutes.List.getRoute(Target.Files, OpType.BACKUP, returnToSetup = true))
+                        },
+                    )
+                }
             }
             Title(title = stringResource(id = R.string.settings)) {
                 Switchable(

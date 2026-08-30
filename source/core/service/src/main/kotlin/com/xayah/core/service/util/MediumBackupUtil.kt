@@ -147,9 +147,16 @@ class MediumBackupUtil @Inject constructor(
             }
         }
 
-        cloudRepository.upload(client = client, src = src, dstDir = dstDir, onUploading = { read, total -> progress = read.toFloat() / total }).apply {
+        val uploadResult = cloudRepository.upload(client = client, src = src, dstDir = dstDir, onUploading = { read, total -> progress = read.toFloat() / total }).apply {
             flag = false
             t.updateInfo(state = if (isSuccess) OperationState.DONE else OperationState.ERROR, log = t.getLog() + "\n${outString}", content = "100%")
+        }
+
+        // md5 sidecar 跟随归档上传：云端恢复的完整性校验依赖它。仅在归档上传成功后补传，失败只记日志
+        if (uploadResult.isSuccess) runCatching {
+            if (java.io.File("$src.md5").exists()) cloudRepository.upload(client = client, src = "$src.md5", dstDir = dstDir)
+        }.onFailure {
+            log { "Failed to upload md5 sidecar for $src: ${it.message}." }
         }
     }
 }

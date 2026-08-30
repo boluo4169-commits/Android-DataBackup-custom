@@ -598,6 +598,10 @@ class PackagesRestoreUtil @Inject constructor(
                     }
                 ).apply {
                     flag = false
+                    // 进度回调缺失的协议（如 WebDAV）progress 恒 0，此时按本地归档实际大小回填，避免完成页显示 0.00 Bytes
+                    if (progress <= 0.0) {
+                        progress = rootService.calculateSize("$dstDir/${PathUtil.getFileName(src)}").toDouble()
+                    }
                     t.updateInfo(
                         dataType = dataType,
                         log = (t.getLog(dataType) + "\n${outString}").trim(),

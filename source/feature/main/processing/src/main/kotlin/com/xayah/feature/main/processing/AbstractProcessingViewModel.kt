@@ -171,9 +171,10 @@ abstract class AbstractProcessingViewModel(
 
     /**
      * 恢复前 SSAID（Android id）相关提醒（由 service 层挂起等待，UI 层弹窗后回传决定）。
-     * 值为提醒文本，非空表示需要弹窗。
+     * 值为提醒文本，非空表示需要弹窗。标题随场景变化（随机化提醒 / 多版本覆盖提醒），一并观察。
      */
     val ssaidReminder: StateFlow<String?> = SsaidRestoreReminder.message
+    val ssaidReminderTitle: StateFlow<String?> = SsaidRestoreReminder.title
 
     /**
      * 用户在 SSAID 提醒弹窗上选择后调用。

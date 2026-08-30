@@ -6,6 +6,7 @@ import com.xayah.core.common.util.toPathString
 import com.xayah.core.model.database.CloudEntity
 import com.xayah.core.model.database.WebDAVExtra
 import com.xayah.core.network.R
+import com.xayah.core.network.io.CountingOutputStreamImpl
 import com.xayah.core.network.util.getExtraEntity
 import com.xayah.core.rootservice.parcelables.PathParcelable
 import com.xayah.core.util.GsonUtil
@@ -19,6 +20,7 @@ import com.xayah.libpickyou.parcelables.FileParcelable
 import com.xayah.libpickyou.ui.model.PickerType
 import com.xayah.libsardine.DavResource
 import com.xayah.libsardine.impl.OkHttpSardine
+import com.xayah.libsardine.impl.SardineException
 import okhttp3.OkHttpClient
 import java.io.File
 import java.util.concurrent.TimeUnit
@@ -46,17 +48,11 @@ class WebDAVClientImpl(private val entity: CloudEntity, private val extra: WebDA
     }
 
     override fun connect() {
-        // 安全门闩：未显式开启「允许不安全连接」时，拒绝向 http:// 地址发送凭据与备份数据。
-        // FTP/SFTP/SMB 不走 HTTP 栈，不受此全局明文开关约束，故仅需在此处校验 WebDAV。
-        if (extra.insecure.not() && entity.host.trim().startsWith("http://", ignoreCase = true)) {
-            throw IllegalArgumentException(
-                "Insecure HTTP is blocked: switch the server to HTTPS or enable \"Allow insecure connection\" for this account."
-            )
-        }
+        // insecure 开关仅用于信任自签名 HTTPS 证书；明文 http 与原版行为一致，直接放行。
         val builder = OkHttpClient.Builder()
-            .connectTimeout(0, TimeUnit.SECONDS)
-            .readTimeout(0, TimeUnit.SECONDS)
-            .writeTimeout(0, TimeUnit.SECONDS)
+            .connectTimeout(15, TimeUnit.SECONDS)
+            .readTimeout(60, TimeUnit.SECONDS)
+            .writeTimeout(60, TimeUnit.SECONDS)
         if (extra.insecure) {
             try {
                 val trustAllCerts = arrayOf<TrustManager>(
@@ -121,7 +117,10 @@ class WebDAVClientImpl(private val entity: CloudEntity, private val extra: WebDA
         log { "download: ${getPath(src)} to $dstPath" }
         val dstOutputStream = File(dstPath).outputStream()
         val srcInputStream = client.get(getPath(src))
-        srcInputStream.copyTo(dstOutputStream)
+        // 接进度回调：远端总大小未知，total 传 -1
+        val countingStream = CountingOutputStreamImpl(dstOutputStream, -1) { written, total -> onDownloading(written, total) }
+        srcInputStream.copyTo(countingStream)
+        countingStream.close()
         srcInputStream.close()
         dstOutputStream.close()
     }
@@ -209,7 +208,14 @@ class WebDAVClientImpl(private val entity: CloudEntity, private val extra: WebDA
         return pathParcelableList
     }
 
-    override fun exists(src: String): Boolean = runCatching { withClient { client -> client.list(getPath(src)) } }.isSuccess
+    // 404 = 不存在；其余异常（网络故障、认证失败等）必须抛出，
+    // 吞掉会把「服务器连不上」误判成「目标不存在」，误导保留历史备份的归档判断。
+    override fun exists(src: String): Boolean = try {
+        withClient { client -> client.list(getPath(src)) }
+        true
+    } catch (e: SardineException) {
+        if (e.statusCode == 404) false else throw e
+    }
 
     private fun sizeRecursively(src: String): Long {
         var size = 0L

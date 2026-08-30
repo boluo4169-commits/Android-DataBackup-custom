@@ -43,6 +43,10 @@ class FTPClientImpl(private val entity: CloudEntity, private val extra: FTPExtra
 
     override fun connect() {
         client = FTPClient().apply {
+            // 无超时会导致网络半死时无限挂起：控制连接/命令 60s，建连 15s
+            defaultTimeout = 60_000
+            connectTimeout = 15_000
+            soTimeout = 60_000
             autodetectUTF8 = true
             connect(entity.host, extra.port)
             if (login(entity.user, entity.pass).not()) throw LoginException("Failed to login, user: ${entity.user}, pass: ${entity.pass}.")
@@ -93,10 +97,13 @@ class FTPClientImpl(private val entity: CloudEntity, private val extra: FTPExtra
         val srcFileSize = srcFile.length()
         val srcInputStream = FileInputStream(srcFile)
         val countingStream = CountingInputStreamImpl(srcInputStream, srcFileSize) { read, total -> onUploading(read, total) }
-        client.storeFile(dstPath, countingStream)
+        // storeFile 返回 false = 服务器拒绝（盘满/权限），只看字节数会把半截上传误判成功
+        val stored = client.storeFile(dstPath, countingStream)
         srcInputStream.close()
         countingStream.close()
-        if (countingStream.byteCount == 0L) throw IOException("Failed to write remote file: 0 byte.")
+        if (stored.not()) throw IOException("Failed to store remote file: $dstPath, reply: ${client.replyString}.")
+        if (client.completePendingCommand().not()) throw IOException("Failed to complete upload: $dstPath.")
+        if (countingStream.byteCount != srcFileSize) throw IOException("Incomplete upload: ${countingStream.byteCount}/$srcFileSize bytes.")
         onUploading(countingStream.byteCount, countingStream.byteCount)
     }
 
@@ -105,14 +112,17 @@ class FTPClientImpl(private val entity: CloudEntity, private val extra: FTPExtra
         val dstPath = "$dst/$name"
         log { "download: $src to $dstPath" }
         val dstFile = File(dstPath)
+        // retrieveFileStream 失败时返回 null，直接用会 NPE
         val srcInputStream: InputStream = client.retrieveFileStream(src)
+            ?: throw IOException("Failed to open remote stream: $src, reply: ${client.replyString}.")
         val dstOutPutStream: OutputStream = dstFile.outputStream()
         val countingStream = CountingOutputStreamImpl(dstOutPutStream, -1) { written, total -> onDownloading(written, total) }
         srcInputStream.copyTo(countingStream)
-        client.completePendingCommand()
+        val pendingCompleted = client.completePendingCommand()
         srcInputStream.close()
         dstOutPutStream.close()
         countingStream.close()
+        if (pendingCompleted.not()) throw IOException("Failed to complete download: $src.")
         onDownloading(countingStream.byteCount, countingStream.byteCount)
     }
 

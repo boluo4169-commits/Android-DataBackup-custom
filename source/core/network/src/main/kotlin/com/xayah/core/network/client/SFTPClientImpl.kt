@@ -112,7 +112,8 @@ class SFTPClientImpl(private val entity: CloudEntity, private val extra: SFTPExt
         val name = PathUtil.getFileName(src)
         val dstPath = "$dst/$name"
         log { "upload: $src to $dstPath" }
-        val dstFile = openFile(dstPath)
+        // 必须 TRUNC：不带 TRUNC 时远端已有更大的同名旧文件会残留旧尾部，归档损坏
+        val dstFile = withSFTPClient { it.open(dstPath, setOf(OpenMode.READ, OpenMode.WRITE, OpenMode.CREAT, OpenMode.TRUNC)) }
         val dstStream = dstFile.RemoteFileOutputStream()
         val srcFile = File(src)
         val srcFileSize = srcFile.length()

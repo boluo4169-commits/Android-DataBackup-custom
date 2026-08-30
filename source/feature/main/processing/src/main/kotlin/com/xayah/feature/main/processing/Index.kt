@@ -112,6 +112,7 @@ fun PageProcessing(
     val screenOffCountDown by viewModel.screenOffCountDown.collectAsStateWithLifecycle()
     val checksumRequest by viewModel.checksumRequest.collectAsStateWithLifecycle()
     val ssaidReminder by viewModel.ssaidReminder.collectAsStateWithLifecycle()
+    val ssaidReminderTitle by viewModel.ssaidReminderTitle.collectAsStateWithLifecycle()
     val integrityRequest by viewModel.integrityRequest.collectAsStateWithLifecycle()
 
     LaunchedEffect(null) {
@@ -139,9 +140,10 @@ fun PageProcessing(
 
     LaunchedEffect(ssaidReminder) {
         ssaidReminder?.let { message ->
+            // 标题随场景变化：随机化提醒用「随机化Android ID」，多版本覆盖提醒用「提示」
             val confirmed = dialogState.open(
                 initialState = false,
-                title = context.getString(R.string.randomize_ssaid),
+                title = ssaidReminderTitle ?: context.getString(R.string.randomize_ssaid),
                 icon = randomizeIcon,
                 block = { _ -> Text(text = message) }
             ).first.isConfirm

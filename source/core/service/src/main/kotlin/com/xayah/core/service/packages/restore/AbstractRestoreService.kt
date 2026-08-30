@@ -152,7 +152,11 @@ internal abstract class AbstractRestoreService : AbstractPackagesService() {
         val randomizeSsaid = mContext.readRandomizeSsaid().first()
         val restoreSsaidEnabled = mContext.readRestoreSsaid().first()
         if (randomizeSsaid) {
-            if (SsaidRestoreReminder.awaitConfirm(mContext.getString(R.string.randomize_ssaid_reminder)).not()) {
+            if (SsaidRestoreReminder.awaitConfirm(
+                    title = mContext.getString(R.string.randomize_ssaid),
+                    message = mContext.getString(R.string.randomize_ssaid_reminder),
+                ).not()
+            ) {
                 log { "Restore cancelled by user: ssaid reminder." }
                 return
             }
@@ -168,7 +172,11 @@ internal abstract class AbstractRestoreService : AbstractPackagesService() {
             .filterValues { it.size > 1 }
         if (duplicatedApps.isNotEmpty()) {
             val names = duplicatedApps.keys.map { it.first }.distinct().joinToString(", ")
-            if (SsaidRestoreReminder.awaitConfirm(mContext.getString(R.string.duplicate_version_reminder, names)).not()) {
+            if (SsaidRestoreReminder.awaitConfirm(
+                    title = mContext.getString(R.string.prompt),
+                    message = mContext.getString(R.string.duplicate_version_reminder, names),
+                ).not()
+            ) {
                 log { "Restore cancelled by user: duplicate versions." }
                 return
             }

@@ -43,12 +43,21 @@ class FTPClientImpl(private val entity: CloudEntity, private val extra: FTPExtra
 
     override fun connect() {
         client = FTPClient().apply {
-            // 无超时会导致网络半死时无限挂起：控制连接/命令 60s，建连 15s
-            defaultTimeout = 60_000
+            // 超时设置的三条约束（都踩过坑，改前先看注释）：
+            // 1. 顺序：commons-net 的 setSoTimeout() 直接操作内部 _socket_，建连前调用会因 socket
+            //    未创建而抛 NPE（"setSoTimeout(int) on a null object reference"，v3.7.2 回归）。
+            //    defaultTimeout / connectTimeout 只设字段不碰 socket，可以安全地放在 connect() 之前。
+            // 2. 时长：defaultTimeout 会在建连后被应用到控制连接 socket，等于控制连接的读超时。
+            //    取 120s：既保证大归档（上百 MiB）上传后服务器落盘回 226 有足够时间，
+            //    又不会在真正异常时让用户无限等（原先 60s 偏紧，实测大文件落盘会超）。
+            // 3. 建连超时保持 15s，避免服务器不可达时长时间卡住。
+            // 4. 不开 controlKeepAliveTimeout：它会接管数据连接的关闭时机（CSL），
+            //    与 storeFile 的高级语义叠加后行为更难预测；本场景由超时兜底更可控。
+            defaultTimeout = 120_000
             connectTimeout = 15_000
-            soTimeout = 60_000
             autodetectUTF8 = true
             connect(entity.host, extra.port)
+            soTimeout = 120_000
             if (login(entity.user, entity.pass).not()) throw LoginException("Failed to login, user: ${entity.user}, pass: ${entity.pass}.")
             enterLocalPassiveMode()
             val fileType = FTP.BINARY_FILE_TYPE
@@ -98,11 +107,14 @@ class FTPClientImpl(private val entity: CloudEntity, private val extra: FTPExtra
         val srcInputStream = FileInputStream(srcFile)
         val countingStream = CountingInputStreamImpl(srcInputStream, srcFileSize) { read, total -> onUploading(read, total) }
         // storeFile 返回 false = 服务器拒绝（盘满/权限），只看字节数会把半截上传误判成功
+        // 重要：storeFile() 是高级 API，内部已经读完服务器的 226 响应并关闭数据连接。
+        // 不能再调 completePendingCommand() —— 那只会额外等一个永远不会来的响应，
+        // 表现为「进度 100% 后一直转圈直到超时」（v3.7.2 回归）。
+        // 只有低级 API（storeFileStream / retrieveFileStream）才需要手动 completePendingCommand()。
         val stored = client.storeFile(dstPath, countingStream)
         srcInputStream.close()
         countingStream.close()
         if (stored.not()) throw IOException("Failed to store remote file: $dstPath, reply: ${client.replyString}.")
-        if (client.completePendingCommand().not()) throw IOException("Failed to complete upload: $dstPath.")
         if (countingStream.byteCount != srcFileSize) throw IOException("Incomplete upload: ${countingStream.byteCount}/$srcFileSize bytes.")
         onUploading(countingStream.byteCount, countingStream.byteCount)
     }

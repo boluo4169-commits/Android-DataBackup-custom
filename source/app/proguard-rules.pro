@@ -43,12 +43,19 @@
 -dontwarn sun.security.x509.X509Key
 
 -keepattributes SourceFile,LineNumberTable        # Keep file names and line numbers.
+-keepattributes *Annotation*                      # 必须保留 RUNTIME 注解：否则 R8 剥掉 @SerializedName，
+                                                  # Gson 退回按混淆前后字段名匹配 JSON 键（tag_name vs tagName）失败，
+                                                  # 反序列化全为默认值且不抛异常 —— 更新检查 release=null 静默的根因
 -keep public class * extends java.lang.Exception  # Optional: Keep custom exceptions.
 -keep class com.xayah.** { *; }
 -keep class android.** { *; }
 -keep class com.android.** { *; }
 -keep class dalvik.system.** { *; }
 -keep class libcore.** { *; }
+
+# Gson 官方推荐 keep 规则（泛型 TypeToken 被 R8 签名擦除会导致 List<Release> 解析异常）
+-keep class com.google.gson.reflect.TypeToken { *; }
+-keep,allowobfuscation,allowshrinking class com.google.gson.reflect.TypeToken
 
 # smbj
 -keep class javax.el.**

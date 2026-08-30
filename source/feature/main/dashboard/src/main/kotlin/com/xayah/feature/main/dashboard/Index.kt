@@ -10,6 +10,9 @@ import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
@@ -46,6 +49,7 @@ import com.xayah.core.ui.component.paddingTop
 import com.xayah.core.ui.model.SegmentProgress
 import com.xayah.core.ui.route.MainRoutes
 import com.xayah.core.ui.theme.ThemedColorSchemeKeyTokens
+import com.xayah.core.ui.theme.value
 import com.xayah.core.ui.token.SizeTokens
 import com.xayah.core.ui.util.LocalNavController
 import com.xayah.core.util.navigateSingle
@@ -86,7 +90,21 @@ fun PageDashboard() {
                     icon = null,
                     dismissText = context.getString(R.string.changelog),
                     confirmText = context.getString(R.string.download),
-                    block = { _ -> Text(text = context.getString(R.string.args_update_from, BuildConfigUtil.VERSION_NAME, uiState.latestRelease?.name)) }
+                    block = { _ ->
+                        // 弹窗内直接展示新版本的更新日志，省得跳浏览器才知道值不值得更
+                        Column(
+                            modifier = Modifier
+                                .heightIn(max = SizeTokens.Level152)
+                                .verticalScroll(rememberScrollState())
+                        ) {
+                            Text(text = context.getString(R.string.args_update_from, BuildConfigUtil.VERSION_NAME, uiState.latestRelease?.name))
+                            Spacer(modifier = Modifier.height(SizeTokens.Level8))
+                            Text(
+                                text = uiState.latestRelease?.content.orEmpty().ifEmpty { context.getString(R.string.changelog) },
+                                color = ThemedColorSchemeKeyTokens.OnSurfaceVariant.value
+                            )
+                        }
+                    }
                 ).first
                 when (state) {
                     DismissState.CONFIRM -> {

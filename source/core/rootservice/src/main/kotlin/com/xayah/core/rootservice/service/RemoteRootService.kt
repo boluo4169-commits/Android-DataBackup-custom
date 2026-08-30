@@ -28,10 +28,13 @@ import com.xayah.core.util.LogUtil
 import com.xayah.core.util.PathUtil
 import com.xayah.core.util.model.ShellResult
 import com.xayah.core.util.withLog
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.TimeoutCancellationException
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.isActive
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
+import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.ExperimentalSerializationApi
 import kotlinx.serialization.decodeFromByteArray
 import kotlinx.serialization.encodeToByteArray
@@ -39,7 +42,6 @@ import kotlinx.serialization.protobuf.ProtoBuf
 import java.io.File
 import kotlin.coroutines.resume
 import kotlin.coroutines.resumeWithException
-import kotlin.coroutines.suspendCoroutine
 
 class RemoteRootService(private val context: Context) {
     private var mService: IRemoteRootService? = null
@@ -58,6 +60,13 @@ class RemoteRootService(private val context: Context) {
 
     private fun log(msg: () -> String) = LogUtil.log { "RemoteRootService" to msg() }
 
+    companion object {
+        // bind 回调（onServiceConnected）偶发永不返回（概率性，两台设备长期复现）。
+        // suspendCoroutine 无超时会永久挂起，且占用 getService 的全局 mutex，
+        // 导致整个 app 的 root 功能瘫痪。必须加超时兜底。
+        private const val BIND_TIMEOUT_MS = 10_000L
+    }
+
     class RemoteRootService : RootService() {
         init {
             if (Process.myUid() == 0)
@@ -67,49 +76,57 @@ class RemoteRootService(private val context: Context) {
         override fun onBind(intent: Intent): IBinder = RemoteRootServiceImpl(applicationContext)
     }
 
-    private suspend fun bindService(): IRemoteRootService = run {
-        delay(1000)
-        suspendCoroutine { continuation ->
-            if (mService == null) {
-                retries++
-                destroyService()
-                log { "Trying to bind the service..." }
-                mConnection = object : ServiceConnection {
-                    override fun onServiceConnected(name: ComponentName, service: IBinder) {
-                        mService = IRemoteRootService.Stub.asInterface(service)
-                        if (continuation.context.isActive) continuation.resume(mService!!)
-                    }
+    private suspend fun bindService(): IRemoteRootService = try {
+        withTimeout(BIND_TIMEOUT_MS) {
+            delay(1000)
+            // 必须用 suspendCancellableCoroutine：suspendCoroutine 不可取消，
+            // withTimeout 的超时信号无法中断它，超时会完全不生效
+            suspendCancellableCoroutine { continuation ->
+                if (mService == null) {
+                    retries++
+                    destroyService()
+                    log { "Trying to bind the service..." }
+                    mConnection = object : ServiceConnection {
+                        override fun onServiceConnected(name: ComponentName, service: IBinder) {
+                            mService = IRemoteRootService.Stub.asInterface(service)
+                            if (continuation.context.isActive) continuation.resume(mService!!)
+                        }
 
-                    override fun onServiceDisconnected(name: ComponentName) {
-                        mService = null
-                        mConnection = null
-                        val msg = "Service disconnected."
-                        log { msg }
-                        if (continuation.context.isActive) continuation.resumeWithException(RemoteException(msg))
-                    }
+                        override fun onServiceDisconnected(name: ComponentName) {
+                            mService = null
+                            mConnection = null
+                            val msg = "Service disconnected."
+                            log { msg }
+                            if (continuation.context.isActive) continuation.resumeWithException(RemoteException(msg))
+                        }
 
-                    override fun onBindingDied(name: ComponentName) {
-                        mService = null
-                        mConnection = null
-                        val msg = "Binding died."
-                        log { msg }
-                        if (continuation.context.isActive) continuation.resumeWithException(RemoteException(msg))
-                    }
+                        override fun onBindingDied(name: ComponentName) {
+                            mService = null
+                            mConnection = null
+                            val msg = "Binding died."
+                            log { msg }
+                            if (continuation.context.isActive) continuation.resumeWithException(RemoteException(msg))
+                        }
 
-                    override fun onNullBinding(name: ComponentName) {
-                        mService = null
-                        mConnection = null
-                        val msg = "Null binding."
-                        log { msg }
-                        if (continuation.context.isActive) continuation.resumeWithException(RemoteException(msg))
+                        override fun onNullBinding(name: ComponentName) {
+                            mService = null
+                            mConnection = null
+                            val msg = "Null binding."
+                            log { msg }
+                            if (continuation.context.isActive) continuation.resumeWithException(RemoteException(msg))
+                        }
                     }
+                    RootService.bind(intent, mConnection!!)
+                } else {
+                    retries = 0
+                    mService
                 }
-                RootService.bind(intent, mConnection!!)
-            } else {
-                retries = 0
-                mService
             }
         }
+    } catch (e: TimeoutCancellationException) {
+        // 超时必须转成普通异常：CancellationException 会被协程框架静默吞掉，
+        // 调用方（runCatching/getOrElse）将无感知地拿到默认值且不留任何日志
+        throw RemoteException("Bind timeout after ${BIND_TIMEOUT_MS}ms, retries: $retries.")
     }
 
     /**

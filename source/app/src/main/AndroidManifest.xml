@@ -6,6 +6,11 @@
         android:name="android.permission.NEARBY_WIFI_DEVICES"
         android:usesPermissionFlags="neverForLocation"
         tools:targetApi="tiramisu" />
+    <!-- Android 17（API 37）起强制：targetSdk 37+ 访问局域网（私有 IP 段）必须授予该运行时权限，
+         属于「附近设备」权限组；不授予则出站 LAN TCP/UDP 直接失败。 -->
+    <uses-permission
+        android:name="android.permission.ACCESS_LOCAL_NETWORK"
+        tools:targetApi="vanillaIceCream" />
 
     <application
         android:name=".DataBackupApplication"

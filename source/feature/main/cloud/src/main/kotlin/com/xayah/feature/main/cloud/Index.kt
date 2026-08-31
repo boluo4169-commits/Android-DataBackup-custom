@@ -42,7 +42,6 @@ import com.xayah.core.ui.util.icon
 import com.xayah.core.util.encodeURL
 import com.xayah.core.util.navigateSingle
 import kotlinx.coroutines.launch
-
 @ExperimentalLayoutApi
 @ExperimentalAnimationApi
 @ExperimentalMaterial3Api
@@ -55,16 +54,16 @@ fun PageCloud() {
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
     val context = LocalContext.current
     val scope = rememberCoroutineScope()
-    // 澎湃 OS / MIUI 需要「附近设备」权限才能连接局域网服务器（SMB/WebDAV 等），进入页面即申请一次。
-    val requestNearby = rememberNearbyDevicesPermissionRequester(onDenied = {
+    // 澎湃 OS / MIUI 及 Android 17 需要「本地网络/附近设备」权限才能连接局域网服务器（SMB/WebDAV 等），进入页面即申请一次。
+    val requestLocalNetwork = rememberLocalNetworkPermissionRequester(onDenied = {
         scope.launch {
             viewModel.snackbarHostState.showSnackbar(context.getString(R.string.nearby_devices_permission_required))
         }
     })
 
     LaunchedEffect(null) {
-        if (isNearbyDevicesGranted(context).not()) {
-            requestNearby()
+        if (isLocalNetworkGranted(context).not()) {
+            requestLocalNetwork()
         }
     }
 

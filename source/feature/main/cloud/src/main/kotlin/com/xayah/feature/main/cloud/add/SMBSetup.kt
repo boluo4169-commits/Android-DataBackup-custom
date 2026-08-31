@@ -62,8 +62,8 @@ import com.xayah.core.ui.viewmodel.IndexUiEffect
 import com.xayah.feature.main.cloud.AccountSetupScaffold
 import com.xayah.feature.main.cloud.R
 import com.xayah.feature.main.cloud.SetupTextField
-import com.xayah.feature.main.cloud.isNearbyDevicesGranted
-import com.xayah.feature.main.cloud.rememberNearbyDevicesPermissionRequester
+import com.xayah.feature.main.cloud.isLocalNetworkGranted
+import com.xayah.feature.main.cloud.rememberLocalNetworkPermissionRequester
 import kotlinx.coroutines.launch
 
 @ExperimentalLayoutApi
@@ -102,8 +102,8 @@ fun PageSMBSetup() {
     }
 
     val scope = rememberCoroutineScope()
-    // 澎湃 OS / MIUI 需要「附近设备」权限才能连接局域网服务器，未授权时申请并提示。
-    val requestNearby = rememberNearbyDevicesPermissionRequester(onDenied = {
+    // 澎湃 OS / MIUI 及 Android 17 需要「本地网络/附近设备」权限才能连接局域网服务器，未授权时申请并提示。
+    val requestLocalNetwork = rememberLocalNetworkPermissionRequester(onDenied = {
         scope.launch {
             viewModel.snackbarHostState.showSnackbar(context.getString(R.string.nearby_devices_permission_required))
         }
@@ -117,8 +117,8 @@ fun PageSMBSetup() {
             TextButton(
                 enabled = allFilled && uiState.isProcessing.not(),
                 onClick = {
-                    if (isNearbyDevicesGranted(context).not()) {
-                        requestNearby()
+                    if (isLocalNetworkGranted(context).not()) {
+                        requestLocalNetwork()
                         return@TextButton
                     }
                     viewModel.launchOnIO {

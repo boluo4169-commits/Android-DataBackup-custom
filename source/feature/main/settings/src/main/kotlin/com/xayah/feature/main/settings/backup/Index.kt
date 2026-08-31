@@ -41,11 +41,13 @@ import com.xayah.core.datastore.KeyCompressionTest
 import com.xayah.core.datastore.KeyFollowSymlinks
 import com.xayah.core.datastore.KeyPreserveBackups
 import com.xayah.core.datastore.readCompressionLevel
+import com.xayah.core.datastore.readCompressionThreads
 import com.xayah.core.datastore.readCompressionType
 import com.xayah.core.datastore.readKillAppOption
 import com.xayah.core.datastore.readMaxPreserveCount
 import com.xayah.core.datastore.readPreserveBackups
 import com.xayah.core.datastore.saveCompressionLevel
+import com.xayah.core.datastore.saveCompressionThreads
 import com.xayah.core.datastore.saveKillAppOption
 import com.xayah.core.datastore.saveMaxPreserveCount
 import com.xayah.core.model.CompressionType
@@ -107,6 +109,25 @@ fun PageBackupSettings() {
                     if (compressionType != CompressionType.TAR) {
                         scope.launch {
                             context.saveCompressionLevel(it.roundToInt())
+                        }
+                    }
+                }
+
+                val threads by context.readCompressionThreads().collectAsStateWithLifecycle(initialValue = 2)
+                Slideable(
+                    enabled = compressionType != CompressionType.TAR,
+                    title = stringResource(id = R.string.compression_threads),
+                    value = threads.toFloat(),
+                    valueRange = 1F..8F,
+                    steps = 6,
+                    desc = remember(threads, compressionType) {
+                        if (compressionType == CompressionType.TAR) context.getString(R.string.compression_threads_tar_disabled)
+                        else "${context.getString(R.string.args_current_threads, threads)}\n${context.getString(R.string.compression_threads_desc)}"
+                    }
+                ) {
+                    if (compressionType != CompressionType.TAR) {
+                        scope.launch {
+                            context.saveCompressionThreads(it.roundToInt())
                         }
                     }
                 }

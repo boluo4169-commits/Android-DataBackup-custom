@@ -6,6 +6,7 @@ import com.xayah.core.data.repository.AppsRepo
 import com.xayah.core.data.repository.CloudRepository
 import com.xayah.core.data.repository.PackageRepository
 import com.xayah.core.data.repository.UsersRepo
+import com.xayah.core.datastore.readCompressionThreads
 import com.xayah.core.model.OpType
 import com.xayah.core.model.SortType
 import com.xayah.core.model.UserInfo
@@ -392,7 +393,7 @@ class DataMigrationExportViewModel @Inject constructor(
             "tar", "--totals", "-cpf", "-",
             "-C", SymbolUtil.shellQuote(backupDir),
             "--", *srcArgs,
-            "|", "zstd -r -T2 -q",
+            "|", "zstd -r -T${context.readCompressionThreads().first()} -q",
             ">", SymbolUtil.shellQuote(dstPath),
         )
         check(shellResult.code == 0) { shellResult.out.joinToString("\n") }

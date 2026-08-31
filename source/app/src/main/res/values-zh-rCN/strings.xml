@@ -481,6 +481,10 @@
     <string name="compression_level_desc">数字越小，压缩速度越快，数字越大，压缩率越高</string>
     <string name="compression_level_tar_disabled">当前压缩方式为 TAR（不压缩），此等级不生效</string>
     <string name="args_current_level">当前等级：%1$s</string>
+    <string name="compression_threads">压缩线程数</string>
+    <string name="compression_threads_desc">线程越多压缩越快，但发热越高。备份微信等大应用建议用较少的线程（如 2）避免被系统温控打断。</string>
+    <string name="compression_threads_tar_disabled">当前压缩方式为 TAR（不压缩），此设置不生效</string>
+    <string name="args_current_threads">当前线程数：%1$s</string>
     <string name="preserve_backups">保留历史备份</string>
     <string name="preserve_backups_desc">开启后每次备份自动保留历史版本，不覆盖之前的备份</string>
     <string name="preserve_backups_help">开启后，每次备份都会保留历史版本：\n\n• 最新一次备份 = 正常版本（无护盾标记）\n• 之前的备份 = 受保护版本，护盾内显示序号，护盾 1 是最近一次被覆盖的版本，数字越大越旧\n• 超过「最大保留版本数」时，最旧的版本会自动删除</string>

@@ -7,6 +7,7 @@ import com.xayah.core.data.repository.CloudRepository
 import com.xayah.core.data.repository.PackageRepository
 import com.xayah.core.database.dao.TaskDao
 import com.xayah.core.datastore.readCompressionLevel
+import com.xayah.core.datastore.readCompressionThreads
 import com.xayah.core.datastore.readFollowSymlinks
 import com.xayah.core.datastore.readSelectionType
 import com.xayah.core.model.CompressionType
@@ -201,7 +202,7 @@ class PackagesBackupUtil @Inject constructor(
             srcDir = context.filesDir(),
             src = IconRelativeDir,
             dst = dst,
-            extra = tarCt.getCompressPara(context.readCompressionLevel().first())
+            extra = tarCt.getCompressPara(context.readCompressionLevel().first(), context.readCompressionThreads().first())
         ).also { result ->
             isSuccess = result.isSuccess
             out.addAll(result.out)
@@ -242,7 +243,7 @@ class PackagesBackupUtil @Inject constructor(
                     t.updateInfo(dataType = dataType, state = OperationState.SKIP)
                     out.add(log { "Data has not changed." })
                 } else {
-                    Tar.compressInCur(cur = srcDir, src = "./*.apk", dst = dst, extra = ct.getCompressPara(context.readCompressionLevel().first()))
+                    Tar.compressInCur(cur = srcDir, src = "./*.apk", dst = dst, extra = ct.getCompressPara(context.readCompressionLevel().first(), context.readCompressionThreads().first()))
                         .also { result ->
                             isSuccess = result.isSuccess
                             out.addAll(result.out)
@@ -339,7 +340,7 @@ class PackagesBackupUtil @Inject constructor(
                     srcDir = srcDir,
                     src = packageName,
                     dst = dst,
-                    extra = ct.getCompressPara(context.readCompressionLevel().first())
+                    extra = ct.getCompressPara(context.readCompressionLevel().first(), context.readCompressionThreads().first())
                 ).also { result ->
                     // GNU tar 退出码：0=快照一致；1=读取期间源有变动；2=致命错误。
                     // 退出码 1 的告警有多种措辞（"file changed as we read it"、"File removed before we read it"、

@@ -98,6 +98,10 @@
     <item name="compression_level_desc" type="string" />
     <item name="compression_level_tar_disabled" type="string" />
     <item name="args_current_level" type="string" />
+    <item name="compression_threads" type="string" />
+    <item name="compression_threads_desc" type="string" />
+    <item name="compression_threads_tar_disabled" type="string" />
+    <item name="args_current_threads" type="string" />
     <item name="preserve_backups" type="string" />
     <item name="preserve_backups_desc" type="string" />
     <item name="preserve_backups_help" type="string" />

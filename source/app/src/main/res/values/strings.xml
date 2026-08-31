@@ -492,6 +492,10 @@
     <string name="compression_level_desc">Lower numbers provide faster compression, higher numbers yield better compression ratios</string>
     <string name="compression_level_tar_disabled">Compression type is TAR (no compression), so this level has no effect</string>
     <string name="args_current_level">Current level: %1$s</string>
+    <string name="compression_threads">Compression threads</string>
+    <string name="compression_threads_desc">More threads compress faster but generate more heat. Use fewer threads (e.g. 2) for large apps like WeChat to avoid thermal throttling.</string>
+    <string name="compression_threads_tar_disabled">Compression type is TAR (no compression), so this setting has no effect</string>
+    <string name="args_current_threads">Current threads: %1$s</string>
     <string name="preserve_backups">Preserve backup history</string>
     <string name="preserve_backups_desc">Keep a new version for every backup instead of overwriting the previous one</string>
     <string name="preserve_backups_help">When enabled, every backup keeps a history:\n\n• The latest backup is the normal version (no shield)\n• Older backups become protected, with a shield numbered from 1 (the most recently replaced), larger numbers mean older\n• Versions beyond the max count are deleted automatically</string>

@@ -6,6 +6,7 @@ import com.xayah.core.data.repository.CloudRepository
 import com.xayah.core.data.repository.MediaRepository
 import com.xayah.core.database.dao.TaskDao
 import com.xayah.core.datastore.readCompressionLevel
+import com.xayah.core.datastore.readCompressionThreads
 import com.xayah.core.datastore.readFollowSymlinks
 import com.xayah.core.model.DataType
 import com.xayah.core.model.OperationState
@@ -100,7 +101,7 @@ class MediumBackupUtil @Inject constructor(
                 srcDir = srcDir,
                 src = PathUtil.getFileName(src),// the name is not always the actual file name of the source,but the src does contain
                 dst = dst,
-                extra = ct.getCompressPara(context.readCompressionLevel().first())
+                extra = ct.getCompressPara(context.readCompressionLevel().first(), context.readCompressionThreads().first())
             ).also { result ->
                 // GNU tar 退出码 1 = 读取期间源有变动（措辞有多种：file changed / file removed before
                 // we read it / file shrank 等），归档已完整写出；由紧随其后的 testArchive 裁定成败，

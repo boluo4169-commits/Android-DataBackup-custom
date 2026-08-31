@@ -392,7 +392,7 @@ class DataMigrationExportViewModel @Inject constructor(
             "tar", "--totals", "-cpf", "-",
             "-C", SymbolUtil.shellQuote(backupDir),
             "--", *srcArgs,
-            "|", "zstd -r -T4 -q",
+            "|", "zstd -r -T2 -q",
             ">", SymbolUtil.shellQuote(dstPath),
         )
         check(shellResult.code == 0) { shellResult.out.joinToString("\n") }

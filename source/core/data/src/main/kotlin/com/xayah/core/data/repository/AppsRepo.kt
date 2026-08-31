@@ -338,7 +338,7 @@ class AppsRepo @Inject constructor(
 
             apps.forEachIndexed { index, pkg ->
                 onUpdate(index, apps.size, pkg.packageName)
-                val updateEntity = updateApp(pm, pkg, userId, userHandle, queryStats = false)
+                val updateEntity = updateApp(pm, pkg, userId, userHandle, queryStats = false, queryKeystore = false)
                 if (updateEntity != null) {
                     updateList.add(updateEntity)
                 }
@@ -356,7 +356,7 @@ class AppsRepo @Inject constructor(
             onUpdate(index, apps.size, pkg.packageName)
             val userId = pkg.userId
             val userHandle = rootService.getUserHandle(userId)
-            val updateEntity = updateApp(pm, pkg, userId, userHandle, queryStats = false)
+            val updateEntity = updateApp(pm, pkg, userId, userHandle, queryStats = false, queryKeystore = false)
             if (updateEntity != null) {
                 updateList.add(updateEntity)
             }
@@ -373,7 +373,7 @@ class AppsRepo @Inject constructor(
         }
     }
 
-    private suspend fun updateApp(pm: PackageManager, pkg: PackageEntity, userId: Int, userHandle: UserHandle?, queryStats: Boolean = true): PackageUpdateEntity? {
+    private suspend fun updateApp(pm: PackageManager, pkg: PackageEntity, userId: Int, userHandle: UserHandle?, queryStats: Boolean = true, queryKeystore: Boolean = true): PackageUpdateEntity? {
         val info = rootService.getPackageInfoAsUser(pkg.packageName, PackageManager.GET_PERMISSIONS, userId)
         val updateEntity = PackageUpdateEntity(pkg.id, pkg.packageInfo, pkg.extraInfo, pkg.storageStats)
         if (info != null) {
@@ -408,7 +408,9 @@ class AppsRepo @Inject constructor(
             val uid = info.applicationInfo?.uid ?: -1
             updateEntity.extraInfo.uid = uid
             updateEntity.extraInfo.permissions = rootService.getPermissions(packageInfo = info)
-            updateEntity.extraInfo.hasKeystore = PackageUtil.hasKeystore(context.readCustomSUFile().first(), uid)
+            if (queryKeystore) {
+                updateEntity.extraInfo.hasKeystore = PackageUtil.hasKeystore(context.readCustomSUFile().first(), uid)
+            }
             updateEntity.extraInfo.ssaid = rootService.getPackageSsaidAsUser(packageName = info.packageName, uid = uid, userId = userId)
             updateEntity.extraInfo.enabled = info.applicationInfo?.enabled ?: false
 

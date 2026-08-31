@@ -278,7 +278,9 @@ class PackagesBackupUtil @Inject constructor(
 
         val packageName = p.packageName
         val userId = p.userId
-        val ct = p.indexInfo.compressionType
+        // user 数据是大量小文件（数据库/聊天记录/缩略图），压缩 CPU 密集易触发温控杀，且小文件压缩率本就低，
+        // 故 user 数据强制 TAR 不压缩；其余数据（apk/data/obb/media）跟随全局压缩设置。
+        val ct = if (dataType == DataType.PACKAGE_USER) CompressionType.TAR else p.indexInfo.compressionType
         val dst = packageRepository.getArchiveDst(dstDir = dstDir, dataType = dataType, ct = ct)
         var isSuccess: Boolean
         val out = mutableListOf<String>()

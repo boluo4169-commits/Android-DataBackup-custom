@@ -14,6 +14,7 @@ import com.xayah.core.datastore.readClearDeviceFingerprint
 import com.xayah.core.datastore.readRandomizeSsaid
 import com.xayah.core.datastore.readFixDataOwnership
 import com.xayah.core.datastore.readSelectionType
+import com.xayah.core.model.CompressionType
 import com.xayah.core.model.DataType
 import com.xayah.core.model.OperationState
 import com.xayah.core.model.SelectionType
@@ -288,7 +289,8 @@ class PackagesRestoreUtil @Inject constructor(
         log { "Restoring ${dataType.type}..." }
 
         val packageName = p.packageName
-        val ct = p.indexInfo.compressionType
+        // user 数据备份时强制 TAR 不压缩（见 PackagesBackupUtil.backupData），恢复端保持一致。
+        val ct = if (dataType == DataType.PACKAGE_USER) CompressionType.TAR else p.indexInfo.compressionType
         val src = packageRepository.getArchiveDst(dstDir = srcDir, dataType = dataType, ct = ct)
         val dstDir = packageRepository.getDataSrcDir(dataType, userId)
         val dst = packageRepository.getDataSrc(dstDir, packageName)

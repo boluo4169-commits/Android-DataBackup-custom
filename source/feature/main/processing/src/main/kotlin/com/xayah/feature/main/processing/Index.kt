@@ -206,7 +206,7 @@ fun PageProcessing(
             if (uiState.state == OperationState.PROCESSING) {
                 viewModel.launchOnIO {
                     if (dialogState.confirm(title = context.getString(R.string.prompt), text = context.getString(R.string.processing_exit_confirmation))) {
-                        BaseUtil.kill(context, "tar", "root")
+                        BaseUtil.kill(context, "tar", "cpf", "root")
                         viewModel.emitIntent(ProcessingUiIntent.DestroyService)
                         withMainContext {
                             navController.popBackStack()

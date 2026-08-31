@@ -708,7 +708,8 @@ class PackageRepository @Inject constructor(
                                 val type = CompressionType.suffixOf(archivePath.extension)
                                 if (type != null) {
                                     log { "Archive compression type: ${type.type}" }
-                                    packageEntity.indexInfo.compressionType = type
+                                    // user 归档可能因强制 TAR 与全局压缩类型不一致，恢复端靠探测（先 user.tar 再 user.tar.zst），
+                                    // 故不覆盖全局 compressionType，避免影响 data/obb 等归档的类型判断。
                                     packageEntity.dataStates.userState = DataState.Selected
                                 } else {
                                     log { "Failed to parse compression type: ${archivePath.extension}" }
@@ -1067,7 +1068,8 @@ class PackageRepository @Inject constructor(
                                         val type = CompressionType.suffixOf(archivePath.extension)
                                         if (type != null) {
                                             log { "Archive compression type: ${type.type}" }
-                                            packageEntity.indexInfo.compressionType = type
+                                            // user 归档可能因强制 TAR 与全局压缩类型不一致，恢复端靠探测，
+                                            // 故不覆盖全局 compressionType，避免影响 data/obb 等归档的类型判断。
                                             packageEntity.dataStates.userState = DataState.Selected
                                         } else {
                                             log { "Failed to parse compression type: ${archivePath.extension}" }

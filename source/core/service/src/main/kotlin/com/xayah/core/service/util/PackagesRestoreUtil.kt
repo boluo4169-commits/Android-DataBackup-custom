@@ -583,8 +583,19 @@ class PackagesRestoreUtil @Inject constructor(
         dstDir: String,
         onDownloaded: suspend (p: PackageEntity, t: TaskDetailPackageEntity, dataType: DataType, path: String) -> Unit
     ) = run {
-        val ct = p.indexInfo.compressionType
-        val src = packageRepository.getArchiveDst(dstDir = srcDir, dataType = dataType, ct = ct)
+        var ct = if (dataType == DataType.PACKAGE_USER) CompressionType.TAR else p.indexInfo.compressionType
+        var src = packageRepository.getArchiveDst(dstDir = srcDir, dataType = dataType, ct = ct)
+        // 兼容旧版本云端备份：user 归档可能是旧的压缩格式，user.tar 不存在则回退找 user.tar.zst。
+        if (dataType == DataType.PACKAGE_USER && !client.exists(src)) {
+            val legacyCt = p.indexInfo.compressionType
+            if (legacyCt != CompressionType.TAR) {
+                val legacySrc = packageRepository.getArchiveDst(dstDir = srcDir, dataType = dataType, ct = legacyCt)
+                if (client.exists(legacySrc)) {
+                    ct = legacyCt
+                    src = legacySrc
+                }
+            }
+        }
 
         if (p.getDataSelected(dataType).not()) {
             t.updateInfo(dataType = dataType, state = OperationState.SKIP)

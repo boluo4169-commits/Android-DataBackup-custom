@@ -405,7 +405,8 @@ class PackagesBackupUtil @Inject constructor(
     }
 
     suspend fun upload(client: CloudClient, p: PackageEntity, t: TaskDetailPackageEntity, dataType: DataType, srcDir: String, dstDir: String) = run {
-        val ct = p.indexInfo.compressionType
+        // user 数据备份时强制 TAR（见 backupData），上传端用相同类型定位本地归档。
+        val ct = if (dataType == DataType.PACKAGE_USER) CompressionType.TAR else p.indexInfo.compressionType
         val src = packageRepository.getArchiveDst(dstDir = srcDir, dataType = dataType, ct = ct)
         t.updateInfo(dataType = dataType, state = OperationState.UPLOADING)
 

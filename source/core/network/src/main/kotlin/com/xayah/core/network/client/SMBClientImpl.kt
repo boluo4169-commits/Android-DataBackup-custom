@@ -121,8 +121,11 @@ class SMBClientImpl(private val entity: CloudEntity, private val extra: SMBExtra
 
     override fun disconnect() {
         runCatching {
-            withDiskShare { diskShare ->
-                diskShare.close()
+            // share 可能为 null（测试连接/未设置共享目录时），避免 withDiskShare 抛 NPE
+            if (share != null) {
+                withDiskShare { diskShare ->
+                    diskShare.close()
+                }
             }
             withClient { client ->
                 client.close()

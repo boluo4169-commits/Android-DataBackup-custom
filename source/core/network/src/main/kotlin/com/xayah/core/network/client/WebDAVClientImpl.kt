@@ -6,6 +6,7 @@ import com.xayah.core.common.util.toPathString
 import com.xayah.core.model.database.CloudEntity
 import com.xayah.core.model.database.WebDAVExtra
 import com.xayah.core.network.R
+import com.xayah.core.network.io.CountingFileRequestBody
 import com.xayah.core.network.io.CountingOutputStreamImpl
 import com.xayah.core.network.util.getExtraEntity
 import com.xayah.core.rootservice.parcelables.PathParcelable
@@ -21,8 +22,11 @@ import com.xayah.libpickyou.ui.model.PickerType
 import com.xayah.libsardine.DavResource
 import com.xayah.libsardine.impl.OkHttpSardine
 import com.xayah.libsardine.impl.SardineException
+import okhttp3.Credentials
 import okhttp3.OkHttpClient
+import okhttp3.Request
 import java.io.File
+import java.io.IOException
 import java.util.concurrent.TimeUnit
 import java.security.SecureRandom
 import java.security.cert.X509Certificate
@@ -32,6 +36,7 @@ import javax.net.ssl.X509TrustManager
 
 class WebDAVClientImpl(private val entity: CloudEntity, private val extra: WebDAVExtra) : CloudClient {
     private var client: OkHttpSardine? = null
+    private var okHttpClient: OkHttpClient? = null
 
     private fun log(msg: () -> String): String = run {
         LogUtil.log { "WebDAVClientImpl" to msg() }
@@ -73,7 +78,8 @@ class WebDAVClientImpl(private val entity: CloudEntity, private val extra: WebDA
             }
         }
 
-        client = OkHttpSardine(builder.build()).apply {
+        okHttpClient = builder.build()
+        client = OkHttpSardine(okHttpClient!!).apply {
             setCredentials(entity.user, entity.pass)
             list(entity.host)
         }
@@ -81,6 +87,7 @@ class WebDAVClientImpl(private val entity: CloudEntity, private val extra: WebDA
 
     override fun disconnect() {
         client = null
+        okHttpClient = null
     }
 
     override fun mkdir(dst: String) = withClient { client ->
@@ -103,12 +110,22 @@ class WebDAVClientImpl(private val entity: CloudEntity, private val extra: WebDA
         client.move(getPath(src), getPath(dst), false)
     }
 
-    override fun upload(src: String, dst: String, onUploading: (read: Long, total: Long) -> Unit) = withClient { client ->
+    override fun upload(src: String, dst: String, onUploading: (read: Long, total: Long) -> Unit) {
         val name = PathUtil.getFileName(src)
         val dstPath = "${getPath(dst)}/$name"
         log { "upload: $src to $dstPath" }
         val srcFile = File(src)
-        client.put(dstPath, srcFile, null)
+        val http = okHttpClient ?: throw NullPointerException("HttpClient is null.")
+        val request = Request.Builder()
+            .url(dstPath)
+            .put(CountingFileRequestBody(srcFile, null) { written, total -> onUploading(written, total) })
+            .header("Authorization", Credentials.basic(entity.user, entity.pass))
+            .build()
+        http.newCall(request).execute().use { response ->
+            if (!response.isSuccessful) {
+                throw IOException("Upload failed: ${response.code}")
+            }
+        }
     }
 
     override fun download(src: String, dst: String, onDownloading: (written: Long, total: Long) -> Unit) = withClient { client ->

@@ -290,8 +290,20 @@ class PackagesRestoreUtil @Inject constructor(
 
         val packageName = p.packageName
         // user 数据备份时强制 TAR 不压缩（见 PackagesBackupUtil.backupData），恢复端保持一致。
-        val ct = if (dataType == DataType.PACKAGE_USER) CompressionType.TAR else p.indexInfo.compressionType
-        val src = packageRepository.getArchiveDst(dstDir = srcDir, dataType = dataType, ct = ct)
+        var ct = if (dataType == DataType.PACKAGE_USER) CompressionType.TAR else p.indexInfo.compressionType
+        var src = packageRepository.getArchiveDst(dstDir = srcDir, dataType = dataType, ct = ct)
+        // 兼容旧版本备份：早期 user 数据跟随全局压缩类型（如 ZSTD → user.tar.zst），新版 user 强制 TAR（user.tar）。
+        // 若 user.tar 不存在但旧的压缩归档还在，回退用旧压缩类型恢复。
+        if (dataType == DataType.PACKAGE_USER && !rootService.exists(src)) {
+            val legacyCt = p.indexInfo.compressionType
+            if (legacyCt != CompressionType.TAR) {
+                val legacySrc = packageRepository.getArchiveDst(dstDir = srcDir, dataType = dataType, ct = legacyCt)
+                if (rootService.exists(legacySrc)) {
+                    ct = legacyCt
+                    src = legacySrc
+                }
+            }
+        }
         val dstDir = packageRepository.getDataSrcDir(dataType, userId)
         val dst = packageRepository.getDataSrc(dstDir, packageName)
         // 跨系统大版本恢复时，APK 装上�?PackageManager 缓存可能还没刷新�?

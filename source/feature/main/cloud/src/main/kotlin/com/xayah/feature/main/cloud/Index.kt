@@ -19,8 +19,11 @@ import androidx.compose.material3.LocalContentColor
 import androidx.compose.material3.TopAppBarDefaults
 import androidx.compose.material3.rememberTopAppBarState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -38,6 +41,7 @@ import com.xayah.core.ui.util.LocalNavController
 import com.xayah.core.ui.util.icon
 import com.xayah.core.util.encodeURL
 import com.xayah.core.util.navigateSingle
+import kotlinx.coroutines.launch
 
 @ExperimentalLayoutApi
 @ExperimentalAnimationApi
@@ -49,6 +53,20 @@ fun PageCloud() {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val accounts by viewModel.accounts.collectAsStateWithLifecycle()
+    val context = LocalContext.current
+    val scope = rememberCoroutineScope()
+    // 澎湃 OS / MIUI 需要「附近设备」权限才能连接局域网服务器（SMB/WebDAV 等），进入页面即申请一次。
+    val requestNearby = rememberNearbyDevicesPermissionRequester(onDenied = {
+        scope.launch {
+            viewModel.snackbarHostState.showSnackbar(context.getString(R.string.nearby_devices_permission_required))
+        }
+    })
+
+    LaunchedEffect(null) {
+        if (isNearbyDevicesGranted(context).not()) {
+            requestNearby()
+        }
+    }
 
     CloudScaffold(
         scrollBehavior = scrollBehavior,

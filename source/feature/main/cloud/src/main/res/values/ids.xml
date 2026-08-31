@@ -2,6 +2,7 @@
     <item name="processing" type="string"/>
     <item name="connection_established" type="string"/>
     <item name="test_connection" type="string"/>
+    <item name="nearby_devices_permission_required" type="string"/>
     <item name="delete" type="string"/>
     <item name="url" type="string"/>
     <item name="username" type="string"/>

@@ -21,6 +21,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
@@ -51,6 +52,9 @@ import com.xayah.core.ui.util.LocalNavController
 import com.xayah.feature.main.cloud.AccountSetupScaffold
 import com.xayah.feature.main.cloud.R
 import com.xayah.feature.main.cloud.SetupTextField
+import com.xayah.feature.main.cloud.isNearbyDevicesGranted
+import com.xayah.feature.main.cloud.rememberNearbyDevicesPermissionRequester
+import kotlinx.coroutines.launch
 
 @ExperimentalLayoutApi
 @ExperimentalAnimationApi
@@ -82,6 +86,14 @@ fun PageWebDAVSetup() {
         viewModel.emitIntentOnIO(IndexUiIntent.Initialize)
     }
 
+    val scope = rememberCoroutineScope()
+    // 澎湃 OS / MIUI 需要「附近设备」权限才能连接局域网服务器，未授权时申请并提示。
+    val requestNearby = rememberNearbyDevicesPermissionRequester(onDenied = {
+        scope.launch {
+            viewModel.snackbarHostState.showSnackbar(context.getString(R.string.nearby_devices_permission_required))
+        }
+    })
+
     AccountSetupScaffold(
         scrollBehavior = scrollBehavior,
         snackbarHostState = viewModel.snackbarHostState,
@@ -90,6 +102,10 @@ fun PageWebDAVSetup() {
             TextButton(
                 enabled = allFilled && uiState.isProcessing.not(),
                 onClick = {
+                    if (isNearbyDevicesGranted(context).not()) {
+                        requestNearby()
+                        return@TextButton
+                    }
                     viewModel.launchOnIO {
                         viewModel.updateWebDAVEntity(name = name, remote = remote, url = url, username = username, password = password, insecure = insecure)
                         viewModel.emitIntent(IndexUiIntent.TestConnection)

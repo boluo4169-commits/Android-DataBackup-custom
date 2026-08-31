@@ -10,6 +10,7 @@ import com.xayah.core.ui.viewmodel.BaseViewModel
 import com.xayah.core.ui.viewmodel.IndexUiEffect
 import com.xayah.core.ui.viewmodel.UiIntent
 import com.xayah.core.ui.viewmodel.UiState
+import com.xayah.core.util.LogUtil
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.StateFlow
@@ -43,10 +44,12 @@ class IndexViewModel @Inject constructor(
                 runCatching {
                     val client = intent.entity.getCloud()
                     client.testConnection()
+                    LogUtil.log { "Cloud" to "Test connection succeeded: ${intent.entity.type}, ${intent.entity.host}" }
                     emitEffect(IndexUiEffect.DismissSnackbar)
                     emitEffectOnIO(IndexUiEffect.ShowSnackbar(type = SnackbarType.Success, message = cloudRepo.getString(R.string.connection_established)))
                 }.onFailure {
                     emitEffect(IndexUiEffect.DismissSnackbar)
+                    LogUtil.log { "Cloud" to "Test connection failed: ${intent.entity.type}, ${intent.entity.host}, $it" }
                     if (it.localizedMessage != null)
                         emitEffectOnIO(IndexUiEffect.ShowSnackbar(type = SnackbarType.Error, message = it.localizedMessage!!, duration = SnackbarDuration.Long))
                 }

@@ -278,9 +278,8 @@ class PackagesBackupUtil @Inject constructor(
 
         val packageName = p.packageName
         val userId = p.userId
-        // user 数据是大量小文件（数据库/聊天记录/缩略图），压缩 CPU 密集易触发温控杀，且小文件压缩率本就低，
-        // 故 user 数据强制 TAR 不压缩；其余数据（apk/data/obb/media）跟随全局压缩设置。
-        val ct = if (dataType == DataType.PACKAGE_USER) CompressionType.TAR else p.indexInfo.compressionType
+        // 所有数据类型统一跟随全局压缩设置（user 曾强制 TAR 不压缩，已撤回）。
+        val ct = p.indexInfo.compressionType
         val dst = packageRepository.getArchiveDst(dstDir = dstDir, dataType = dataType, ct = ct)
         var isSuccess: Boolean
         val out = mutableListOf<String>()
@@ -328,9 +327,11 @@ class PackagesBackupUtil @Inject constructor(
             }
             log { "ExclusionList: $exclusionList." }
 
-            val sizeBytes = rootService.calculateSize(src)
-            t.updateInfo(dataType = dataType, state = OperationState.PROCESSING, bytes = sizeBytes)
-            if (rootService.exists(dst) && sizeBytes == r?.getDataBytes(dataType)) {
+            // user 数据是海量小文件，calculateSize 遍历要几十秒且发热（实测微信约 40 秒），
+            // 反把设备烤热导致后续 tar 打包被温控杀。跳过，user 数据每次都重新打包，大小由归档实际字节回填。
+            val sizeBytes = if (dataType == DataType.PACKAGE_USER) -1L else rootService.calculateSize(src)
+            t.updateInfo(dataType = dataType, state = OperationState.PROCESSING, bytes = if (sizeBytes < 0) 0 else sizeBytes)
+            if (dataType != DataType.PACKAGE_USER && rootService.exists(dst) && sizeBytes == r?.getDataBytes(dataType)) {
                 isSuccess = true
                 t.updateInfo(dataType = dataType, state = OperationState.SKIP)
                 out.add(log { "Data has not changed." })
@@ -360,7 +361,8 @@ class PackagesBackupUtil @Inject constructor(
                     isSuccess = isSuccess && result.isSuccess
                     out.addAll(result.out)
                     if (result.isSuccess) {
-                        p.setDataBytes(dataType, sizeBytes)
+                        // user 数据跳过了 calculateSize（sizeBytes=-1），用归档实际大小回填 dataBytes（user.tar 是单文件，算大小快）。
+                        p.setDataBytes(dataType, if (sizeBytes < 0) rootService.calculateSize(dst) else sizeBytes)
                         p.setDisplayBytes(dataType, rootService.calculateSize(dst))
                         ChecksumUtil.write(rootService = rootService, src = dst)?.let { md5 ->
                             out.add(log { "Checksum: $md5" })
@@ -405,8 +407,8 @@ class PackagesBackupUtil @Inject constructor(
     }
 
     suspend fun upload(client: CloudClient, p: PackageEntity, t: TaskDetailPackageEntity, dataType: DataType, srcDir: String, dstDir: String) = run {
-        // user 数据备份时强制 TAR（见 backupData），上传端用相同类型定位本地归档。
-        val ct = if (dataType == DataType.PACKAGE_USER) CompressionType.TAR else p.indexInfo.compressionType
+        // 与 backupData 保持一致：所有数据类型统一跟随全局压缩设置。
+        val ct = p.indexInfo.compressionType
         val src = packageRepository.getArchiveDst(dstDir = srcDir, dataType = dataType, ct = ct)
         t.updateInfo(dataType = dataType, state = OperationState.UPLOADING)
 

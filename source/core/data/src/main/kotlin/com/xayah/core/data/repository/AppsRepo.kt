@@ -24,6 +24,7 @@ import com.xayah.core.datastore.saveLoadedIconMD5
 import com.xayah.core.hiddenapi.castTo
 import com.xayah.core.model.App
 import com.xayah.core.model.CompressionType
+import com.xayah.core.model.util.resolveArchive
 import com.xayah.core.model.DataState
 import com.xayah.core.model.DataType
 import com.xayah.core.model.DefaultPreserveId
@@ -685,13 +686,13 @@ class AppsRepo @Inject constructor(
 
     private suspend fun calculateArchiveDataSize(p: PackageEntity, dataType: DataType): Long = withTimeoutOrNull(5_000) {
         val dir = "${pathUtil.getLocalBackupAppsDir()}/${p.archivesRelativeDir}"
-        // user 数据备份时强制 TAR（见 PackagesBackupUtil.backupData），此处保持一致；旧备份可能是压缩归档，回退探测。
-        val ct = if (dataType == DataType.PACKAGE_USER) CompressionType.TAR else p.indexInfo.compressionType
-        var size = rootService.calculateSize(getArchiveSrc(dir, dataType, ct))
-        if (size == 0L && dataType == DataType.PACKAGE_USER && ct != p.indexInfo.compressionType) {
-            size = rootService.calculateSize(getArchiveSrc(dir, dataType, p.indexInfo.compressionType))
-        }
-        size
+        // 归档实际类型可能与记录不一致（历史版本 user 数据曾强制 TAR 不压缩），按记录类型优先、其余类型兜底探测。
+        val (_, src) = CompressionType.resolveArchive(
+            expected = p.indexInfo.compressionType,
+            pathOf = { getArchiveSrc(dir, dataType, it) },
+            exists = { rootService.exists(it) },
+        )
+        rootService.calculateSize(src)
     } ?: 0
 
     suspend fun calculateLocalAppArchiveSize(app: PackageEntity) {

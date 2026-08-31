@@ -22,6 +22,7 @@ import com.xayah.core.model.database.PackageEntity
 import com.xayah.core.model.database.PackagePermission
 import com.xayah.core.model.database.TaskDetailPackageEntity
 import com.xayah.core.model.util.formatSize
+import com.xayah.core.model.util.resolveArchive
 import com.xayah.core.network.client.CloudClient
 import com.xayah.core.rootservice.service.RemoteRootService
 import com.xayah.core.util.LogUtil
@@ -289,21 +290,13 @@ class PackagesRestoreUtil @Inject constructor(
         log { "Restoring ${dataType.type}..." }
 
         val packageName = p.packageName
-        // user 数据备份时强制 TAR 不压缩（见 PackagesBackupUtil.backupData），恢复端保持一致。
-        var ct = if (dataType == DataType.PACKAGE_USER) CompressionType.TAR else p.indexInfo.compressionType
-        var src = packageRepository.getArchiveDst(dstDir = srcDir, dataType = dataType, ct = ct)
-        // 兼容旧版本备份：早期 user 数据跟随全局压缩类型（如 ZSTD → user.tar.zst），新版 user 强制 TAR（user.tar）。
-        // 若 user.tar 不存在但旧的压缩归档还在，回退用旧压缩类型恢复。
-        if (dataType == DataType.PACKAGE_USER && !rootService.exists(src)) {
-            val legacyCt = p.indexInfo.compressionType
-            if (legacyCt != CompressionType.TAR) {
-                val legacySrc = packageRepository.getArchiveDst(dstDir = srcDir, dataType = dataType, ct = legacyCt)
-                if (rootService.exists(legacySrc)) {
-                    ct = legacyCt
-                    src = legacySrc
-                }
-            }
-        }
+        // 归档实际类型可能与记录不一致：历史版本 user 数据曾强制 TAR 不压缩（user.tar），
+        // 其余时期跟随全局压缩设置（user.tar.zst）。按记录类型优先、其余类型兜底探测，两种归档都能恢复。
+        val (ct, src) = CompressionType.resolveArchive(
+            expected = p.indexInfo.compressionType,
+            pathOf = { packageRepository.getArchiveDst(dstDir = srcDir, dataType = dataType, ct = it) },
+            exists = { rootService.exists(it) },
+        )
         val dstDir = packageRepository.getDataSrcDir(dataType, userId)
         val dst = packageRepository.getDataSrc(dstDir, packageName)
         // 跨系统大版本恢复时，APK 装上�?PackageManager 缓存可能还没刷新�?
@@ -583,19 +576,12 @@ class PackagesRestoreUtil @Inject constructor(
         dstDir: String,
         onDownloaded: suspend (p: PackageEntity, t: TaskDetailPackageEntity, dataType: DataType, path: String) -> Unit
     ) = run {
-        var ct = if (dataType == DataType.PACKAGE_USER) CompressionType.TAR else p.indexInfo.compressionType
-        var src = packageRepository.getArchiveDst(dstDir = srcDir, dataType = dataType, ct = ct)
-        // 兼容旧版本云端备份：user 归档可能是旧的压缩格式，user.tar 不存在则回退找 user.tar.zst。
-        if (dataType == DataType.PACKAGE_USER && !client.exists(src)) {
-            val legacyCt = p.indexInfo.compressionType
-            if (legacyCt != CompressionType.TAR) {
-                val legacySrc = packageRepository.getArchiveDst(dstDir = srcDir, dataType = dataType, ct = legacyCt)
-                if (client.exists(legacySrc)) {
-                    ct = legacyCt
-                    src = legacySrc
-                }
-            }
-        }
+        // 与 restoreData 一致：按记录类型优先、其余类型兜底探测，兼容云端混合归档（user.tar / user.tar.zst）。
+        val (ct, src) = CompressionType.resolveArchive(
+            expected = p.indexInfo.compressionType,
+            pathOf = { packageRepository.getArchiveDst(dstDir = srcDir, dataType = dataType, ct = it) },
+            exists = { client.exists(it) },
+        )
 
         if (p.getDataSelected(dataType).not()) {
             t.updateInfo(dataType = dataType, state = OperationState.SKIP)

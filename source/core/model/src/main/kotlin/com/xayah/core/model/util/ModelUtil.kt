@@ -58,6 +58,30 @@ fun CompressionType.Companion.suffixOf(suffix: String): CompressionType? = when 
     else -> null
 }
 
+/**
+ * 定位归档文件：优先取 [expected] 类型对应的路径，不存在时依次探测其余压缩类型。
+ *
+ * 用于兼容归档实际类型与记录不一致的历史备份（user 数据曾强制 TAR 不压缩，产生 user.tar；
+ * 其余时期跟随全局设置产生 user.tar.zst）。恢复/下载/大小计算三处共用，保证两种归档都能定位。
+ *
+ * 全部不存在时回退返回 [expected] 的路径，交由调用方按「归档缺失」处理（SKIP 或报错）。
+ */
+suspend fun CompressionType.Companion.resolveArchive(
+    expected: CompressionType,
+    pathOf: (CompressionType) -> String,
+    exists: suspend (String) -> Boolean,
+): Pair<CompressionType, String> {
+    val expectedPath = pathOf(expected)
+    if (exists(expectedPath)) return expected to expectedPath
+    CompressionType.values().forEach { type ->
+        if (type != expected) {
+            val path = pathOf(type)
+            if (exists(path)) return type to path
+        }
+    }
+    return expected to expectedPath
+}
+
 fun SelectionType.Companion.of(name: String?): SelectionType =
     runCatching { SelectionType.valueOf(name!!.uppercase()) }.getOrDefault(SelectionType.DEFAULT)
 

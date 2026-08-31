@@ -374,7 +374,7 @@ class PackagesRestoreUtil @Inject constructor(
                     // 不再�?tar --recursive-unlink（它会递归删除整个目录，包�?lib）�?
                     if (context.readCleanRestoring().first()) {
                         SELinux.cleanRestore(dst = dst).also { result ->
-                            isSuccess = isSuccess && result.isSuccess
+                            isSuccess = isSuccess && result.isNonFatalCleanup()
                             out.addAll(result.out)
                         }
                     }
@@ -400,7 +400,7 @@ class PackagesRestoreUtil @Inject constructor(
                         gid = pathGid
                     }
                     SELinux.chown(uid = uid.toUInt(), gid = gid, path = dst).also { result ->
-                        isSuccess = isSuccess && result.isSuccess
+                        isSuccess = isSuccess && result.isNonFatalCleanup()
                         out.addAll(result.out)
                     }
                     if (dataType == DataType.PACKAGE_DATA || dataType == DataType.PACKAGE_OBB || dataType == DataType.PACKAGE_MEDIA) {
@@ -445,7 +445,7 @@ class PackagesRestoreUtil @Inject constructor(
                             if (mismatched > 0) {
                                 out.add(log { "Ownership mismatch: $mismatched entries not owned by $uid, re-fixing..." })
                                 SELinux.chown(uid = uid.toUInt(), gid = gid, path = dst).also { r ->
-                                    isSuccess = isSuccess && r.isSuccess
+                                    isSuccess = isSuccess && r.isNonFatalCleanup()
                                     out.addAll(r.out)
                                 }
                                 SELinux.countNotOwnedBy(path = dst, uid = uid.toUInt()).also { r ->
@@ -620,4 +620,16 @@ class PackagesRestoreUtil @Inject constructor(
             }
         }
     }
+}
+
+/**
+ * chown/rm 在 FUSE 上遇到「备份期间被并发删除的文件」（幽灵条目）会报 ENOENT，
+ * 这类错误非致命——restorecon 与 countNotOwnedBy 属主校验会兜底——降级为成功。
+ * 仅当所有非空输出行都命中 ENOENT 类标记时才降级；其余（如 Permission denied）保持失败。
+ */
+private fun ShellResult.isNonFatalCleanup(): Boolean {
+    if (isSuccess) return true
+    val markers = listOf("No such file or directory", "Directory not empty")
+    val lines = out.filter { it.isNotBlank() }
+    return lines.isNotEmpty() && lines.all { line -> markers.any { line.contains(it) } }
 }

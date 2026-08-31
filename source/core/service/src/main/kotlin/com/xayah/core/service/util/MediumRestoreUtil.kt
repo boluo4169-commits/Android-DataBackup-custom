@@ -1,6 +1,7 @@
 package com.xayah.core.service.util
 
 import android.content.Context
+import android.media.MediaScannerConnection
 import com.xayah.core.common.util.toLineString
 import com.xayah.core.data.repository.CloudRepository
 import com.xayah.core.data.repository.MediaRepository
@@ -100,6 +101,11 @@ class MediumRestoreUtil @Inject constructor(
                 isSuccess = result.isSuccess
                 out.addAll(result.out)
             }
+            // 恢复的是 Pictures/DCIM/Music 等媒体目录，文件落盘后 MediaStore 数据库并没有
+            // 索引，相册/图库读不到。恢复成功后触发一次媒体扫描，让系统重新入库。
+            if (isSuccess) {
+                scanMediaStore(m.path)
+            }
         } else {
             isSuccess = false
             out.add(log { "Not exist: $src" })
@@ -109,6 +115,18 @@ class MediumRestoreUtil @Inject constructor(
         t.updateInfo(state = if (isSuccess) OperationState.DONE else OperationState.ERROR, log = out.toLineString())
 
         ShellResult(code = if (isSuccess) 0 else -1, input = listOf(), out = out)
+    }
+
+    /**
+     * 触发 MediaStore 重新扫描指定目录，让相册/图库/音乐等应用立即索引到恢复的文件。
+     * 传目录路径，MediaScanner 会递归扫描子目录；异步执行，不阻塞恢复流程。
+     */
+    private fun scanMediaStore(path: String) {
+        runCatching {
+            MediaScannerConnection.scanFile(context, arrayOf(path), null, null)
+        }.onFailure {
+            log { "Failed to trigger media scan for $path: ${it.message}" }
+        }
     }
 
     suspend fun download(

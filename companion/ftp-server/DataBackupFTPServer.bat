@@ -1,6 +1,6 @@
 @echo off
 chcp 65001 >nul
-setlocal EnableExtensions
+setlocal EnableExtensions EnableDelayedExpansion
 set "SCRIPT_VER=1.2"
 title DataBackup Companion - FTP Backup Server v1.2
 
@@ -60,9 +60,28 @@ set "FTP_USER=%~1"
 if "%FTP_USER%"=="" set /p "FTP_USER=请输入 FTP 用户名 [databackup]: "
 if "%FTP_USER%"=="" set "FTP_USER=databackup"
 
-REM ---------- password: random or manual ----------
+REM ---------- password: reuse last > random or manual ----------
 set "FTP_PASS=%~2"
 set "PASS_MODE=1"
+
+REM ---------- reuse last credentials (if any) ----------
+if "%FTP_PASS%"=="" (
+    set "SAVED_CRED="
+    for /f "usebackq delims=" %%u in (`powershell -NoProfile -Command "$p=\"$env:USERPROFILE\.databackup_ftp_cred\"; if(Test-Path $p){try{$d=Get-Content $p -Raw -Encoding UTF8 | ConvertFrom-Json; Write-Output ($d.user + '|' + $d.password)}catch{}}"`) do set "SAVED_CRED=%%u"
+    if defined SAVED_CRED (
+        for /f "tokens=1,2 delims=|" %%a in ("!SAVED_CRED!") do set "SAVED_USER=%%a" & set "SAVED_PASS=%%b"
+        echo.
+        echo 检测到上次的账号密码（!SAVED_USER! / !SAVED_PASS!），是否继续沿用？[Y/n]
+        set "REUSE="
+        set /p "REUSE=: "
+        if /i not "!REUSE!"=="n" (
+            if "%FTP_USER%"=="" set "FTP_USER=!SAVED_USER!"
+            set "FTP_PASS=!SAVED_PASS!"
+            echo 已沿用上次账号密码。
+        )
+    )
+)
+
 if "%FTP_PASS%"=="" (
     echo.
     echo 请选择密码方式:
@@ -101,6 +120,9 @@ if not exist "%FTP_DIR%" (
     exit /b 1
 )
 echo 备份目录: %FTP_DIR%
+
+REM ---------- save credentials for next launch (reuse) ----------
+powershell -NoProfile -Command "$p=\"$env:USERPROFILE\.databackup_ftp_cred\"; try{@{user='%FTP_USER%';password='%FTP_PASS%'} | ConvertTo-Json | Set-Content $p -Encoding UTF8}catch{}"
 
 REM ---------- diagnose mode: skip interactive prompts ----------
 :diag_no_interactive
@@ -554,6 +576,9 @@ def main():
     handler.masquerade_address = primary_ip
     handler.passive_ports = PASSIVE_PORTS
     handler.banner = "DataBackup Companion FTP server ready."
+    # pyftpdlib 默认 300s 控制连接空闲超时：大文件上传期间控制连接无命令会被服务器断开
+    # （客户端报 Software caused connection abort）→ 禁用空闲超时，由客户端超时兜底。
+    handler.timeout = 0
 
     try:
         server = FTPServer((LISTEN_IP, LISTEN_PORT), handler)

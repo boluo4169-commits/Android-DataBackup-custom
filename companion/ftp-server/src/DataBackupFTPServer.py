@@ -447,6 +447,31 @@ def run_diagnose(user, backup_dir, port):
     print("=" * 56)
 
 
+def _cred_path():
+    return os.path.join(os.path.expanduser("~"), ".databackup_ftp_cred")
+
+
+def load_saved_cred():
+    """读取上次保存的 FTP 账号密码；无/损坏返回 None。"""
+    try:
+        with open(_cred_path(), "r", encoding="utf-8") as f:
+            d = json.load(f)
+        if isinstance(d, dict) and d.get("user") and d.get("password"):
+            return d
+    except Exception:
+        pass
+    return None
+
+
+def save_cred(user, password):
+    """保存 FTP 账号密码，供下次启动沿用（明文，仅限可信局域网场景）。"""
+    try:
+        with open(_cred_path(), "w", encoding="utf-8") as f:
+            json.dump({"user": user, "password": password}, f)
+    except Exception:
+        pass
+
+
 def main():
     print_banner()
 
@@ -482,17 +507,30 @@ def main():
         user = "databackup"
     backup_dir = positional[2].strip()
 
-    # 密码: 随机生成 or 手动输入
+    # 密码: 沿用上次(如有) > 随机生成 or 手动输入
     if not password:
-        print("\n请选择密码方式:")
-        print("  [1] 自动生成随机密码（推荐, 8 位字母数字）")
-        print("  [2] 手动输入密码")
-        mode = input("选择 [1]: ").strip()
-        if mode == "2":
-            password = input("请输入密码: ").strip()
+        saved = load_saved_cred()
+        if saved is not None:
+            ans = input("\n检测到上次的账号密码（%s / %s），是否继续沿用？[Y/n]: " % (saved["user"], saved["password"])).strip().lower()
+            if ans in ("", "y", "yes"):
+                if not user:
+                    user = saved["user"]
+                password = saved["password"]
+                print("已沿用上次账号密码。")
         if not password:
-            password = gen_password()
-            print("已生成随机密码: %s   （连接信息卡片中也会显示）" % password)
+            print("\n请选择密码方式:")
+            print("  [1] 自动生成随机密码（推荐, 8 位字母数字）")
+            print("  [2] 手动输入密码")
+            mode = input("选择 [1]: ").strip()
+            if mode == "2":
+                password = input("请输入密码: ").strip()
+            if not password:
+                password = gen_password()
+                print("已生成随机密码: %s   （连接信息卡片中也会显示）" % password)
+
+    # 非自检/诊断模式保存凭据，下次启动可沿用（避免每次重新配置账号密码）
+    if "--exit-after-selftest" not in flags and "--selftest" not in flags:
+        save_cred(user, password)
 
     # 目录: 默认 or 文件夹选择对话框
     if not backup_dir:
@@ -521,6 +559,10 @@ def main():
     handler.masquerade_address = primary_ip
     handler.passive_ports = PASSIVE_PORTS
     handler.banner = "DataBackup Companion FTP server ready."
+    # pyftpdlib 默认 300s 控制连接空闲超时：备份大应用（微信 user 等数 GB）上传期间控制连接
+    # 长时间无命令，会被服务器主动断开 → 客户端报 "Software caused connection abort"，备份失败。
+    # 禁用空闲超时（0 = 不超时），由客户端超时兜底。
+    handler.timeout = 0
 
     print("=" * 64)
     print("DataBackup Companion FTP 数据服务器")

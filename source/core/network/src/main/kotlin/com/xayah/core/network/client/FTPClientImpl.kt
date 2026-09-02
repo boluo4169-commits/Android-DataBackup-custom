@@ -48,16 +48,20 @@ class FTPClientImpl(private val entity: CloudEntity, private val extra: FTPExtra
             //    未创建而抛 NPE（"setSoTimeout(int) on a null object reference"，v3.7.2 回归）。
             //    defaultTimeout / connectTimeout 只设字段不碰 socket，可以安全地放在 connect() 之前。
             // 2. 时长：defaultTimeout 会在建连后被应用到控制连接 socket，等于控制连接的读超时。
-            //    取 120s：既保证大归档（上百 MiB）上传后服务器落盘回 226 有足够时间，
-            //    又不会在真正异常时让用户无限等（原先 60s 偏紧，实测大文件落盘会超）。
+            //    取 300s：跨网段慢速传输（实测 6.9MB/s）下，5.8GB 上传服务器要 663s 才收完，
+            //    客户端写完到收 226 的「收尾窗口」可能超过 120s（120s 时恰好临界超时，实测 Read timed out）；
+            //    300s 给大文件收尾 + 服务器落盘留足余量。
             // 3. 建连超时保持 15s，避免服务器不可达时长时间卡住。
-            // 4. 不开 controlKeepAliveTimeout：它会接管数据连接的关闭时机（CSL），
-            //    与 storeFile 的高级语义叠加后行为更难预测；本场景由超时兜底更可控。
-            defaultTimeout = 120_000
+            // 4. 不开 controlKeepAliveTimeout（v3.7.4 的坑，2026-09-01 复现实锤）：保活线程的 NOOP
+            //    会与 storeFile 的响应读取竞争，导致响应队列错乱 —— 226/227/150 被错读（实测 user_de
+            //    「226 Transfer complete 但 Failed to store」、DataBackup.apk 读到 227），且跨网段下
+            //    NOOP 并未救回 226（Read timed out 依旧）。跨网段大文件传输的可靠性由 SIZE 完整性
+            //    校验 + 失败可见兜底；根治需同网段网络。
+            defaultTimeout = 300_000
             connectTimeout = 15_000
             autodetectUTF8 = true
             connect(entity.host, extra.port)
-            soTimeout = 120_000
+            soTimeout = 300_000
             if (login(entity.user, entity.pass).not()) throw LoginException("Failed to login, user: ${entity.user}, pass: ${entity.pass}.")
             enterLocalPassiveMode()
             val fileType = FTP.BINARY_FILE_TYPE
@@ -116,6 +120,15 @@ class FTPClientImpl(private val entity: CloudEntity, private val extra: FTPExtra
         countingStream.close()
         if (stored.not()) throw IOException("Failed to store remote file: $dstPath, reply: ${client.replyString}.")
         if (countingStream.byteCount != srcFileSize) throw IOException("Incomplete upload: ${countingStream.byteCount}/$srcFileSize bytes.")
+        // 上传后校验服务器端文件大小：跨网段/NAT 下数据连接可能在传输中途失效（客户端 write 已返回、
+        // 服务器收 FIN 记为完成），导致「假成功」—— 文件残缺但备份显示成功（2026-09-01 实测 5.8GiB 只到 4.4GiB）。
+        // 注意：不能用 client.size() —— 它返回 int，>2GiB 文件溢出后返回 213（恰为 FTP SIZE 响应码），
+        // 导致误报 mismatch（2026-09-02 实测 4.6GB 文件被误判失败）。改用 listFiles 的 FTPFile.getSize()（long）。
+        // listFiles 失败（-1，服务器不支持解析）时跳过，不能误报。
+        val remoteSize = client.listFiles(dstPath).firstOrNull()?.size ?: -1L
+        if (remoteSize >= 0 && remoteSize != srcFileSize) {
+            throw IOException("Remote file size mismatch after upload: $remoteSize/$srcFileSize bytes. Transfer may have been truncated by the network, please check connectivity and retry.")
+        }
         onUploading(countingStream.byteCount, countingStream.byteCount)
     }
 

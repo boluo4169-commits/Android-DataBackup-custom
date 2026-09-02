@@ -102,7 +102,8 @@ fun PagePackagesBackupProcessingSetup(localNavController: NavHostController, vie
                 horizontalArrangement = Arrangement.spacedBy(SizeTokens.Level12, Alignment.End),
             ) {
                 Button(
-                    enabled = uiState.storageType == StorageMode.Local || (uiState.cloudEntity != null && isTesting.not()),
+                    // 「处理中」（正在计算各应用/文件大小）时禁用继续，避免大小没算完就进备份流程
+                    enabled = isUpdating.not() && (uiState.storageType == StorageMode.Local || (uiState.cloudEntity != null && isTesting.not())),
                     onClick = {
                         viewModel.emitIntentOnIO(FinishSetup(navController = localNavController, mainNavController = navController))
                     }) {

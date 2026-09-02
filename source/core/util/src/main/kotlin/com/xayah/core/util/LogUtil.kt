@@ -121,6 +121,54 @@ object LogUtil {
         }.onFailure { appendLine("unavailable: ${it.message}") }
     }
 
+    /**
+     * 备份/恢复过程中进程被系统主动杀（如 SHELL_CODE 137）时抓取取证信息写入日志（需 root，失败静默跳过）。
+     * 覆盖四类证据，用于区分温控 / OOM(lmkd) / 厂商内存守护(Athena 等) 谁是凶手：
+     * 1. 内核 dmesg（OOM killer 会记录 "Killed process ... total-vm"；thermal 会有温度相关条目）；
+     * 2. thermal 各温度传感器读数；
+     * 3. 内存概况（/proc/meminfo）；
+     * 4. 系统 logcat 中 athena/lmkd/thermal/kill 相关行（缓冲区内时）。
+     */
+    fun logKillEvidence(packageName: String, dataType: String) {
+        log { "SystemKillEvidence" to "Collecting evidence after $dataType backup of $packageName was killed (137)..." }
+        runCatching {
+            val dmesg = runBlocking { BaseUtil.execute("dmesg", log = false) }
+            val relevant = dmesg.out
+                .filter {
+                    it.contains("Killed process", ignoreCase = true) ||
+                        it.contains("oom", ignoreCase = true) ||
+                        it.contains("lowmemorykiller", ignoreCase = true) ||
+                        it.contains("lmkd", ignoreCase = true) ||
+                        it.contains("thermal", ignoreCase = true) ||
+                        it.contains("watchdog", ignoreCase = true)
+                }
+                .takeLast(40)
+            log { "SystemKillEvidence" to "dmesg relevant lines:\n${relevant.joinToString("\n")}" }
+        }
+        runCatching {
+            // 通配符需裸传（勿 shellQuote），让 shell 展开
+            val temp = runBlocking { BaseUtil.execute("cat", "/sys/class/thermal/thermal_zone*/temp", log = false) }
+            log { "SystemKillEvidence" to "thermal temps:\n${temp.outString.trim()}" }
+        }
+        runCatching {
+            val mem = runBlocking { BaseUtil.execute("cat", "/proc/meminfo", log = false) }
+            log { "SystemKillEvidence" to "meminfo:\n${mem.out.take(12).joinToString("\n")}" }
+        }
+        runCatching {
+            val lc = runBlocking { BaseUtil.execute("logcat", "-d", "-t", "3000", log = false) }
+            val lines = lc.out
+                .filter {
+                    it.contains("athena", ignoreCase = true) ||
+                        it.contains("lmkd", ignoreCase = true) ||
+                        it.contains("thermal", ignoreCase = true) ||
+                        it.contains("lowmemory", ignoreCase = true) ||
+                        it.contains(" kill", ignoreCase = true)
+                }
+                .takeLast(40)
+            log { "SystemKillEvidence" to "logcat relevant lines:\n${lines.joinToString("\n")}" }
+        }
+    }
+
     fun createLogsZip(): File? {
         val zipName = "$LOG_ZIP_PREFIX${DateUtil.formatTimestamp(DateUtil.getTimestamp(), "yyyyMMdd_HHmmss")}.zip"
         val logFiles = File(cacheDir).listFiles { f ->

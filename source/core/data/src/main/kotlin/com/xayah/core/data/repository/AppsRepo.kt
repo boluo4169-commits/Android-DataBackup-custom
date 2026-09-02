@@ -636,7 +636,13 @@ class AppsRepo @Inject constructor(
 
     private suspend fun calculateLocalAppDataSize(p: PackageEntity, dataType: DataType): Long {
         val src = getLocalAppDataSrcDir(p, dataType)
-        return if (rootService.exists(src)) withTimeoutOrNull(5_000) { rootService.calculateSize(src) } ?: 0 else 0
+        return if (rootService.exists(src)) {
+            // 源目录可能含海量小文件（微信 user/data 实测 ftw 遍历需数十秒），5s 超时必被掐断
+            // → 详情页显示的大小错误（0/残缺值）。统一放宽到 60s 兜底；计算完立即返回，超时仅为最坏情况上限。
+            withTimeoutOrNull(60_000) { rootService.calculateSize(src) } ?: 0
+        } else {
+            0
+        }
     }
 
     private fun getDataSrcDir(dataType: DataType, userId: Int) = dataType.srcDir(userId)

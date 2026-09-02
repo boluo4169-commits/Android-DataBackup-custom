@@ -345,6 +345,11 @@ class PackagesBackupUtil @Inject constructor(
                     dst = dst,
                     extra = ct.getCompressPara(context.readCompressionLevel().first(), context.readCompressionThreads().first())
                 ).also { result ->
+                    // 被系统主动杀（温控/OOM/厂商内存守护等，SIGKILL → 退出码 137）时自动抓取证信息，
+                    // 区分凶手用（dmesg 的 OOM 记录 / thermal 温度 / Athena 等日志）
+                    if (result.code == 137) {
+                        LogUtil.logKillEvidence(packageName = packageName, dataType = dataType.type)
+                    }
                     // GNU tar 退出码：0=快照一致；1=读取期间源有变动；2=致命错误。
                     // 退出码 1 的告警有多种措辞（"file changed as we read it"、"File removed before we read it"、
                     // "file shrank" 等），全是「打包窗口内源被 App 自身改动」的竞态，归档已完整写出。
@@ -423,14 +428,24 @@ class PackagesBackupUtil @Inject constructor(
             }
         }
 
+        var uploadSuccess = false
         val uploadResult = cloudRepository.upload(client = client, src = src, dstDir = dstDir, onUploading = { read, total -> progress = read.toFloat() / total }).apply {
+            uploadSuccess = isSuccess
             flag = false
             t.updateInfo(dataType = dataType, state = if (isSuccess) OperationState.DONE else OperationState.ERROR, log = t.getLog(dataType) + "\n${outString}", content = "100%")
+        }
+        // CloudRepository.upload 内部 runCatching 吞掉异常、仅返回 isSuccess=false（含完整性校验失败）。
+        // 注意：这里【不能抛异常】—— backup() 调用链无 runCatching 包裹，抛出会穿过协程边界变成
+        // 未捕获异常 → 进程 FATAL 崩溃（2026-09-02 实测：补抛 IOException 导致 OplusExceptionHelper FATAL）。
+        // 失败呈现：上方 apply 已把该项标 ERROR 并写入完整原因（outString），任务失败由 pkg.isSuccess/
+        // failureCount 统计；这里仅补记一行日志。
+        if (uploadResult.isSuccess.not()) {
+            log { "Cloud upload failed: ${uploadResult.outString.take(500)}" }
         }
 
         // md5 sidecar 跟随归档上传：云端恢复的完整性校验依赖它（本地打包时已写在归档旁）。
         // 仅在归档上传成功后补传；sidecar 自身失败只记日志不阻断（恢复侧校验会退化为跳过并留下提示）
-        if (uploadResult.isSuccess) runCatching {
+        if (uploadSuccess) runCatching {
             if (java.io.File("$src.md5").exists()) cloudRepository.upload(client = client, src = "$src.md5", dstDir = dstDir)
         }.onFailure {
             log { "Failed to upload md5 sidecar for $src: ${it.message}." }

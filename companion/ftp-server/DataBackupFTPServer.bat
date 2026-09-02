@@ -1,8 +1,8 @@
 @echo off
 chcp 65001 >nul
 setlocal EnableExtensions EnableDelayedExpansion
-set "SCRIPT_VER=1.2"
-title DataBackup Companion - FTP Backup Server v1.2
+set "SCRIPT_VER=1.5"
+title DataBackup Companion - FTP Backup Server v1.5
 
 REM ============================================================
 REM  DataBackup Companion - FTP Backup Server (Windows)

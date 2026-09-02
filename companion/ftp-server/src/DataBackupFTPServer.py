@@ -44,7 +44,7 @@ PASSIVE_PORTS = range(PASSIVE_MIN, PASSIVE_MIN + 101)
 
 
 # companion 自身的版本号（独立于 App；更新时手动 bump 这里）
-COMPANION_VERSION = "v1.2"
+COMPANION_VERSION = "v1.5"
 
 try:
     # CI 构建时注入「构建所对应的 App release tag」（如 v3.6.7），

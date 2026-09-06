@@ -15,6 +15,7 @@ import com.xayah.core.ui.component.AnimatedNavHost
 import com.xayah.core.ui.route.MainRoutes
 import com.xayah.core.ui.theme.DataBackupTheme
 import com.xayah.core.ui.util.LocalNavController
+import com.xayah.core.util.LogUtil
 import com.xayah.core.util.command.BaseUtil
 import com.xayah.feature.main.cloud.PageCloud
 import com.xayah.feature.main.cloud.add.PageCloudAddAccount
@@ -73,6 +74,11 @@ class MainActivity : AppCompatActivity() {
         runBlocking {
             runCatching {
                 BaseUtil.initializeEnvironment(context = this@MainActivity)
+            }.onFailure {
+                // 失败必须留痕：静默吞掉会让「无日志 + root 环境全坏」无从排查（2026-09-06 实测）。
+                // LogUtil 已在 initializeEnvironment 内最先初始化，这里通常还能把失败写进日志文件。
+                android.util.Log.e("DataBackup", "initializeEnvironment failed", it)
+                LogUtil.logCrash("initializeEnvironment failed: ${it.stackTraceToString()}")
             }
         }
 

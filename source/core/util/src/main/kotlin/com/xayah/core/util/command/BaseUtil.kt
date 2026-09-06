@@ -64,12 +64,16 @@ object BaseUtil {
     private suspend fun getNewShell(context: Context): Shell? = runCatching { getShellBuilder(context).build() }.getOrNull()
 
     suspend fun initializeEnvironment(context: Context) = run {
+        // LogUtil 的文件部分最先就位（不依赖 Shell，任何后续失败都有日志兜底可查）。
+        LogUtil.initialize(context, context.logDir())
+
         // Set up shell environment.
         Shell.enableVerboseLogging = BuildConfigUtil.ENABLE_VERBOSE
         Shell.setDefaultBuilder(getShellBuilder(context))
 
-        // Set up LogUtil.
-        LogUtil.initialize(context, context.logDir())
+        // 环境 header 依赖 root shell，必须在默认 builder（含 EnvInitializer）就绪之后再探测，
+        // 否则首个 shell 实例未经初始化会被全程复用（PATH/Namespace 全坏）。
+        LogUtil.logHeader(context)
     }
 
     suspend fun execute(vararg args: String, shell: Shell? = null, log: Boolean = true): ShellResult = withIOContext {

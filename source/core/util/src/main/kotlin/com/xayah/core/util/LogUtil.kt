@@ -40,6 +40,13 @@ object LogUtil {
     private fun getLogFileName() = "$LOG_FILE_PREFIX$fileNameTime.txt"
 
     fun initialize(context: Context, cacheDir: String) = runCatching {
+        File(cacheDir).apply {
+            if (exists().not()) mkdirs()
+        }
+        // cacheDir 尽早赋值：后续清理/header 步骤失败不应导致 lateinit 未初始化——
+        // 崩溃场景恰恰最需要导出日志（2026-09-06 实测 lateinit 崩溃）。
+        this.cacheDir = cacheDir
+
         // Clear empty log files.
         FileUtil.listFilePaths(cacheDir).forEach { path ->
             File(path).apply {
@@ -47,11 +54,19 @@ object LogUtil {
             }
         }
 
-        File(cacheDir).apply {
-            if (exists().not()) mkdirs()
-        }
-        this.cacheDir = cacheDir
         this.logFile = RandomAccessFile("$cacheDir/${getLogFileName()}", "rw")
+    }.onFailure {
+        // 初始化失败必须可见（logcat），此前静默吞掉导致故障无从排查。
+        Log.e("LogUtil", "initialize failed, log system unavailable: $cacheDir", it)
+    }
+
+    /**
+     * 写入环境 header（SU/Namespace/PATH 等需 root shell 的探测）。
+     * 必须在 Shell.setDefaultBuilder 之后调用：这些探测会触发 shell 创建，
+     * 若发生在默认 builder 就绪前，会创建一个未经 EnvInitializer 初始化的 shell 实例
+     * 并被全程复用，导致 PATH/Namespace 全坏（2026-09-06 实测回归）。
+     */
+    fun logHeader(context: Context) = runCatching {
         log("Version:    ${BuildConfigUtil.VERSION_NAME}")
         log("Model:      ${Build.MODEL}")
         log("ABIs:       ${Build.SUPPORTED_ABIS.firstOrNull() ?: ""}")
@@ -61,6 +76,8 @@ object LogUtil {
         log("SU:                   ${runBlocking { BaseUtil.readSuVersion(context.readCustomSUFile().first()) }}")
         log("${USD}PATH:                ${runBlocking { BaseUtil.readVariable("PATH").trim() }}")
         log("${USD}HOME:                ${runBlocking { BaseUtil.readVariable("HOME").trim() }}")
+    }.onFailure {
+        Log.e("LogUtil", "logHeader failed", it)
     }
 
     private fun appendLine(msg: String) = runCatching {
@@ -170,6 +187,9 @@ object LogUtil {
     }
 
     fun createLogsZip(): File? {
+        // 启动链静默失败时 cacheDir 可能未初始化，直接返回 null 让调用方静默跳过，
+        // 不能抛 UninitializedPropertyAccessException——那会让「导出日志」本身变成崩溃。
+        if (::cacheDir.isInitialized.not()) return null
         val zipName = "$LOG_ZIP_PREFIX${DateUtil.formatTimestamp(DateUtil.getTimestamp(), "yyyyMMdd_HHmmss")}.zip"
         val logFiles = File(cacheDir).listFiles { f ->
             f.isFile && f.name.startsWith(LOG_FILE_PREFIX) && f.name.endsWith(".txt")

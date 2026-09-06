@@ -5,6 +5,7 @@ import com.xayah.core.data.repository.PackageRepository
 import com.xayah.core.data.repository.TaskRepository
 import com.xayah.core.database.dao.PackageDao
 import com.xayah.core.database.dao.TaskDao
+import com.xayah.core.datastore.readCloudPkgOnlyDir
 import com.xayah.core.model.DataType
 import com.xayah.core.model.OpType
 import com.xayah.core.model.OperationState
@@ -24,6 +25,7 @@ import com.xayah.core.util.PathUtil
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.delay
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.coroutines.coroutineContext
@@ -69,6 +71,8 @@ internal class BackupServiceCloudImpl @Inject constructor() : AbstractBackupServ
         mRemoteAppsDir = mPathUtil.getCloudRemoteAppsDir(mRemotePath)
         mRemoteConfigsDir = mPathUtil.getCloudRemoteConfigsDir(mRemotePath)
         mTaskEntity.update(cloud = mCloudEntity.name, backupDir = mRemotePath)
+        mPkgOnlyDir = mContext.readCloudPkgOnlyDir().first()
+        if (mPkgOnlyDir) log { "Cloud pkg-only dir name is enabled, uploading with legacy (package name only) directory names." }
 
         log { "Trying to create: $mRemoteAppsDir." }
         log { "Trying to create: $mRemoteConfigsDir." }
@@ -78,12 +82,17 @@ internal class BackupServiceCloudImpl @Inject constructor() : AbstractBackupServ
 
     private fun getRemoteAppDir(archivesRelativeDir: String) = "${mRemoteAppsDir}/${archivesRelativeDir}"
 
+    // 「云端目录名不含中文」开关：开启后云端目录走 legacyArchivesRelativeDir（纯包名），
+    // 避免不支持 UTF-8 文件名的 FTP/网盘服务器出现乱码目录甚至上传失败。本地目录名不受影响。
+    override suspend fun resolveArchiveRelativeDir(p: PackageEntity): String =
+        if (mPkgOnlyDir) p.legacyArchivesRelativeDir else p.archivesRelativeDir
+
     override suspend fun onAppDirCreated(archivesRelativeDir: String): Boolean = runCatchingOnService {
         mClient.mkdirRecursively(getRemoteAppDir(archivesRelativeDir))
     }
 
     override suspend fun backup(type: DataType, p: PackageEntity, r: PackageEntity?, t: TaskDetailPackageEntity, dstDir: String) {
-        val remoteAppDir = getRemoteAppDir(p.archivesRelativeDir)
+        val remoteAppDir = getRemoteAppDir(resolveArchiveRelativeDir(p))
         val result = if (type == DataType.PACKAGE_APK) {
             mPackagesBackupUtil.backupApk(p = p, t = t, r = r, dstDir = dstDir)
         } else {
@@ -214,4 +223,5 @@ internal class BackupServiceCloudImpl @Inject constructor() : AbstractBackupServ
     private lateinit var mRemotePath: String
     private lateinit var mRemoteAppsDir: String
     private lateinit var mRemoteConfigsDir: String
+    private var mPkgOnlyDir = false
 }

@@ -99,6 +99,12 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
     }
 
     protected open suspend fun onTargetDirsCreated() {}
+
+    /**
+     * 归档目录相对路径。云场景可在设置中切换为纯包名目录（避免服务器对中文/非 ASCII 目录名
+     * 兼容性差导致的乱码与上传失败）；本地场景恒为 archivesRelativeDir，行为不变。
+     */
+    protected open suspend fun resolveArchiveRelativeDir(p: PackageEntity): String = p.archivesRelativeDir
     protected open suspend fun onAppDirCreated(archivesRelativeDir: String): Boolean = true
     abstract suspend fun backup(type: DataType, p: PackageEntity, r: PackageEntity?, t: TaskDetailPackageEntity, dstDir: String)
     protected open suspend fun onConfigSaved(path: String, archivesRelativeDir: String) {}
@@ -218,7 +224,7 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
 
                 var restoreEntity = mPackageDao.query(p.packageName, OpType.RESTORE, p.userId, p.preserveId, p.indexInfo.compressionType, mTaskEntity.cloud, mTaskEntity.backupDir)
                 mRootService.mkdirs(dstDir)
-                if (onAppDirCreated(archivesRelativeDir = p.archivesRelativeDir)) {
+                if (onAppDirCreated(archivesRelativeDir = resolveArchiveRelativeDir(p))) {
                     backup(type = DataType.PACKAGE_APK, p = p, r = restoreEntity, t = pkg, dstDir = dstDir)
                     backup(type = DataType.PACKAGE_USER, p = p, r = restoreEntity, t = pkg, dstDir = dstDir)
                     backup(type = DataType.PACKAGE_USER_DE, p = p, r = restoreEntity, t = pkg, dstDir = dstDir)
@@ -239,7 +245,7 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
                         )
                         val configDst = PathUtil.getPackageRestoreConfigDst(dstDir = dstDir)
                         mRootService.writeJson(data = restoreEntity, dst = configDst)
-                        onConfigSaved(path = configDst, archivesRelativeDir = p.archivesRelativeDir)
+                        onConfigSaved(path = configDst, archivesRelativeDir = resolveArchiveRelativeDir(p))
                         mPackageDao.upsert(restoreEntity)
                         mPackageDao.upsert(cleanP)
                         pkg.update(packageEntity = cleanP)

@@ -500,6 +500,8 @@
     <string name="preserve_backups">Preserve backup history</string>
     <string name="preserve_backups_desc">Keep a new version for every backup instead of overwriting the previous one</string>
     <string name="preserve_backups_help">When enabled, every backup keeps a history:\n\n• The latest backup is the normal version (no shield)\n• Older backups become protected, with a shield numbered from 1 (the most recently replaced), larger numbers mean older\n• Versions beyond the max count are deleted automatically</string>
+    <string name="cloud_pkg_only_dir">Package name only for cloud directories</string>
+    <string name="cloud_pkg_only_dir_desc">Name cloud backup directories by package name only (no app name), for FTP/cloud servers that garble non-ASCII names.\n\nNote: after switching, backups already uploaded under the old (app-name) directories need this switch turned off to be restored, or move them manually on the server.</string>
     <string name="got_it">Got it</string>
     <string name="max_preserve_count">Max preserved versions</string>
     <string name="max_preserve_count_desc">Maximum number of preserved versions to keep, the oldest ones will be deleted automatically</string>

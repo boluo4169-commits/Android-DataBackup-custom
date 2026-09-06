@@ -24,6 +24,7 @@ val KeyClearDeviceFingerprint = booleanPreferencesKey("clear_device_fingerprint"
 val KeyPreserveBackups = booleanPreferencesKey("preserve_backups")
     val KeyFixDataOwnership = booleanPreferencesKey("fix_data_ownership")
     val KeyDefaultBackupAll = booleanPreferencesKey("default_backup_all")
+val KeyCloudPkgOnlyDir = booleanPreferencesKey("cloud_pkg_only_dir")
 
 // -----------------------------------------Read-----------------------------------------
 fun Context.readMonet() = readStoreBoolean(key = KeyMonet, defValue = true)
@@ -46,8 +47,10 @@ fun Context.readClearDeviceFingerprint() = readStoreBoolean(key = KeyClearDevice
 fun Context.readPreserveBackups() = readStoreBoolean(key = KeyPreserveBackups, defValue = false)
 fun Context.readFixDataOwnership() = readStoreBoolean(key = KeyFixDataOwnership, defValue = true)
 fun Context.readDefaultBackupAll() = readStoreBoolean(key = KeyDefaultBackupAll, defValue = false)
+fun Context.readCloudPkgOnlyDir() = readStoreBoolean(key = KeyCloudPkgOnlyDir, defValue = false)
 
 // -----------------------------------------Write-----------------------------------------
+suspend fun Context.saveCloudPkgOnlyDir(value: Boolean) = saveStoreBoolean(key = KeyCloudPkgOnlyDir, value = value)
 suspend fun Context.saveMonet(value: Boolean) = saveStoreBoolean(key = KeyMonet, value = value)
 suspend fun Context.saveBackupItself(value: Boolean) = saveStoreBoolean(key = KeyBackupItself, value = value)
 suspend fun Context.saveCompressionTest(value: Boolean) = saveStoreBoolean(key = KeyCompressionTest, value = value)

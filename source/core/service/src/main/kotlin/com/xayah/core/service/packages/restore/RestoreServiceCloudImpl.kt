@@ -5,6 +5,7 @@ import com.xayah.core.data.repository.PackageRepository
 import com.xayah.core.data.repository.TaskRepository
 import com.xayah.core.database.dao.PackageDao
 import com.xayah.core.database.dao.TaskDao
+import com.xayah.core.datastore.readCloudPkgOnlyDir
 import com.xayah.core.model.DataType
 import com.xayah.core.model.OpType
 import com.xayah.core.model.TaskType
@@ -18,6 +19,7 @@ import com.xayah.core.service.util.CommonBackupUtil
 import com.xayah.core.service.util.PackagesRestoreUtil
 import com.xayah.core.util.PathUtil
 import dagger.hilt.android.AndroidEntryPoint
+import kotlinx.coroutines.flow.first
 import javax.inject.Inject
 
 @AndroidEntryPoint
@@ -58,6 +60,7 @@ internal class RestoreServiceCloudImpl @Inject constructor() : AbstractRestoreSe
         }
 
         mRemotePath = mCloudEntity.remote
+        mPkgOnlyDir = mContext.readCloudPkgOnlyDir().first()
         mRemoteAppsDir = mPathUtil.getCloudRemoteAppsDir(mRemotePath)
         mRemoteConfigsDir = mPathUtil.getCloudRemoteConfigsDir(mRemotePath)
         mTaskEntity.update(cloud = mCloudEntity.name, backupDir = mRemotePath)
@@ -65,10 +68,12 @@ internal class RestoreServiceCloudImpl @Inject constructor() : AbstractRestoreSe
         return mPackageRepo.queryActivated(OpType.RESTORE, mCloudEntity.name, mCloudEntity.remote)
     }
 
-    private fun getRemoteAppDir(archivesRelativeDir: String) = "${mRemoteAppsDir}/${archivesRelativeDir}"
+    // 「云端目录名不含中文」开关：与备份侧 BackupServiceCloudImpl 同一数据源（getPackages 时读取），
+    // 开启后按 legacyArchivesRelativeDir（纯包名）拼远端目录，与上传目录名保持一致。
+    private fun getRemoteAppDir(p: PackageEntity) = "${mRemoteAppsDir}/${if (mPkgOnlyDir) p.legacyArchivesRelativeDir else p.archivesRelativeDir}"
 
     override suspend fun restore(type: DataType, userId: Int, p: PackageEntity, t: TaskDetailPackageEntity, srcDir: String) {
-        val remoteAppDir = getRemoteAppDir(p.archivesRelativeDir)
+        val remoteAppDir = getRemoteAppDir(p)
         mPackagesRestoreUtil.download(client = mClient, p = p, t = t, dataType = type, srcDir = remoteAppDir, dstDir = srcDir) { mP, mT, _, mPath ->
             if (type == DataType.PACKAGE_APK) {
                 mPackagesRestoreUtil.restoreApk(userId = userId, p = mP, t = mT, srcDir = mPath)
@@ -103,6 +108,8 @@ internal class RestoreServiceCloudImpl @Inject constructor() : AbstractRestoreSe
 
     @Inject
     lateinit var mCloudRepo: CloudRepository
+
+    private var mPkgOnlyDir = false
 
     private lateinit var mCloudEntity: CloudEntity
     private lateinit var mClient: CloudClient

@@ -37,6 +37,7 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xayah.core.datastore.KeyBackupConfigs
 import com.xayah.core.datastore.KeyBackupItself
 import com.xayah.core.datastore.KeyCheckKeystore
+import com.xayah.core.datastore.KeyCloudPkgOnlyDir
 import com.xayah.core.datastore.KeyCompressionTest
 import com.xayah.core.datastore.KeyFollowSymlinks
 import com.xayah.core.datastore.KeyPreserveBackups
@@ -159,6 +160,13 @@ fun PageBackupSettings() {
                                 },
                         )
                     },
+                )
+
+                Switchable(
+                    key = KeyCloudPkgOnlyDir,
+                    defValue = false,
+                    title = stringResource(id = R.string.cloud_pkg_only_dir),
+                    checkedText = stringResource(id = R.string.cloud_pkg_only_dir_desc),
                 )
 
                 AnimatedVisibility(

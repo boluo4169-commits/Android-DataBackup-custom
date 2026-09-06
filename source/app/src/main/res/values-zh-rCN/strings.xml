@@ -489,6 +489,8 @@
     <string name="preserve_backups">保留历史备份</string>
     <string name="preserve_backups_desc">开启后每次备份自动保留历史版本，不覆盖之前的备份</string>
     <string name="preserve_backups_help">开启后，每次备份都会保留历史版本：\n\n• 最新一次备份 = 正常版本（无护盾标记）\n• 之前的备份 = 受保护版本，护盾内显示序号，护盾 1 是最近一次被覆盖的版本，数字越大越旧\n• 超过「最大保留版本数」时，最旧的版本会自动删除</string>
+    <string name="cloud_pkg_only_dir">云端目录仅用包名</string>
+    <string name="cloud_pkg_only_dir_desc">云端备份目录只用包名命名（不含应用名），用于 FTP/网盘等对中文目录名支持差的服务器，避免乱码与上传失败。\n\n注意：切换开关后，之前以「应用名_包名」目录上传的云端备份需关闭本开关才能恢复，或在服务器上手动移动目录。</string>
     <string name="got_it">知道了</string>
     <string name="max_preserve_count">最大保留版本数</string>
     <string name="max_preserve_count_desc">保留历史备份时最多保留的版本数量，超出后自动删除最旧的版本</string>

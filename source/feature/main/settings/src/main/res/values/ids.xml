@@ -107,6 +107,7 @@
     <item name="preserve_backups_help" type="string" />
     <item name="cloud_pkg_only_dir" type="string" />
     <item name="cloud_pkg_only_dir_desc" type="string" />
+    <item name="cloud_pkg_only_dir_help" type="string" />
     <item name="got_it" type="string" />
     <item name="cancel" type="string" />
     <item name="max_preserve_count" type="string" />

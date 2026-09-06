@@ -218,6 +218,27 @@ fun PageBackupSettings() {
                     defValue = false,
                     title = stringResource(id = R.string.cloud_pkg_only_dir),
                     checkedText = stringResource(id = R.string.cloud_pkg_only_dir_desc),
+                    titleTrailingContent = {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(SizeTokens.Level16)
+                                .clickable {
+                                    scope.launch {
+                                        dialogState.open(
+                                            initialState = Unit,
+                                            title = context.getString(R.string.cloud_pkg_only_dir),
+                                            icon = Icons.Outlined.Info,
+                                            confirmText = context.getString(R.string.got_it),
+                                            dismissText = context.getString(R.string.cancel),
+                                        ) { _ ->
+                                            Text(text = context.getString(R.string.cloud_pkg_only_dir_help))
+                                        }
+                                    }
+                                },
+                        )
+                    },
                 )
 
                 Switchable(

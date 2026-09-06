@@ -215,7 +215,7 @@ fun PageBackupSettings() {
 
                 Switchable(
                     key = KeyCloudPkgOnlyDir,
-                    defValue = false,
+                    defValue = true,
                     title = stringResource(id = R.string.cloud_pkg_only_dir),
                     checkedText = stringResource(id = R.string.cloud_pkg_only_dir_desc),
                     titleTrailingContent = {

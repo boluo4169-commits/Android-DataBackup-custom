@@ -15,6 +15,7 @@ import com.xayah.core.model.includeFiles
 import com.xayah.core.service.medium.backup.ProcessingServiceProxyLocalImpl as MediumBackupProxy
 import com.xayah.core.service.packages.backup.ProcessingServiceProxyLocalImpl as PackagesBackupProxy
 import com.xayah.core.util.NotificationUtil
+import com.xayah.core.util.command.BaseUtil
 import com.xayah.core.util.withLog
 import com.xayah.core.work.R
 import com.xayah.core.work.WorkManagerInitializer
@@ -55,6 +56,12 @@ internal class ScheduledBackupWorker @AssistedInject constructor(
         }
         // 与手动备份/其他计划串行：退避重试，不丢任务
         if (taskRepo.hasProcessingTask()) return Result.retry()
+
+        // Worker 可能是进程冷启动的入口（WorkManager 拉起进程，无 Activity），
+        // 必须先完成环境初始化（LogUtil + Shell/EnvInitializer），否则 root 命令全走
+        // 无初始化的默认 shell（zstd not found / tar Unknown option / 无日志，2026-09-06 实锤）。
+        // 重入无害：主 shell 已存在时 setDefaultBuilder 抛错被 runCatching 接住跳过。
+        BaseUtil.initializeEnvironment(appContext)
 
         val result = runCatching {
             if (scope.includeApps) appsRepo.activateAllForBackup()

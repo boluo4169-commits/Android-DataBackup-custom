@@ -47,7 +47,7 @@ fun Context.readClearDeviceFingerprint() = readStoreBoolean(key = KeyClearDevice
 fun Context.readPreserveBackups() = readStoreBoolean(key = KeyPreserveBackups, defValue = false)
 fun Context.readFixDataOwnership() = readStoreBoolean(key = KeyFixDataOwnership, defValue = true)
 fun Context.readDefaultBackupAll() = readStoreBoolean(key = KeyDefaultBackupAll, defValue = false)
-fun Context.readCloudPkgOnlyDir() = readStoreBoolean(key = KeyCloudPkgOnlyDir, defValue = false)
+fun Context.readCloudPkgOnlyDir() = readStoreBoolean(key = KeyCloudPkgOnlyDir, defValue = true)
 
 // -----------------------------------------Write-----------------------------------------
 suspend fun Context.saveCloudPkgOnlyDir(value: Boolean) = saveStoreBoolean(key = KeyCloudPkgOnlyDir, value = value)

@@ -600,7 +600,10 @@ class AppsRepo @Inject constructor(
                 }
                 appsDao.queryPackages(OpType.RESTORE, entity.name, entity.remote).forEach {
                     val src = "${path}/${it.archivesRelativeDir}"
-                    if (client.exists(src).not()) {
+                    // 「云端目录仅用包名」开关开启后，远端目录是 legacyArchivesRelativeDir（纯包名）；
+                    // 清扫必须双探测，否则刚从 config 入库的实体会被误判不存在而立刻删除。
+                    val legacySrc = "${path}/${it.legacyArchivesRelativeDir}"
+                    if (client.exists(src).not() && client.exists(legacySrc).not()) {
                         appsDao.delete(it.id)
                     }
                 }

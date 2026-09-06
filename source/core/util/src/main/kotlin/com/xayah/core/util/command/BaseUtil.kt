@@ -63,17 +63,31 @@ object BaseUtil {
 
     private suspend fun getNewShell(context: Context): Shell? = runCatching { getShellBuilder(context).build() }.getOrNull()
 
+    private var environmentInitialized = false
+
     suspend fun initializeEnvironment(context: Context) = run {
+        // 防重入：MainActivity 多次 onCreate / Setup 校验 / 定时备份 Worker 都可能调用。
+        // 重复调用会让 LogUtil 另开新日志文件、且 setDefaultBuilder 抛重入异常。
+        if (environmentInitialized) return@run
+        environmentInitialized = true
+
         // LogUtil 的文件部分最先就位（不依赖 Shell，任何后续失败都有日志兜底可查）。
         LogUtil.initialize(context, context.logDir())
 
         // Set up shell environment.
-        Shell.enableVerboseLogging = BuildConfigUtil.ENABLE_VERBOSE
-        Shell.setDefaultBuilder(getShellBuilder(context))
-
-        // 环境 header 依赖 root shell，必须在默认 builder（含 EnvInitializer）就绪之后再探测，
-        // 否则首个 shell 实例未经初始化会被全程复用（PATH/Namespace 全坏）。
-        LogUtil.logHeader(context)
+        // 主 shell 已存在（同进程内 Activity 重建重复调用）时 setDefaultBuilder 会抛
+        // IllegalStateException——此时 EnvInitializer 早已生效，跳过重设即可。
+        runCatching {
+            Shell.enableVerboseLogging = BuildConfigUtil.ENABLE_VERBOSE
+            Shell.setDefaultBuilder(getShellBuilder(context))
+            // 环境 header 依赖 root shell，必须在默认 builder（含 EnvInitializer）就绪之后再探测，
+            // 否则首个 shell 实例未经初始化会被全程复用（PATH/Namespace 全坏）。
+            LogUtil.logHeader(context)
+        }.onFailure {
+            // 初始化失败回滚标志，允许下次（如 Setup 重新校验）重试。
+            environmentInitialized = false
+            LogUtil.log("initializeEnvironment failed: ${it.message}")
+        }
     }
 
     suspend fun execute(vararg args: String, shell: Shell? = null, log: Boolean = true): ShellResult = withIOContext {

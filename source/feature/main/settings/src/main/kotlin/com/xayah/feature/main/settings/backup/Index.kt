@@ -162,13 +162,6 @@ fun PageBackupSettings() {
                     },
                 )
 
-                Switchable(
-                    key = KeyCloudPkgOnlyDir,
-                    defValue = false,
-                    title = stringResource(id = R.string.cloud_pkg_only_dir),
-                    checkedText = stringResource(id = R.string.cloud_pkg_only_dir_desc),
-                )
-
                 AnimatedVisibility(
                     visible = preserveBackups,
                     enter = expandVertically() + fadeIn(),
@@ -219,6 +212,13 @@ fun PageBackupSettings() {
                 ) {
                     navController.navigateSingle(MainRoutes.Schedules.route)
                 }
+
+                Switchable(
+                    key = KeyCloudPkgOnlyDir,
+                    defValue = false,
+                    title = stringResource(id = R.string.cloud_pkg_only_dir),
+                    checkedText = stringResource(id = R.string.cloud_pkg_only_dir_desc),
+                )
 
                 Switchable(
                     key = KeyCheckKeystore,

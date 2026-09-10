@@ -32,6 +32,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringResource
@@ -185,7 +186,8 @@ fun PagePackagesBackupProcessingSetup(localNavController: NavHostController, vie
                         if (isUpdating) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(SizeTokens.Level24),
-                                strokeWidth = SizeTokens.Level2,
+                                strokeWidth = SizeTokens.Level3,
+                                strokeCap = StrokeCap.Round,
                             )
                         } else {
                             Icon(imageVector = Icons.Rounded.KeyboardArrowRight, contentDescription = null)
@@ -213,7 +215,8 @@ fun PagePackagesBackupProcessingSetup(localNavController: NavHostController, vie
                             if (isUpdating) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(SizeTokens.Level24),
-                                    strokeWidth = SizeTokens.Level2,
+                                    strokeWidth = SizeTokens.Level3,
+                                    strokeCap = StrokeCap.Round,
                                 )
                             } else {
                                 Icon(imageVector = Icons.Rounded.KeyboardArrowRight, contentDescription = null)

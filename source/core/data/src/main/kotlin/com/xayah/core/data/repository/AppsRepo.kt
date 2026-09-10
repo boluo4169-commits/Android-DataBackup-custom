@@ -63,9 +63,7 @@ import kotlinx.coroutines.awaitAll
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.combine
-import kotlinx.coroutines.flow.emitAll
 import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.flow.flow
 import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.withTimeoutOrNull
@@ -143,25 +141,25 @@ class AppsRepo @Inject constructor(
     }.flowOn(defaultDispatcher)
 
     /**
-     * 顶部计数与列表同口径：「加载系统应用」关闭时排除系统应用（数据库可能残留开关开启期间
-     * 入库的系统应用记录，原 countApps 会把 562 全算上，列表却只显示 154）。
-     * 列表可见性由 filters.showSystemApps 实时控制（用户可在过滤面板临时改），此处跟随持久化开关，
-     * 与 initialize 的入库行为、activateAllForBackup 的全选口径一致。
+     * 顶部计数与列表同口径，跟随「加载系统应用」开关实时切换：
+     * 开 = 系统应用 + 第三方全量；关 = 只计第三方（数据库可能残留开关开启期间入库的系统应用记录）。
+     * 必须用 combine 持续订阅 datastore 开关 —— 若用 first() 只读一次，在过滤面板里翻转开关后
+     * 计数分支不会重选，表现为「开了加载系统应用总数不变、勾选系统应用计数不动」。
      */
-    fun countApps(opType: OpType): Flow<Long> = flow {
-        val loadSystemApps = context.readLoadSystemApps().first()
-        emitAll(
-            if (loadSystemApps) appsDao.countPackagesFlow(opType = opType, blocked = false)
-            else appsDao.countNonSystemPackagesFlow(opType = opType, blocked = false, systemFlag = ApplicationInfo.FLAG_SYSTEM)
-        )
+    fun countApps(opType: OpType): Flow<Long> = combine(
+        context.readLoadSystemApps(),
+        appsDao.countPackagesFlow(opType = opType, blocked = false),
+        appsDao.countNonSystemPackagesFlow(opType = opType, blocked = false, systemFlag = ApplicationInfo.FLAG_SYSTEM),
+    ) { loadSystemApps, all, nonSystem ->
+        if (loadSystemApps) all else nonSystem
     }.flowOn(defaultDispatcher)
 
-    fun countSelectedApps(opType: OpType): Flow<Long> = flow {
-        val loadSystemApps = context.readLoadSystemApps().first()
-        emitAll(
-            if (loadSystemApps) appsDao.countActivatedPackagesFlow(opType = opType, blocked = false)
-            else appsDao.countActivatedNonSystemPackagesFlow(opType = opType, blocked = false, systemFlag = ApplicationInfo.FLAG_SYSTEM)
-        )
+    fun countSelectedApps(opType: OpType): Flow<Long> = combine(
+        context.readLoadSystemApps(),
+        appsDao.countActivatedPackagesFlow(opType = opType, blocked = false),
+        appsDao.countActivatedNonSystemPackagesFlow(opType = opType, blocked = false, systemFlag = ApplicationInfo.FLAG_SYSTEM),
+    ) { loadSystemApps, all, nonSystem ->
+        if (loadSystemApps) all else nonSystem
     }.flowOn(defaultDispatcher)
 
     suspend fun getLoadSystemApps() = context.readLoadSystemApps().first()

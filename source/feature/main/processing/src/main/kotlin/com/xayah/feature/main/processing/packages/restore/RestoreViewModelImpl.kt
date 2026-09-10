@@ -119,10 +119,11 @@ class RestoreViewModelImpl @Inject constructor(
             }
 
             is GetUsers -> {
+                // A: 「恢复用户」是恢复**目标**，必须真实存在——否则 pm install --user N、
+                // /data/user/N、appops --user N 全部失败。因此只列系统当前用户，不再并入备份记录里的
+                // 历史 userId（空间被删除后记录仍残留，选中它 = 注定失败）。
+                // 跨空间恢复能力保留：把目标显式选成存在的用户（如主空间 0）即可。
                 val users = mRootService.getUsers().map { it.id }.toMutableSet()
-                mPkgRepo.queryUserIds(OpType.RESTORE).forEach {
-                    users.add(it)
-                }
                 val restoreUsers = mutableListOf(
                     DialogRadioItem(
                         enum = Any(),

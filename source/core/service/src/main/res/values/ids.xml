@@ -12,6 +12,7 @@
     <item name="randomize_ssaid" type="string"/>
     <item name="prompt" type="string"/>
     <item name="restore_completed" type="string"/>
+    <item name="restore_user_not_exist" type="string"/>
     <item name="necessary_preparations" type="string"/>
     <item name="necessary_remaining_data_processing" type="string"/>
     <item name="backup_itself" type="string"/>

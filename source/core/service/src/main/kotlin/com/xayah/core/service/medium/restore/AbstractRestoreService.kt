@@ -128,7 +128,9 @@ internal abstract class AbstractRestoreService : AbstractMediumService() {
                     mContext.getString(R.string.wait_for_remaining_data_processing)
                 )
 
-                if (mContext.readResetRestoreList().first() && mTaskEntity.failureCount == 0) {
+                // D: 与 packages 侧同因——开关文案即「恢复完成后取消勾选所选项」，
+                // 原实现额外要求 failureCount == 0，只要有失败就永远清不掉勾选。改为按文案执行。
+                if (mContext.readResetRestoreList().first()) {
                     mMediaDao.clearActivated(OpType.RESTORE)
                 }
                 val isSuccess = runCatchingOnService { clear() }

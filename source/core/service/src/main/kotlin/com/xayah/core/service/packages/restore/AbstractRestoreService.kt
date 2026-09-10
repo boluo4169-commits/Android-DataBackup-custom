@@ -94,8 +94,12 @@ internal abstract class AbstractRestoreService : AbstractPackagesService() {
 
     private var restoreUser = -1
 
+    // A: 系统当前存在的用户集合。空集合 = 读取失败，此时跳过目标用户校验，避免把全部应用误判为失败。
+    private var systemUserIds: Set<Int> = emptySet()
+
     override suspend fun onPreprocessing(entity: ProcessingInfoEntity) {
         restoreUser = mContext.readRestoreUser().first()
+        systemUserIds = mRootService.getUsers().map { it.id }.toSet()
         when (entity.infoType) {
             ProcessingInfoType.SET_UP_INST_ENV -> {
                 if (runCatchingOnService { beforeSettingUpEnv() }) {
@@ -208,26 +212,40 @@ internal abstract class AbstractRestoreService : AbstractPackagesService() {
                 val newSrcDir = "${mAppsDir}/${p.archivesRelativeDir}"
                 val srcDir = if (mRootService.exists(newSrcDir)) newSrcDir else "${mAppsDir}/${p.legacyArchivesRelativeDir}"
                 val userId = if (restoreUser == -1) p.userId else restoreUser
-                restore(type = DataType.PACKAGE_APK, userId = userId, p = p, t = pkg, srcDir = srcDir)
-                restore(type = DataType.PACKAGE_USER, userId = userId, p = p, t = pkg, srcDir = srcDir)
-                restore(type = DataType.PACKAGE_USER_DE, userId = userId, p = p, t = pkg, srcDir = srcDir)
-                restore(type = DataType.PACKAGE_DATA, userId = userId, p = p, t = pkg, srcDir = srcDir)
-                restore(type = DataType.PACKAGE_OBB, userId = userId, p = p, t = pkg, srcDir = srcDir)
-                restore(type = DataType.PACKAGE_MEDIA, userId = userId, p = p, t = pkg, srcDir = srcDir)
-                if (mContext.readRestorePermissions().first()) {
-                    mPackagesRestoreUtil.restorePermissions(userId = userId, p = p)
-                }
-                if (restoreSsaidEnabled || randomizeSsaid) {
-                    mPackagesRestoreUtil.restoreSsaid(userId = userId, p = p)
-                }
-
-                if (pkg.isSuccess) {
-                    pkg.update(packageEntity = p)
-                    mTaskEntity.update(successCount = mTaskEntity.successCount + 1)
-                } else {
+                // A: 目标用户必须真实存在。备份记录所属用户空间可能已被删除（「炼妖壶」空间被删后，
+                // 备份目录仍在盘上、记录被保留），此时 pm install --user N、/data/user/N、appops --user N
+                // 必然失败——直接给出可读原因并计入失败，不再让用户面对 pm 的原始报错。
+                // systemUserIds 为空 = 读取系统用户失败，跳过校验（避免误判全部失败）。
+                if (systemUserIds.isNotEmpty() && userId >= 0 && userId !in systemUserIds) {
+                    log { "Target user $userId does not exist, skipped." }
+                    pkg.update(
+                        dataType = DataType.PACKAGE_APK,
+                        log = mContext.getString(R.string.restore_user_not_exist, userId),
+                        state = OperationState.ERROR,
+                    )
                     mTaskEntity.update(failureCount = mTaskEntity.failureCount + 1)
+                } else {
+                    restore(type = DataType.PACKAGE_APK, userId = userId, p = p, t = pkg, srcDir = srcDir)
+                    restore(type = DataType.PACKAGE_USER, userId = userId, p = p, t = pkg, srcDir = srcDir)
+                    restore(type = DataType.PACKAGE_USER_DE, userId = userId, p = p, t = pkg, srcDir = srcDir)
+                    restore(type = DataType.PACKAGE_DATA, userId = userId, p = p, t = pkg, srcDir = srcDir)
+                    restore(type = DataType.PACKAGE_OBB, userId = userId, p = p, t = pkg, srcDir = srcDir)
+                    restore(type = DataType.PACKAGE_MEDIA, userId = userId, p = p, t = pkg, srcDir = srcDir)
+                    if (mContext.readRestorePermissions().first()) {
+                        mPackagesRestoreUtil.restorePermissions(userId = userId, p = p)
+                    }
+                    if (restoreSsaidEnabled || randomizeSsaid) {
+                        mPackagesRestoreUtil.restoreSsaid(userId = userId, p = p)
+                    }
+
+                    if (pkg.isSuccess) {
+                        pkg.update(packageEntity = p)
+                        mTaskEntity.update(successCount = mTaskEntity.successCount + 1)
+                    } else {
+                        mTaskEntity.update(failureCount = mTaskEntity.failureCount + 1)
+                    }
+                    pkg.update(state = if (pkg.isSuccess) OperationState.DONE else OperationState.ERROR)
                 }
-                pkg.update(state = if (pkg.isSuccess) OperationState.DONE else OperationState.ERROR)
             }
             mTaskEntity.update(processingIndex = mTaskEntity.processingIndex + 1)
         }
@@ -243,7 +261,10 @@ internal abstract class AbstractRestoreService : AbstractPackagesService() {
                     mContext.getString(R.string.wait_for_remaining_data_processing)
                 )
 
-                if (mContext.readResetRestoreList().first() && mTaskEntity.failureCount == 0) {
+                // D: 开关文案即「恢复完成后取消勾选所选项」。原实现额外要求 failureCount == 0，
+                // 导致只要有任何一条失败（例如目标用户已被删除的残留条目）勾选就永远清不掉，
+                // 长期粘滞。改为严格按开关文案执行。
+                if (mContext.readResetRestoreList().first()) {
                     mPackageDao.clearActivated(OpType.RESTORE)
                 }
                 val isSuccess = runCatchingOnService { clear() }

@@ -106,6 +106,8 @@
     <string name="reset_backup_list_desc">备份完成后取消勾选所选项</string>
     <string name="reset_restore_list">重置恢复列表</string>
     <string name="reset_restore_list_desc">恢复完成后取消勾选所选项</string>
+    <string name="user_deleted">用户（已删除）</string>
+    <string name="restore_user_not_exist">本机已不存在用户 %1$d，已跳过</string>
     <string name="compatible_mode">兼容模式</string>
     <string name="compatible_mode_desc" tools:ignore="TypographyDashes">使用管道而非参作为tar的输入。当遇到\"tar: zstd -r -T0 --ultra -1 -q --priority=rt: Cannot exec: No such file or directory\"时开启它</string>
     <string name="clean_restoring">干净恢复</string>

@@ -110,6 +110,8 @@
     <string name="reset_backup_list_desc">Deselect selections after backing up</string>
     <string name="reset_restore_list">Reset restore list</string>
     <string name="reset_restore_list_desc">Deselect selections after restoring</string>
+    <string name="user_deleted">User (deleted)</string>
+    <string name="restore_user_not_exist">User %1$d no longer exists on this device, skipped</string>
     <string name="compatible_mode">Compatible mode</string>
     <string name="compatible_mode_desc" tools:ignore="TypographyDashes">Use pipe instead of parameter for input of tar. Switch it when it says \"tar: zstd -r -T0 --ultra -1 -q --priority=rt: Cannot exec: No such file or directory\"</string>
     <string name="clean_restoring">Clean restoring</string>

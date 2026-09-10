@@ -154,11 +154,33 @@ interface PackageDao {
     )
     fun countPackagesFlow(opType: OpType, blocked: Boolean): Flow<Long>
 
+    /**
+     * 总数（排除系统应用）。「加载系统应用」关闭时使用：数据库里可能残留之前开启时入库的
+     * 系统应用记录（initialize 只跳过新增、不删除已有），此时顶部计数应只统计第三方应用。
+     */
+    @Query(
+        "SELECT COUNT(*) FROM PackageEntity WHERE" +
+                " indexInfo_opType = :opType AND extraInfo_blocked = :blocked AND" +
+                " (packageInfo_flags & :systemFlag) = 0"
+    )
+    fun countNonSystemPackagesFlow(opType: OpType, blocked: Boolean, systemFlag: Int): Flow<Long>
+
     @Query(
         "SELECT COUNT(*) FROM PackageEntity WHERE" +
                 " indexInfo_opType = :opType AND extraInfo_blocked = :blocked AND extraInfo_activated = 1"
     )
     fun countActivatedPackagesFlow(opType: OpType, blocked: Boolean): Flow<Long>
+
+    /**
+     * 已选数（排除系统应用）。与 [countNonSystemPackagesFlow] 配对：关闭「加载系统应用」后，
+     * 之前系统应用的勾选（若有）不应计入顶部 (N/M)。
+     */
+    @Query(
+        "SELECT COUNT(*) FROM PackageEntity WHERE" +
+                " indexInfo_opType = :opType AND extraInfo_blocked = :blocked AND extraInfo_activated = 1 AND" +
+                " (packageInfo_flags & :systemFlag) = 0"
+    )
+    fun countActivatedNonSystemPackagesFlow(opType: OpType, blocked: Boolean, systemFlag: Int): Flow<Long>
 
     @Query(
         "SELECT indexInfo_userId, COUNT(*) as iCount FROM PackageEntity WHERE" +

@@ -244,7 +244,10 @@ class FilesRepo @Inject constructor(
 
     private fun renameDuplicateFile(name: String): String {
         val nameList = name.split("_").toMutableList()
-        val index = nameList.first().toIntOrNull()
+        // 只有多段且末段为无前导零的数字（"xxx_N"）才递增末段：纯数字文件名（如 "2026"）不是后缀语义，须追加 "_0" 而非改写为 "2027"；
+        // 末段带前导零（如 "照片_2024_08"）属名称本身，同样追加 "_0"，不改写为 "照片_2024_9"（丢零）
+        val last = nameList.last()
+        val index = if (nameList.size > 1) last.toIntOrNull()?.takeIf { it.toString() == last } else null
         if (index == null) {
             nameList.add("0")
         } else {

@@ -249,6 +249,19 @@ class AppsRepo @Inject constructor(
             }
             appsDao.upsert(apps)
         }
+        clearActivatedOfRemovedUsers(userInfoList.map { it.id })
+    }
+
+    /**
+     * 清理「所属用户已被删除」的 BACKUP 记录勾选。
+     * fullInitialize/fastInitialize 只遍历**现存**用户，被摧毁的多开空间（如炼妖壶/壶中界）下的记录
+     * 永远不会被访问到，其 activated 会永久残留 —— 表现为：顶部计数多出看不见的已选项、
+     * 引导页体积 0.00 Bytes、该幽灵条目被纳入备份却必然失败，且因失败而永远清不掉勾选。
+     * userIds 为空 = 读取系统用户失败，必须跳过，否则会清掉全部勾选。
+     */
+    private suspend fun clearActivatedOfRemovedUsers(userIds: List<Int>) {
+        if (userIds.isEmpty()) return
+        appsDao.clearActivatedNotInUsers(opType = OpType.BACKUP, userIds = userIds)
     }
 
     /**
@@ -283,6 +296,7 @@ class AppsRepo @Inject constructor(
             }
             appsDao.upsert(apps)
         }
+        clearActivatedOfRemovedUsers(userInfoList.map { it.id })
     }
 
     private fun initializeApp(settings: SettingsData, pm: PackageManager, userId: Int, info: android.content.pm.PackageInfo): PackageEntity {

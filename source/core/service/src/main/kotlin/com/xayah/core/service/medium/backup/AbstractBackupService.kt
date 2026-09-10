@@ -203,7 +203,9 @@ internal abstract class AbstractBackupService : AbstractMediumService() {
                 }
                 entity.update(progress = 0.5f)
 
-                if (mContext.readResetBackupList().first() && mTaskEntity.failureCount == 0) {
+                // D(备份侧对齐)：与 packages 侧同因 —— 开关文案即「备份完成后取消勾选所选项」，
+                // 原实现额外要求 failureCount == 0，只要有失败就永远清不掉勾选。
+                if (mContext.readResetBackupList().first()) {
                     mMediaDao.clearActivated(OpType.BACKUP)
                 }
                 if (runCatchingOnService { clear() }.not()) {

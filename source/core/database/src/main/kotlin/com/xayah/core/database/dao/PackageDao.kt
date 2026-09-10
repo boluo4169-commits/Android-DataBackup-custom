@@ -86,6 +86,16 @@ interface PackageDao {
     @Query("UPDATE PackageEntity SET extraInfo_activated = 0 WHERE indexInfo_opType = :opType")
     suspend fun clearActivated(opType: OpType)
 
+    /**
+     * 清理「所属用户已不存在」的激活状态（多开空间被摧毁后其 BACKUP 记录不会被 full/fastInitialize 遍历到）。
+     * 调用方必须保证 userIds 非空 —— 空集合会被拼成 NOT IN () 且语义上等于"清掉全部勾选"。
+     */
+    @Query(
+        "UPDATE PackageEntity SET extraInfo_activated = 0 WHERE" +
+                " indexInfo_opType = :opType AND indexInfo_userId NOT IN (:userIds)"
+    )
+    suspend fun clearActivatedNotInUsers(opType: OpType, userIds: List<Int>)
+
     @Query("UPDATE PackageEntity SET extraInfo_activated = :activated WHERE id = :id")
     suspend fun activateById(id: Long, activated: Boolean)
 

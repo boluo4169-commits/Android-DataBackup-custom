@@ -343,7 +343,9 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
                 } else {
                     log { "AccessibilityServices is empty, skip restoring." }
                 }
-                if (mContext.readResetBackupList().first() && mTaskEntity.failureCount == 0) {
+                // D(备份侧对齐)：开关文案即「备份完成后取消勾选所选项」。原实现额外要求
+                // failureCount == 0，只要有任何一条失败（例如已删除用户残留的幽灵条目）就永远清不掉勾选。
+                if (mContext.readResetBackupList().first()) {
                     mPackageDao.clearActivated(OpType.BACKUP)
                 }
                 if (runCatchingOnService { clear() }.not()) {

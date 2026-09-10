@@ -514,16 +514,20 @@ private fun Info(app: PackageEntity) {
                 value = app.extraInfo.ssaid,
             )
         }
-        Clickable(
-            icon = ImageVector.vectorResource(id = R.drawable.ic_rounded_folder_open),
-            title = stringResource(id = R.string.file_path),
-            value = path,
-            onClick = {
-                val clipboard = context.getSystemService(ClipboardManager::class.java)
-                clipboard.setPrimaryClip(ClipData.newPlainText("path", path))
-                Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
-            },
-        )
+        // 备份目录路径只在「确实备份过」时显示：没备份过的应用列出的路径并不存在（路径条目曾在
+        // 备份/恢复两侧详情页都无条件显示，用户困惑「没备份为何有路径、点开也不存在」）
+        if (app.extraInfo.lastBackupTime != 0L) {
+            Clickable(
+                icon = ImageVector.vectorResource(id = R.drawable.ic_rounded_folder_open),
+                title = stringResource(id = R.string.file_path),
+                value = path,
+                onClick = {
+                    val clipboard = context.getSystemService(ClipboardManager::class.java)
+                    clipboard.setPrimaryClip(ClipData.newPlainText("path", path))
+                    Toast.makeText(context, context.getString(R.string.copied), Toast.LENGTH_SHORT).show()
+                },
+            )
+        }
         if (app.preserveId != 0L) {
             Clickable(
                 icon = Icons.Outlined.Shield,

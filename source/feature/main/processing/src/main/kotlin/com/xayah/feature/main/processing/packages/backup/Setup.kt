@@ -186,7 +186,7 @@ fun PagePackagesBackupProcessingSetup(localNavController: NavHostController, vie
                         if (isUpdating) {
                             CircularProgressIndicator(
                                 modifier = Modifier.size(SizeTokens.Level24),
-                                strokeWidth = SizeTokens.Level3,
+                                strokeWidth = SizeTokens.Level4,
                                 strokeCap = StrokeCap.Round,
                             )
                         } else {
@@ -215,7 +215,7 @@ fun PagePackagesBackupProcessingSetup(localNavController: NavHostController, vie
                             if (isUpdating) {
                                 CircularProgressIndicator(
                                     modifier = Modifier.size(SizeTokens.Level24),
-                                    strokeWidth = SizeTokens.Level3,
+                                    strokeWidth = SizeTokens.Level4,
                                     strokeCap = StrokeCap.Round,
                                 )
                             } else {

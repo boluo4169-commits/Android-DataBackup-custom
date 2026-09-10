@@ -44,7 +44,7 @@ fun Context.readRestoreSsaid() = readStoreBoolean(key = KeyRestoreSsaid, defValu
 fun Context.readRandomizeSsaid() = readStoreBoolean(key = KeyRandomizeSsaid, defValue = false)
 fun Context.readRandomizeGaid() = readStoreBoolean(key = KeyRandomizeGaid, defValue = false)
 fun Context.readClearDeviceFingerprint() = readStoreBoolean(key = KeyClearDeviceFingerprint, defValue = false)
-fun Context.readPreserveBackups() = readStoreBoolean(key = KeyPreserveBackups, defValue = false)
+fun Context.readPreserveBackups() = readStoreBoolean(key = KeyPreserveBackups, defValue = true)
 fun Context.readFixDataOwnership() = readStoreBoolean(key = KeyFixDataOwnership, defValue = true)
 fun Context.readDefaultBackupAll() = readStoreBoolean(key = KeyDefaultBackupAll, defValue = false)
 fun Context.readCloudPkgOnlyDir() = readStoreBoolean(key = KeyCloudPkgOnlyDir, defValue = true)

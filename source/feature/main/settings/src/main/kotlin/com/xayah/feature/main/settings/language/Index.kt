@@ -20,6 +20,7 @@ import com.xayah.core.datastore.ConstantUtil
 import com.xayah.core.ui.component.Clickable
 import com.xayah.core.ui.util.LocalNavController
 import com.xayah.core.util.LanguageUtil.toLocale
+import com.xayah.core.util.displayLanguageName
 import com.xayah.feature.main.settings.R
 import com.xayah.feature.main.settings.SettingsScaffold
 
@@ -51,9 +52,10 @@ fun PageLanguageSelector() {
                 } else {
                     val item = sortedLocales[it - 1]
                     val locale by remember(item) { mutableStateOf(item.toLocale(context)) }
+                    // displayLanguageName：中文显示「中文简体/中文繁体」（覆盖表在 LanguageUtil，设置页「语言」摘要行共用，保证两处一致）
                     Clickable(
                         enabled = selectedLanguage != item,
-                        title = locale.getDisplayName(locale),
+                        title = locale.displayLanguageName(),
                         onClick = { viewModel.emitIntentOnIO(IndexUiIntent.UpdateLanguage(navController, item)) },
                     )
                 }

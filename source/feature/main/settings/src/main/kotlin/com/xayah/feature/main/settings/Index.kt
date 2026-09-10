@@ -40,6 +40,7 @@ import com.xayah.core.ui.util.LocalNavController
 import com.xayah.core.util.DateUtil
 import com.xayah.core.util.LanguageUtil
 import com.xayah.core.util.LogUtil
+import com.xayah.core.util.displayLanguageName
 import com.xayah.core.util.getActivity
 import com.xayah.core.util.navigateSingle
 import com.xayah.core.util.readMappedLanguage
@@ -117,7 +118,7 @@ fun PageSettings() {
                 val locale by context.readMappedLanguage().collectAsStateWithLifecycle(initialValue = LanguageUtil.getSystemLocale(context))
                 Clickable(
                     title = stringResource(id = R.string.language),
-                    value = locale.getDisplayName(locale)
+                    value = locale.displayLanguageName()
                 ) {
                     navController.navigateSingle(MainRoutes.LanguageSettings.route)
                 }

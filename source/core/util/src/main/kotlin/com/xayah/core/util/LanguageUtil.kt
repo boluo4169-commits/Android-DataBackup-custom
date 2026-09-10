@@ -25,3 +25,17 @@ object LanguageUtil {
 /** 与 app 模块语言列表对应：繁体中文统一到 zh-TW */
 private const val LANGUAGE_ZH_HK = "zh-HK"
 private const val LANGUAGE_ZH_TW = "zh-TW"
+
+/** 系统显示名不易分辨简繁的语言覆盖表 */
+private val localeDisplayOverrides = mapOf(
+    "zh-CN" to "中文简体",
+    "zh-TW" to "中文繁体",
+)
+
+/**
+ * 语言显示名：对中文做覆盖（zh-CN →「中文简体」、zh-TW →「中文繁体」），
+ * 其余语言走系统 getDisplayName（「中文（中国）/中文（台灣）」这类带地区后缀的名字不易分辨简繁）。
+ * 顶层扩展函数（放 LanguageUtil 内会变成成员扩展，外部 import 不到）。
+ * 语言选择页与设置页「语言」摘要行共用，保证两处一致。
+ */
+fun Locale.displayLanguageName(): String = localeDisplayOverrides[toLanguageTag()] ?: getDisplayName(this)

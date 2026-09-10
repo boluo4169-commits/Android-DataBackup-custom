@@ -12,6 +12,8 @@ import androidx.compose.material.icons.rounded.CheckBox
 import androidx.compose.material.icons.rounded.CheckBoxOutlineBlank
 import androidx.compose.material.icons.rounded.Checklist
 import androidx.compose.material.icons.rounded.Delete
+import androidx.compose.material.icons.rounded.Deselect
+import androidx.compose.material.icons.rounded.IndeterminateCheckBox
 import androidx.compose.material.icons.rounded.MoreVert
 import androidx.compose.material.icons.rounded.Refresh
 import androidx.compose.material.icons.rounded.RestartAlt
@@ -73,6 +75,7 @@ internal fun ListActions(
             target = target,
             opType = uiState.opType,
             selected = uiState.selected,
+            total = uiState.total,
             defaultBackupAll = uiState.defaultBackupAll,
             viewModel = viewModel,
         )
@@ -123,7 +126,7 @@ private fun FilterAction(onFilter: () -> Unit) {
 }
 
 @Composable
-private fun ListAction(target: Target, opType: OpType, selected: Long, defaultBackupAll: Boolean, viewModel: ListActionsViewModel) {
+private fun ListAction(target: Target, opType: OpType, selected: Long, total: Long, defaultBackupAll: Boolean, viewModel: ListActionsViewModel) {
     var checkListExpanded by remember { mutableStateOf(false) }
     var checkListSelectedExpanded by remember { mutableStateOf(false) }
     Box(modifier = Modifier.wrapContentSize(Alignment.TopStart)) {
@@ -137,7 +140,7 @@ private fun ListAction(target: Target, opType: OpType, selected: Long, defaultBa
             onDismissRequest = { checkListExpanded = false }
         ) {
             if (it.not()) {
-                SelectAllItem {
+                SelectAllItem(selected = selected, total = total) {
                     checkListExpanded = false
                     viewModel.selectAll()
                 }
@@ -283,20 +286,35 @@ private fun FilesListActions(
     }
 }
 
+/**
+ * "选择全部"菜单项：leadingIcon 反映**真实选中状态**（全选 / 部分选中 / 未选 三态）。
+ * 原实现写死 Icons.Rounded.CheckBox，图标恒为「已勾选」，即使一个应用都没选也亮着，
+ * 且紧邻的「默认全选」用的是真状态图标（check_circle / radio_button_unchecked），
+ * 两者并排更容易被误读成「已经全部选中了」。
+ */
 @Composable
-private fun SelectAllItem(onClick: () -> Unit) {
+private fun SelectAllItem(selected: Long, total: Long, onClick: () -> Unit) {
+    val leadingIcon = when {
+        selected <= 0L || total <= 0L -> Icons.Rounded.CheckBoxOutlineBlank
+        selected >= total -> Icons.Rounded.CheckBox
+        else -> Icons.Rounded.IndeterminateCheckBox
+    }
     DropdownMenuItem(
         text = stringResource(id = R.string.select_all),
-        leadingIcon = Icons.Rounded.CheckBox,
+        leadingIcon = leadingIcon,
         onClick = onClick,
     )
 }
 
+/**
+ * "全部不选"菜单项：改用中性**动作**图标（Deselect）。
+ * 原来用空心勾选框，与上面「选择全部」的三态图标并列时会被读成"当前未选中"的状态指示。
+ */
 @Composable
 private fun UnselectAllItem(onClick: () -> Unit) {
     DropdownMenuItem(
         text = stringResource(id = R.string.unselect_all),
-        leadingIcon = Icons.Rounded.CheckBoxOutlineBlank,
+        leadingIcon = Icons.Rounded.Deselect,
         onClick = onClick,
     )
 }

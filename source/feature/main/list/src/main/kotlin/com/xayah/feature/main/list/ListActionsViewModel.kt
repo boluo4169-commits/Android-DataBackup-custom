@@ -51,6 +51,7 @@ class ListActionsViewModel @Inject constructor(
             Success.Apps(
                 opType = opType,
                 selected = listData.selected,
+                total = listData.total,
                 isUpdating = listData.isUpdating,
                 appList = aList,
                 defaultBackupAll = defaultBackupAll,
@@ -66,6 +67,7 @@ class ListActionsViewModel @Inject constructor(
             Success.Files(
                 opType = opType,
                 selected = listData.selected,
+                total = listData.total,
                 isUpdating = listData.isUpdating,
                 fileList = fList,
                 defaultBackupAll = defaultBackupAll,
@@ -242,23 +244,26 @@ sealed interface ListActionsUiState {
     sealed class Success(
         open val opType: OpType,
         open val selected: Long,
+        open val total: Long,
         open val isUpdating: Boolean,
         open val defaultBackupAll: Boolean,
     ) : ListActionsUiState {
         data class Apps(
             override val opType: OpType,
             override val selected: Long,
+            override val total: Long,
             override val isUpdating: Boolean,
             override val defaultBackupAll: Boolean,
             val appList: List<App>,
-        ) : Success(opType, selected, isUpdating, defaultBackupAll)
+        ) : Success(opType, selected, total, isUpdating, defaultBackupAll)
 
         data class Files(
             override val opType: OpType,
             override val selected: Long,
+            override val total: Long,
             override val isUpdating: Boolean,
             override val defaultBackupAll: Boolean,
             val fileList: List<File>,
-        ) : Success(opType, selected, isUpdating, defaultBackupAll)
+        ) : Success(opType, selected, total, isUpdating, defaultBackupAll)
     }
 }

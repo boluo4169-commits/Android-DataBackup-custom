@@ -170,26 +170,35 @@ internal class BackupServiceCloudImpl @Inject constructor() : AbstractBackupServ
 
     // 修复：保留历史备份在云场景失效。归档旧主备份需在远程执行 rename，否则旧备份被新备份上传覆盖。
     override suspend fun archiveMainBackup(existingMain: PackageEntity) {
+        // 定位现存主备份的真实路径：先按新（应用名_包名）找，再回退旧（纯包名），
+        // 这样无论「云端目录仅用包名」开关处于哪种状态都能命中现有目录。
+        val srcNew = "${mRemoteAppsDir}/${existingMain.archivesRelativeDir}"
+        val srcLegacy = "${mRemoteAppsDir}/${existingMain.legacyArchivesRelativeDir}"
+        val isLegacy = !mClient.exists(srcNew) && mClient.exists(srcLegacy)
+        val src = if (isLegacy) srcLegacy else srcNew
+        if (!mClient.exists(src)) return
+
+        // 归档必须落在**源目录自身的父目录**下（即 src 后追加 @preserveId）。
+        // 若按 archivesRelativeDir 算目标，开关在两次备份间翻转时会变成跨父目录 rename，
+        // FTP 等不支持自动建父目录的服务会抛 IOException 并崩溃（用户实测复现）。
+        val srcRel = if (isLegacy) existingMain.legacyArchivesRelativeDir else existingMain.archivesRelativeDir
         var preserveId = DateUtil.getPreserveTimestamp()
         var archived = existingMain.copy(indexInfo = existingMain.indexInfo.copy(preserveId = preserveId))
-        var dst = "${mRemoteAppsDir}/${archived.archivesRelativeDir}"
+        var dst = "${mRemoteAppsDir}/$srcRel@$preserveId"
         while (mClient.exists(dst)) {
             preserveId++
             archived = existingMain.copy(indexInfo = existingMain.indexInfo.copy(preserveId = preserveId))
-            dst = "${mRemoteAppsDir}/${archived.archivesRelativeDir}"
+            dst = "${mRemoteAppsDir}/$srcRel@$preserveId"
         }
-        val srcNew = "${mRemoteAppsDir}/${existingMain.archivesRelativeDir}"
-        val src = if (mClient.exists(srcNew)) srcNew else "${mRemoteAppsDir}/${existingMain.legacyArchivesRelativeDir}"
-        if (mClient.exists(src)) {
-            // 写新 config（preserveId 已更新）到本地临时目录，上传到远程 src，再远程改名
-            val tmpDir = mPathUtil.getCloudTmpDir()
-            val tmpJsonPath = PathUtil.getPackageRestoreConfigDst(tmpDir)
-            mRootService.writeJson(data = archived, dst = tmpJsonPath)
-            mCloudRepo.upload(client = mClient, src = tmpJsonPath, dstDir = src)
-            mRootService.deleteRecursively(tmpDir)
-            mClient.renameTo(src, dst)
-            mPackageDao.upsert(archived)
-        }
+
+        // 写新 config（preserveId 已更新）到本地临时目录，上传到远程 src，再远程改名
+        val tmpDir = mPathUtil.getCloudTmpDir()
+        val tmpJsonPath = PathUtil.getPackageRestoreConfigDst(tmpDir)
+        mRootService.writeJson(data = archived, dst = tmpJsonPath)
+        mCloudRepo.upload(client = mClient, src = tmpJsonPath, dstDir = src)
+        mRootService.deleteRecursively(tmpDir)
+        mClient.renameTo(src, dst)
+        mPackageDao.upsert(archived)
     }
 
     // 修复：清理超量旧归档需在远程执行删除，否则远程旧版本不会被真正删除

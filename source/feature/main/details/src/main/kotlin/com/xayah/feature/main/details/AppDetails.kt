@@ -56,6 +56,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import com.xayah.core.common.util.toLineString
@@ -88,6 +89,7 @@ import com.xayah.core.ui.theme.withState
 import com.xayah.core.ui.token.SizeTokens
 import com.xayah.core.util.DateUtil
 import com.xayah.core.util.localBackupSaveDir
+import com.xayah.core.datastore.readCloudPkgOnlyDir
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.launch
 
@@ -466,9 +468,14 @@ private fun BackupParts(app: PackageEntity, isCalculating: Boolean, onSetDataSta
 @Composable
 private fun Info(app: PackageEntity) {
     val context = LocalContext.current
-    val path = remember(app) {
+    // 「云端目录仅用包名」开关会影响云端实体的真实目录名（关 = 带应用名，开 = 纯包名）；
+    // 详情页「文件路径」必须按同一解析取，否则显示与服务器不一致。
+    val pkgOnly by context.readCloudPkgOnlyDir().collectAsStateWithLifecycle(initialValue = true)
+    val path = remember(app, pkgOnly) {
         val dir = app.indexInfo.backupDir.ifEmpty { context.localBackupSaveDir() }
-        "$dir/apps/${app.archivesRelativeDir}"
+        val isCloud = app.indexInfo.cloud.isNotEmpty()
+        val rel = app.resolveArchivesRelativeDir(pkgOnly = isCloud && pkgOnly)
+        "$dir/apps/$rel"
     }
     Title(title = stringResource(id = R.string.info)) {
         Clickable(

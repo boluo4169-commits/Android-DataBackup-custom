@@ -276,6 +276,17 @@ data class PackageEntity(
     val legacyArchivesRelativeDir: String
         get() = "${packageName}/user_${userId}${if (preserveId == 0L) "" else "@$preserveId"}"
 
+    /**
+     * 统一解析「实际使用的」归档相对目录：
+     * - `pkgOnly == true` → legacyArchivesRelativeDir（纯包名，兼容老格式）
+     * - 否则 → archivesRelativeDir（带应用名_包名）
+     *
+     * 备份/恢复服务、详情页路径、云端删除等所有消费点都应通过这里取，
+     * 避免各写一套导致「看到的路径」与「服务器上的路径」对不上。
+     */
+    fun resolveArchivesRelativeDir(pkgOnly: Boolean): String =
+        if (pkgOnly) legacyArchivesRelativeDir else archivesRelativeDir
+
     // 清洗应用名用于目录名：删除特殊字符，只保留中文/英文/数字/下划线
     private val sanitizedLabel: String
         get() = packageInfo.label.replace(Regex("[^\\u4e00-\\u9fa5A-Za-z0-9_]"), "").trim('_')

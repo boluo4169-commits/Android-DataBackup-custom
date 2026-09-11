@@ -86,7 +86,8 @@ class IndexViewModel @Inject constructor(
                     }
                 })
                 var bytes = 0.0
-                packages.forEach { bytes += it.displayStatsBytes }
+                // 同恢复引导页：只统计归档中实际存在的类型，避免把未备份类型的体积算进来
+                packages.forEach { bytes += it.selectedDisplayStatsBytes }
                 emitState(state.copy(packages = packages, packagesSize = bytes.formatSize()))
             }
 

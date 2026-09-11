@@ -70,7 +70,9 @@ class RestoreViewModelImpl @Inject constructor(
                 LogUtil.log { "RestoreViewModelImpl.UpdateApps" to "Queried apps count: ${packages.size}" }
                 var bytes = 0.0
                 packages.forEach {
-                    bytes += it.displayStatsBytes
+                    // 只统计归档中实际存在的类型（dataStates 记录了备份时的勾选），
+                    // 否则会把未备份类型的体积也算进来（恢复实体的 displayStats 由 config json 反序列化，含未备份类型的原始体积）
+                    bytes += it.selectedDisplayStatsBytes
                 }
                 _packages.value = packages
                 _packagesSize.value = bytes.formatSize()

@@ -248,6 +248,18 @@ data class PackageEntity(
     val displayStatsBytes: Double
         get() = (displayStats.apkBytes + displayStats.userBytes + displayStats.userDeBytes + displayStats.dataBytes + displayStats.obbBytes + displayStats.mediaBytes).toDouble()
 
+    // 仅累加「已勾选」的数据类型：引导页的「应用」总大小用它。
+    // 若用 displayStatsBytes，只勾 APK 时也会把未勾选的 USER/USER_DE/DATA 一并算进去，体积虚高（实测 207.57 MB → 552.88 MB）。
+    val selectedDisplayStatsBytes: Double
+        get() = (
+                (if (apkSelected) displayStats.apkBytes else 0L) +
+                        (if (userSelected) displayStats.userBytes else 0L) +
+                        (if (userDeSelected) displayStats.userDeBytes else 0L) +
+                        (if (dataSelected) displayStats.dataBytes else 0L) +
+                        (if (obbSelected) displayStats.obbBytes else 0L) +
+                        (if (mediaSelected) displayStats.mediaBytes else 0L)
+                ).toDouble()
+
     val storageStatsFormat: String
         get() = storageStatsBytes.formatSize()
 

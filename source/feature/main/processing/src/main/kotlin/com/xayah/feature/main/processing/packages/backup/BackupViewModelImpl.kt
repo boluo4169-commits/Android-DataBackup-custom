@@ -97,7 +97,8 @@ class BackupViewModelImpl @Inject constructor(
                 }
                 var bytes = 0.0
                 packages.forEach {
-                    bytes += it.displayStatsBytes
+                    // 只统计已勾选的数据类型，否则只勾 APK 时体积会虚高（详见 PackageEntity.selectedDisplayStatsBytes）
+                    bytes += it.selectedDisplayStatsBytes
                 }
                 _packages.value = packages
                 _packagesSize.value = bytes.formatSize()

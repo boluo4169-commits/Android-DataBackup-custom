@@ -169,20 +169,28 @@ class PackageRepository @Inject constructor(
             rootService.writeJson(data = pkgEntity, dst = PathUtil.getPackageRestoreConfigDst(src))
             rootService.renameTo(src, dst)
         } else {
-            runCatching {
-                cloudRepository.withClient(pkgEntity.indexInfo.cloud) { client, entity ->
-                    val remote = entity.remote
-                    val remoteArchivesPackagesDir = pathUtil.getCloudRemoteAppsDir(remote)
-                    val src = "${remoteArchivesPackagesDir}/${p.archivesRelativeDir}"
-                    val dst = "${remoteArchivesPackagesDir}/${pkgEntity.archivesRelativeDir}"
-                    val tmpDir = pathUtil.getCloudTmpDir()
-                    val tmpJsonPath = PathUtil.getPackageRestoreConfigDst(tmpDir)
-                    rootService.writeJson(data = pkgEntity, dst = tmpJsonPath)
-                    cloudRepository.upload(client = client, src = tmpJsonPath, dstDir = src)
-                    rootService.deleteRecursively(tmpDir)
-                    client.renameTo(src, dst)
-                }
-            }.onFailure(rootService.onFailure).isSuccess
+                runCatching {
+                    cloudRepository.withClient(pkgEntity.indexInfo.cloud) { client, entity ->
+                        val remote = entity.remote
+                        val remoteArchivesPackagesDir = pathUtil.getCloudRemoteAppsDir(remote)
+                        // 探测真实存在的目录：开关可能在两次备份间翻转，旧备份会落在 legacy（纯包名）目录下，
+                        // 只看 archivesRelativeDir 会找不到源目录（静默失败）。
+                        val srcRel = if (client.exists("${remoteArchivesPackagesDir}/${p.archivesRelativeDir}")) {
+                            p.archivesRelativeDir
+                        } else {
+                            p.legacyArchivesRelativeDir
+                        }
+                        val src = "${remoteArchivesPackagesDir}/$srcRel"
+                        // 目标必须落在源目录自身的父目录下（剥掉可能已有的 @旧时间戳，再追加新的）
+                        val dst = "${remoteArchivesPackagesDir}/${srcRel.substringBefore('@')}@${pkgEntity.indexInfo.preserveId}"
+                        val tmpDir = pathUtil.getCloudTmpDir()
+                        val tmpJsonPath = PathUtil.getPackageRestoreConfigDst(tmpDir)
+                        rootService.writeJson(data = pkgEntity, dst = tmpJsonPath)
+                        cloudRepository.upload(client = client, src = tmpJsonPath, dstDir = src)
+                        rootService.deleteRecursively(tmpDir)
+                        client.renameTo(src, dst)
+                    }
+                }.onFailure(rootService.onFailure).isSuccess
         }
         if (isSuccess) {
             packageDao.delete(p.id)

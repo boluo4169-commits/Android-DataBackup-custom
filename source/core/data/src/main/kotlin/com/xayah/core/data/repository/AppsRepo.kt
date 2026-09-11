@@ -838,11 +838,23 @@ class AppsRepo @Inject constructor(
         }
     }
 
+    /**
+     * 保护版本的目录必须落在**源目录自身的父目录**下：剥掉可能已有的 @旧时间戳，再追加新的。
+     * 直接拿 archivesRelativeDir 当目标会跳到另一个父目录（开关翻转时就是 legacy vs labeled），
+     * 在 FTP 等不支持自动建父目录的服务上跨父目录 rename 会失败甚至崩溃。
+     */
+    private fun preserveDstRelative(srcRel: String, preserveId: Long): String {
+        val parent = srcRel.substringBeforeLast('/', "")
+        val base = srcRel.substringAfterLast('/').substringBefore('@')
+        return if (parent.isEmpty()) "$base@$preserveId" else "$parent/$base@$preserveId"
+    }
+
     private suspend fun protectLocalApp(app: PackageEntity) {
-        val protectedApp = app.copy(indexInfo = app.indexInfo.copy(preserveId = DateUtil.getTimestamp()))
+        val preserveId = DateUtil.getTimestamp()
+        val protectedApp = app.copy(indexInfo = app.indexInfo.copy(preserveId = preserveId))
         val appsDir = pathUtil.getLocalBackupAppsDir()
         val src = resolveLocalArchiveDir(app, appsDir)
-        val dst = "${appsDir}/${protectedApp.archivesRelativeDir}"
+        val dst = "${appsDir}/${preserveDstRelative(src.removePrefix("$appsDir/"), preserveId)}"
         rootService.writeJson(data = protectedApp, dst = PathUtil.getPackageRestoreConfigDst(src))
         rootService.renameTo(src, dst)
         appsDao.update(protectedApp)
@@ -850,11 +862,15 @@ class AppsRepo @Inject constructor(
 
     private suspend fun protectCloudApp(cloudName: String, app: PackageEntity) = runCatching {
         cloudRepo.withClient(cloudName) { client, entity ->
-            val protectedApp = app.copy(indexInfo = app.indexInfo.copy(preserveId = DateUtil.getTimestamp()))
+            val preserveId = DateUtil.getTimestamp()
+            val protectedApp = app.copy(indexInfo = app.indexInfo.copy(preserveId = preserveId))
             val remote = entity.remote
             val remoteAppsDir = pathUtil.getCloudRemoteAppsDir(remote)
-            val src = "${remoteAppsDir}/${app.archivesRelativeDir}"
-            val dst = "${remoteAppsDir}/${protectedApp.archivesRelativeDir}"
+            // 探测真实存在的目录：开关可能在两次备份间翻转，旧备份会落在 legacy（纯包名）目录下，
+            // 只看 archivesRelativeDir 会找不到源目录（静默失败）。
+            val srcRel = resolveExistingArchiveRelativeDir(app) ?: app.archivesRelativeDir
+            val src = "$remoteAppsDir/$srcRel"
+            val dst = "$remoteAppsDir/${preserveDstRelative(srcRel, preserveId)}"
             val tmpDir = pathUtil.getCloudTmpDir()
             val tmpJsonPath = PathUtil.getPackageRestoreConfigDst(tmpDir)
             rootService.writeJson(data = protectedApp, dst = tmpJsonPath)

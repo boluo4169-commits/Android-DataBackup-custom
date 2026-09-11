@@ -85,11 +85,13 @@ internal fun ListBottomSheet(
     viewModel: ListBottomSheetViewModel,
 ) {
     val sheetState = rememberModalBottomSheetState()
+    // 关闭时必须无条件复位 showFilterSheet：原来这里带 `if (!sheetState.isVisible)` 判断，
+    // 而 invokeOnCompletion 在「动画被取消」时同样会回调，此时 isVisible 仍是 true，
+    // 复位被跳过 → 状态卡在 true。之后点筛选按钮 emit(true) 被 StateFlow 去重，
+    // 面板再也不弹出（表现为「点了完全没反应」），只能重进页面才恢复。
     val onDismissRequest: () -> Unit = {
         coroutineScope.launch { sheetState.hide() }.invokeOnCompletion {
-            if (!sheetState.isVisible) {
-                viewModel.setShowFilterSheet(false)
-            }
+            viewModel.setShowFilterSheet(false)
         }
     }
 

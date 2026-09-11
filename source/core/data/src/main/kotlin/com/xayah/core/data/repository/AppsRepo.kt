@@ -269,6 +269,8 @@ class AppsRepo @Inject constructor(
             appsDao.upsert(apps)
         }
         clearActivatedOfRemovedUsers(userInfoList.map { it.id })
+        // 开关关着时，系统应用不应保留任何勾选（含其它用户空间里看不见的幽灵）
+        if (loadSystemApps.not()) clearActivatedSystemApps()
     }
 
     /**
@@ -282,6 +284,17 @@ class AppsRepo @Inject constructor(
         if (userIds.isEmpty()) return
         appsDao.clearActivatedNotInUsers(opType = OpType.BACKUP, userIds = userIds)
     }
+
+    /**
+     * 清理系统应用的勾选（全部用户空间）。
+     * 背景：一键备份的 activateAllForBackup 是全局全选，开关开着时会把双开空间（如 999）的系统应用
+     * 一并勾上；而关开关、点「全部不选」都只作用于当前列表可见项，那些看不见的勾选就永久残留 ——
+     * 表现为「明明只勾了 1 个应用，引导页却显示 2.16 GB、一堆系统应用图标」，且它们会被真实备份。
+     */
+    suspend fun clearActivatedSystemApps() = appsDao.clearActivatedSystemApps(
+        opType = OpType.BACKUP,
+        systemFlag = ApplicationInfo.FLAG_SYSTEM,
+    )
 
     /**
      * Initialize only newly installed apps or remove uninstalled apps.
@@ -316,6 +329,8 @@ class AppsRepo @Inject constructor(
             appsDao.upsert(apps)
         }
         clearActivatedOfRemovedUsers(userInfoList.map { it.id })
+        // 开关关着时，系统应用不应保留任何勾选（含其它用户空间里看不见的幽灵）
+        if (loadSystemApps.not()) clearActivatedSystemApps()
     }
 
     private fun initializeApp(settings: SettingsData, pm: PackageManager, userId: Int, info: android.content.pm.PackageInfo): PackageEntity {

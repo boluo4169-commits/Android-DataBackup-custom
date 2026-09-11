@@ -96,6 +96,17 @@ interface PackageDao {
     )
     suspend fun clearActivatedNotInUsers(opType: OpType, userIds: List<Int>)
 
+    /**
+     * 清理系统应用的激活状态（全部用户空间）。
+     * 「加载系统应用」关闭后，系统应用不该再处于勾选状态：列表按开关过滤后看不到它们，
+     * 但备份取的是全局 queryActivated —— 残留的勾选会变成看不见却照样被备份的幽灵。
+     */
+    @Query(
+        "UPDATE PackageEntity SET extraInfo_activated = 0 WHERE" +
+                " indexInfo_opType = :opType AND (packageInfo_flags & :systemFlag) != 0"
+    )
+    suspend fun clearActivatedSystemApps(opType: OpType, systemFlag: Int)
+
     @Query("UPDATE PackageEntity SET extraInfo_activated = :activated WHERE id = :id")
     suspend fun activateById(id: Long, activated: Boolean)
 

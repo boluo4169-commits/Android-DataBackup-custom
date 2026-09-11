@@ -107,9 +107,10 @@ class ListBottomSheetViewModel @Inject constructor(
             if (uiState.value is Success.Apps) {
                 val isShow = filters.showSystemApps
                 listDataRepo.setFilters { filters }
-                val state = uiState.value.castTo<Success.Apps>()
                 if (isShow.not()) {
-                    appsRepo.unselectAll(state.appList.filter { it.isSystemApp }.map { it.id })
+                    // 全局清理而非只清当前列表可见项：系统应用的勾选是跨用户空间的，
+                    // 只清可见项会在其它空间（如双开 999）留下看不见却照样被备份的幽灵勾选。
+                    appsRepo.clearActivatedSystemApps()
                 }
             }
         }

@@ -178,12 +178,15 @@ class AppsRepo @Inject constructor(
 
     /**
      * 定时备份/一键备份用：全选备份列表（与备份页 UI 全选同集合语义）。
-     * 与 ListDataRepo 的过滤对齐：BACKUP + blocked=false + 系统应用按「显示系统应用」开关过滤。
+     *
+     * 只选第三方应用：系统应用不属于用户数据，批量备份它们没有意义，而且设备上动辄
+     * 近 400 个系统应用 —— 一旦被全选，引导页会显示几百个图标和数 GB 体积，
+     * 备份规模和处理耗时都暴增（表现为扫描后长时间「加载」、界面响应迟钝）。
+     * 「加载系统应用」开关只控制系统应用是否在列表中可见，不代表要备份它们。
      */
     suspend fun activateAllForBackup() {
-        val loadSystemApps = context.readLoadSystemApps().first()
         val apps = appsDao.queryPackages(OpType.BACKUP, blocked = false).filter {
-            loadSystemApps || ((it.packageInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0)
+            (it.packageInfo.flags and ApplicationInfo.FLAG_SYSTEM) == 0
         }
         appsDao.activateByIds(apps.map { it.id }, true)
     }

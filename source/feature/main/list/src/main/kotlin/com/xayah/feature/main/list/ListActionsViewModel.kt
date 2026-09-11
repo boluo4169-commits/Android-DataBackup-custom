@@ -122,7 +122,9 @@ class ListActionsViewModel @Inject constructor(
             when (uiState.value) {
                 is Success.Apps -> {
                     val state = uiState.value.castTo<Success.Apps>()
-                    appsRepo.selectAll(state.appList.map { it.id })
+                    // 与 activateAllForBackup 同口径：批量选择跳过系统应用（单个手动勾选不受影响），
+                    // 否则「加载系统应用」开着时一次全选就是几百个系统应用。
+                    appsRepo.selectAll(state.appList.filter { it.isSystemApp.not() }.map { it.id })
                 }
 
                 is Success.Files -> {

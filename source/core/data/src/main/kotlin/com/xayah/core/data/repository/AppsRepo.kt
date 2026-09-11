@@ -17,6 +17,7 @@ import com.xayah.core.data.util.srcDir
 import com.xayah.core.database.dao.PackageDao
 import com.xayah.core.datastore.di.DbDispatchers.Default
 import com.xayah.core.datastore.di.Dispatcher
+import com.xayah.core.datastore.readCloudPkgOnlyDir
 import com.xayah.core.datastore.readCustomSUFile
 import com.xayah.core.datastore.readLoadSystemApps
 import com.xayah.core.datastore.readLoadedIconMD5
@@ -213,6 +214,9 @@ class AppsRepo @Inject constructor(
 
     suspend fun deleteSelected(ids: List<Long>) {
         val appsDir = pathUtil.getLocalBackupAppsDir()
+        // 云端路径必须按「云端仅用包名」开关解析（与详情页路径、备份/恢复服务同一规则），
+        // 否则开关开启时硬编码 archivesRelativeDir 会指向一个不存在的目录，远端删不到、但本地记录被误删。
+        val pkgOnly = context.readCloudPkgOnlyDir().first()
         val deletedIds = mutableListOf<Long>()
         ids.forEach {
             val app = appsDao.queryById(it)
@@ -225,8 +229,10 @@ class AppsRepo @Inject constructor(
                         cloudRepo.withClient(app.indexInfo.cloud) { client, entity ->
                             val remote = entity.remote
                             val remoteArchivesPackagesDir = pathUtil.getCloudRemoteAppsDir(remote)
-                            val src = "${remoteArchivesPackagesDir}/${app.archivesRelativeDir}"
-                            if (client.exists(src)) client.deleteRecursively(src)
+                            val src = "${remoteArchivesPackagesDir}/${app.resolveArchivesRelativeDir(pkgOnly)}"
+                            // 路径不存在则视为失败并保留本地记录，避免出现「远端还在但本地记没了」的幽灵；
+                            // 走 withLog() 之后会留日志，调用方可看到原因。
+                            if (client.exists(src)) client.deleteRecursively(src) else error("cloud backup not found at $src")
                         }
                     }.withLog().isSuccess
                 }

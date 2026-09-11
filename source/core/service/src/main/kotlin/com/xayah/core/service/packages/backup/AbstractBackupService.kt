@@ -17,6 +17,7 @@ import com.xayah.core.model.ProcessingType
 import com.xayah.core.model.TaskType
 import com.xayah.core.model.database.Info
 import com.xayah.core.model.database.PackageEntity
+import com.xayah.core.model.database.preserveArchiveRelativeDir
 import com.xayah.core.model.database.ProcessingInfoEntity
 import com.xayah.core.model.database.TaskDetailPackageEntity
 import com.xayah.core.model.util.set
@@ -136,11 +137,11 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
         val srcRel = if (isLegacy) existingMain.legacyArchivesRelativeDir else existingMain.archivesRelativeDir
         var preserveId = DateUtil.getPreserveTimestamp()
         var archived = existingMain.copy(indexInfo = existingMain.indexInfo.copy(preserveId = preserveId))
-        var dst = "${mAppsDir}/$srcRel@$preserveId"
+        var dst = "${mAppsDir}/${preserveArchiveRelativeDir(srcRel, preserveId)}"
         while (mRootService.exists(dst)) {
             preserveId++
             archived = existingMain.copy(indexInfo = existingMain.indexInfo.copy(preserveId = preserveId))
-            dst = "${mAppsDir}/$srcRel@$preserveId"
+            dst = "${mAppsDir}/${preserveArchiveRelativeDir(srcRel, preserveId)}"
         }
 
         mRootService.writeJson(data = archived, dst = PathUtil.getPackageRestoreConfigDst(src))

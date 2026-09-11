@@ -12,6 +12,7 @@ import com.xayah.core.model.OperationState
 import com.xayah.core.model.TaskType
 import com.xayah.core.model.database.CloudEntity
 import com.xayah.core.model.database.PackageEntity
+import com.xayah.core.model.database.preserveArchiveRelativeDir
 import com.xayah.core.model.database.ProcessingInfoEntity
 import com.xayah.core.model.database.TaskDetailPackageEntity
 import com.xayah.core.model.database.TaskEntity
@@ -184,11 +185,11 @@ internal class BackupServiceCloudImpl @Inject constructor() : AbstractBackupServ
         val srcRel = if (isLegacy) existingMain.legacyArchivesRelativeDir else existingMain.archivesRelativeDir
         var preserveId = DateUtil.getPreserveTimestamp()
         var archived = existingMain.copy(indexInfo = existingMain.indexInfo.copy(preserveId = preserveId))
-        var dst = "${mRemoteAppsDir}/$srcRel@$preserveId"
+        var dst = "${mRemoteAppsDir}/${preserveArchiveRelativeDir(srcRel, preserveId)}"
         while (mClient.exists(dst)) {
             preserveId++
             archived = existingMain.copy(indexInfo = existingMain.indexInfo.copy(preserveId = preserveId))
-            dst = "${mRemoteAppsDir}/$srcRel@$preserveId"
+            dst = "${mRemoteAppsDir}/${preserveArchiveRelativeDir(srcRel, preserveId)}"
         }
 
         // 写新 config（preserveId 已更新）到本地临时目录，上传到远程 src，再远程改名

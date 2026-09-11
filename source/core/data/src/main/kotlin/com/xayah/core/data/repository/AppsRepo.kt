@@ -946,23 +946,23 @@ class AppsRepo @Inject constructor(
         }
     }
 
-private suspend fun deleteCloudApp(cloudName: String, app: PackageEntity) = runCatching {
-    // 探测真实存在的目录：开关可能在备份之后翻转过，只看 archivesRelativeDir 会指向
-    // 不存在的路径，导致纯包名目录下的备份删不掉（静默失败，记录还在、又冒出来）。
-    val srcRel = resolveExistingArchiveRelativeDir(app)
-    if (srcRel == null) {
-        LogUtil.log { "AppsRepo" to "deleteCloudApp: archive dir not found for ${app.packageName}" }
-        return@runCatching
-    }
-    cloudRepo.withClient(cloudName) { client, entity ->
-        val remoteAppsDir = pathUtil.getCloudRemoteAppsDir(entity.remote)
-        val src = "$remoteAppsDir/$srcRel"
-        if (client.exists(src)) {
-            client.deleteRecursively(src)
-            if (client.exists(src).not()) {
-                appsDao.delete(app.id)
+    private suspend fun deleteCloudApp(cloudName: String, app: PackageEntity) = runCatching {
+        // 探测真实存在的目录：开关可能在备份之后翻转过，只看 archivesRelativeDir 会指向
+        // 不存在的路径，导致纯包名目录下的备份删不掉（静默失败，记录还在、又冒出来）。
+        val srcRel = resolveExistingArchiveRelativeDir(app)
+        if (srcRel == null) {
+            LogUtil.log { "AppsRepo" to "deleteCloudApp: archive dir not found for ${app.packageName}" }
+            return@runCatching
+        }
+        cloudRepo.withClient(cloudName) { client, entity ->
+            val remoteAppsDir = pathUtil.getCloudRemoteAppsDir(entity.remote)
+            val src = "$remoteAppsDir/$srcRel"
+            if (client.exists(src)) {
+                client.deleteRecursively(src)
+                if (client.exists(src).not()) {
+                    appsDao.delete(app.id)
+                }
             }
         }
-    }
-}.withLog()
+    }.withLog()
 }

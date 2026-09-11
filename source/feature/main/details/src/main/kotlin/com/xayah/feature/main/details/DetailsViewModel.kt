@@ -244,6 +244,24 @@ class DetailsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 取消保护：把保护版本改回正常版本。目标已被正常版本占用时 repo 会拒绝（不覆盖），
+     * 这里只负责调用；失败原因写进日志，UI 上表现为"点了没变化"。
+     */
+    fun unprotect() {
+        viewModelScope.launchOnDefault {
+            when (uiState.value) {
+                is Success.App -> {
+                    val state = uiState.value.castTo<Success.App>()
+                    val app = state.app
+                    appsRepo.unprotectApp(app.indexInfo.cloud, app)
+                }
+
+                else -> Unit // 文件实体暂不支持取消保护
+            }
+        }
+    }
+
     fun delete() {
         viewModelScope.launchOnDefault {
             when (uiState.value) {

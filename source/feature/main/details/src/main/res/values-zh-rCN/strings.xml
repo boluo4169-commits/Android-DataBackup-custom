@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- 取消保护：把受保护版本（user_X@时间戳）恢复成普通版本（user_X） -->
+    <string name="unprotect">取消保护</string>
+    <string name="unprotect_desc">把这个受保护的版本恢复成普通备份。如果已经存在一个普通版本，为避免覆盖，将拒绝取消保护。</string>
+</resources>

@@ -109,6 +109,7 @@ internal fun AppDetails(
     onFreeze: (Boolean) -> Unit,
     onLaunch: () -> Unit,
     onProtect: () -> Unit,
+    onUnprotect: () -> Unit = {},
     onDelete: () -> Unit
 ) {
     var isShow by remember { mutableStateOf(false) }
@@ -138,7 +139,7 @@ internal fun AppDetails(
 
         Spacer(Modifier.height(SizeTokens.Level12))
 
-        ActionsRow(opType = opType, blocked = app.extraInfo.blocked, frozen = app.extraInfo.enabled.not(), protected = app.preserveId != 0L, onBlock = onBlock, onFreeze = onFreeze, onLaunch = onLaunch, onProtect = onProtect, onDelete = onDelete)
+        ActionsRow(opType = opType, blocked = app.extraInfo.blocked, frozen = app.extraInfo.enabled.not(), protected = app.preserveId != 0L, onBlock = onBlock, onFreeze = onFreeze, onLaunch = onLaunch, onProtect = onProtect, onUnprotect = onUnprotect, onDelete = onDelete)
 
         Spacer(Modifier.height(SizeTokens.Level12))
 
@@ -354,6 +355,7 @@ private fun ActionsRow(
     onFreeze: (Boolean) -> Unit,
     onLaunch: () -> Unit,
     onProtect: () -> Unit,
+    onUnprotect: () -> Unit = {},
     onDelete: () -> Unit
 ) {
     SingleChoiceSegmentedButtonRow(
@@ -369,7 +371,7 @@ private fun ActionsRow(
             }
 
             OpType.RESTORE -> {
-                RestoreActions(protected, onProtect, onDelete)
+                RestoreActions(protected, onProtect, onUnprotect, onDelete)
             }
         }
     }
@@ -421,23 +423,40 @@ private fun SingleChoiceSegmentedButtonRowScope.BackupActions(blocked: Boolean, 
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-private fun SingleChoiceSegmentedButtonRowScope.RestoreActions(protected: Boolean, onProtect: () -> Unit, onDelete: () -> Unit) {
+private fun SingleChoiceSegmentedButtonRowScope.RestoreActions(
+    protected: Boolean,
+    onProtect: () -> Unit,
+    onUnprotect: () -> Unit,
+    onDelete: () -> Unit
+) {
     val context = LocalContext.current
     val dialogState = LocalSlotScope.current!!.dialogSlot
     ActionItem(
-        enabled = protected.not(),
+        // 未保护 → 可"保护"；已保护 → 可"取消保护"。
+        // 原先这里写死 enabled = protected.not()，导致一旦保护就再也撤销不了（该按钮直接置灰）。
+        enabled = true,
         index = 0,
         count = 2,
-        title = stringResource(R.string._protected),
+        title = if (protected) stringResource(R.string.unprotect) else stringResource(R.string._protected),
         icon = Icons.Outlined.Shield
     ) {
-        dialogState.confirm(
-            title = context.getString(R.string.protect),
-            text = context.getString(R.string.protect_desc),
-            onConfirm = {
-                onProtect()
-            }
-        )
+        if (protected) {
+            dialogState.confirm(
+                title = context.getString(R.string.unprotect),
+                text = context.getString(R.string.unprotect_desc),
+                onConfirm = {
+                    onUnprotect()
+                }
+            )
+        } else {
+            dialogState.confirm(
+                title = context.getString(R.string.protect),
+                text = context.getString(R.string.protect_desc),
+                onConfirm = {
+                    onProtect()
+                }
+            )
+        }
     }
     ActionItem(
         index = 1,

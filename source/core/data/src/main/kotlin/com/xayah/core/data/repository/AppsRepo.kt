@@ -875,6 +875,59 @@ class AppsRepo @Inject constructor(
         }
     }.withLog()
 
+    /**
+     * 取消保护：把保护版本（`user_X@时间戳`）改回正常版本（`user_X`），并把 preserveId 清零。
+     *
+     * 两条约束：
+     * 1. 只改最后一段（剥掉 @时间戳），**不换父目录**——跨父目录 rename 在 FTP 上会崩。
+     * 2. 目标目录已存在（说明已有一个正常版本）时**拒绝并返回 false**，绝不覆盖、不丢数据。
+     */
+    suspend fun unprotectApp(cloudName: String?, app: PackageEntity): Boolean {
+        if (app.indexInfo.preserveId == DefaultPreserveId) return false
+        val srcRel = resolveExistingArchiveRelativeDir(app) ?: return false
+        if (!srcRel.contains('@')) return false // 本来就是正常版本
+        val dstRel = srcRel.substringBefore('@')
+        val unprotected = app.copy(indexInfo = app.indexInfo.copy(preserveId = DefaultPreserveId))
+
+        if (cloudName.isNullOrEmpty()) {
+            val appsDir = pathUtil.getLocalBackupAppsDir()
+            val src = "$appsDir/$srcRel"
+            val dst = "$appsDir/$dstRel"
+            if (rootService.exists(dst)) {
+                LogUtil.log { "AppsRepo" to "unprotect: target already exists, refusing: $dst" }
+                return false
+            }
+            return runCatching {
+                rootService.writeJson(data = unprotected, dst = PathUtil.getPackageRestoreConfigDst(src))
+                rootService.renameTo(src, dst)
+                appsDao.update(unprotected)
+                true
+            }.withLog().getOrDefault(false)
+        }
+
+        var ok = false
+        runCatching {
+            cloudRepo.withClient(cloudName) { client, entity ->
+                val remoteAppsDir = pathUtil.getCloudRemoteAppsDir(entity.remote)
+                val src = "$remoteAppsDir/$srcRel"
+                val dst = "$remoteAppsDir/$dstRel"
+                if (client.exists(dst)) {
+                    LogUtil.log { "AppsRepo" to "unprotect: target already exists, refusing: $dst" }
+                    return@withClient
+                }
+                val tmpDir = pathUtil.getCloudTmpDir()
+                val tmpJsonPath = PathUtil.getPackageRestoreConfigDst(tmpDir)
+                rootService.writeJson(data = unprotected, dst = tmpJsonPath)
+                cloudRepo.upload(client = client, src = tmpJsonPath, dstDir = src)
+                rootService.deleteRecursively(tmpDir)
+                client.renameTo(src, dst)
+                appsDao.update(unprotected)
+                ok = true
+            }
+        }.withLog()
+        return ok
+    }
+
     suspend fun deleteApp(cloudName: String?, app: PackageEntity) {
         if (cloudName.isNullOrEmpty().not()) {
             cloudName?.apply {

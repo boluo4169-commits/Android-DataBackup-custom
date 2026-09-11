@@ -116,23 +116,36 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
     /**
      * 归档旧主备份为保护版本（preserveId 从 0 改为时间戳，目录加 @时间戳 后缀）。
      * 本地默认实现操作本地目录；云子类 override 用远程客户端操作，否则远程旧备份会被新备份覆盖。
+     *
+     * 注意：**归档到的路径必须与源路径同一父目录**（即在源目录后追加 @preserveId），
+     * 不能跳到"以 archivesRelativeDir 算出的新父目录"——云端目录仅用包名开关可能在两次
+     * 备份间翻转（旧的走 legacy 父目录，新的走 archivesRelativeDir 父目录），跨父目录
+     * rename 在 FTP 等不支持自动建父目录的服务上会 IOException 崩溃。
      */
     protected open suspend fun archiveMainBackup(existingMain: PackageEntity) {
+        // 定位现存主备份的真实路径：先按新（应用名_包名）路径找，再回退到旧（纯包名）路径，
+        // 这样无论云端仅用包名开关处于哪种状态都能命中现有目录。
+        val srcNew = "${mAppsDir}/${existingMain.archivesRelativeDir}"
+        val srcLegacy = "${mAppsDir}/${existingMain.legacyArchivesRelativeDir}"
+        val isLegacy = !mRootService.exists(srcNew) && mRootService.exists(srcLegacy)
+        val src = if (isLegacy) srcLegacy else srcNew
+        if (!mRootService.exists(src)) return
+
+        // 在源目录的父目录下追加 @preserveId（preserveId 形如 /user_X@ts），
+        // 保证归档与源同父目录、rename 安全；entity 自身仍用 archivesRelativeDir（恢复侧双探测兼容）。
+        val srcRel = if (isLegacy) existingMain.legacyArchivesRelativeDir else existingMain.archivesRelativeDir
         var preserveId = DateUtil.getPreserveTimestamp()
         var archived = existingMain.copy(indexInfo = existingMain.indexInfo.copy(preserveId = preserveId))
-        var dst = "${mAppsDir}/${archived.archivesRelativeDir}"
+        var dst = "${mAppsDir}/$srcRel@$preserveId"
         while (mRootService.exists(dst)) {
             preserveId++
             archived = existingMain.copy(indexInfo = existingMain.indexInfo.copy(preserveId = preserveId))
-            dst = "${mAppsDir}/${archived.archivesRelativeDir}"
+            dst = "${mAppsDir}/$srcRel@$preserveId"
         }
-        val srcNew = "${mAppsDir}/${existingMain.archivesRelativeDir}"
-        val src = if (mRootService.exists(srcNew)) srcNew else "${mAppsDir}/${existingMain.legacyArchivesRelativeDir}"
-        if (mRootService.exists(src)) {
-            mRootService.writeJson(data = archived, dst = PathUtil.getPackageRestoreConfigDst(src))
-            mRootService.renameTo(src, dst)
-            mPackageDao.upsert(archived)
-        }
+
+        mRootService.writeJson(data = archived, dst = PathUtil.getPackageRestoreConfigDst(src))
+        mRootService.renameTo(src, dst)
+        mPackageDao.upsert(archived)
     }
 
     /**

@@ -12,6 +12,7 @@ import com.xayah.core.model.DataType
 import com.xayah.core.model.OpType
 import com.xayah.core.model.SortType
 import com.xayah.core.model.database.MediaEntity
+import com.xayah.core.model.database.preserveArchiveRelativeDir
 import com.xayah.core.model.database.MediaExtraInfo
 import com.xayah.core.model.database.MediaIndexInfo
 import com.xayah.core.model.database.MediaInfo
@@ -182,7 +183,7 @@ class PackageRepository @Inject constructor(
                         }
                         val src = "${remoteArchivesPackagesDir}/$srcRel"
                         // 目标必须落在源目录自身的父目录下（剥掉可能已有的 @旧时间戳，再追加新的）
-                        val dst = "${remoteArchivesPackagesDir}/${srcRel.substringBefore('@')}@${pkgEntity.indexInfo.preserveId}"
+                        val dst = "${remoteArchivesPackagesDir}/${preserveArchiveRelativeDir(srcRel, pkgEntity.indexInfo.preserveId)}"
                         val tmpDir = pathUtil.getCloudTmpDir()
                         val tmpJsonPath = PathUtil.getPackageRestoreConfigDst(tmpDir)
                         rootService.writeJson(data = pkgEntity, dst = tmpJsonPath)

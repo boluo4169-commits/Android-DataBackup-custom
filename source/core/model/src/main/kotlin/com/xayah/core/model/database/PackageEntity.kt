@@ -339,3 +339,20 @@ data class PackageUpdateEntity(
     @Embedded(prefix = "extraInfo_") var extraInfo: PackageExtraInfo,
     @Embedded(prefix = "storageStats_") var storageStats: PackageStorageStats,
 )
+
+/**
+ * 由「源归档相对目录」算出「保护版本的归档相对目录」。
+ *
+ * 两条约束：
+ * 1. **必须落在源目录自身的父目录下**——只改最后一段（追加 @preserveId），不换父目录；
+ *    否则跨父目录 rename 在 FTP 等不支持自动建父目录的服务上会失败甚至崩溃。
+ * 2. **先剥掉可能已有的 @旧时间戳再追加新的**——否则连续保护会得到 `@ts@ts`。
+ *
+ * 例：`com.pkg/user_0` → `com.pkg/user_0@2026...`；
+ *     `com.pkg/user_0@2026...old` → `com.pkg/user_0@2026...new`（不会叠加）。
+ */
+fun preserveArchiveRelativeDir(srcRel: String, preserveId: Long): String {
+    val parent = srcRel.substringBeforeLast('/', "")
+    val base = srcRel.substringAfterLast('/').substringBefore('@')
+    return if (parent.isEmpty()) "$base@$preserveId" else "$parent/$base@$preserveId"
+}

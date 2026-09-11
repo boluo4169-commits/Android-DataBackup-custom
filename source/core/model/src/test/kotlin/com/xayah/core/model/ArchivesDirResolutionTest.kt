@@ -7,6 +7,7 @@ import com.xayah.core.model.database.PackageExtraInfo
 import com.xayah.core.model.database.PackageIndexInfo
 import com.xayah.core.model.database.PackageInfo
 import com.xayah.core.model.database.PackageStorageStats
+import com.xayah.core.model.database.preserveArchiveRelativeDir
 import org.junit.Assert.assertEquals
 import org.junit.Test
 
@@ -85,5 +86,25 @@ class ArchivesDirResolutionTest {
     fun `empty label falls back to package-only even when pkgOnly is false`() {
         val e = makeEntity("", "com.example", preserveId = 0L)
         assertEquals("com.example/user_0", e.resolveArchivesRelativeDir(pkgOnly = false))
+    }
+
+    @Test
+    fun `preserve appends the timestamp to the source dir`() {
+        assertEquals("com.pkg/user_0@20260101", preserveArchiveRelativeDir("com.pkg/user_0", 20260101L))
+        assertEquals("应用名_com.pkg/user_0@20260101", preserveArchiveRelativeDir("应用名_com.pkg/user_0", 20260101L))
+    }
+
+    @Test
+    fun `preserve replaces an existing timestamp instead of stacking`() {
+        // 连续保护两次不能得到 @旧@新
+        assertEquals("com.pkg/user_0@20260202", preserveArchiveRelativeDir("com.pkg/user_0@20260101", 20260202L))
+    }
+
+    @Test
+    fun `preserve keeps the source parent dir`() {
+        // 目标必须与源同父目录，不能跳到另一个父目录（跨父目录 rename 在 FTP 上会崩）
+        val src = "com.pkg/user_0"
+        val dst = preserveArchiveRelativeDir(src, 20260101L)
+        assertEquals(src.substringBeforeLast('/'), dst.substringBeforeLast('/'))
     }
 }

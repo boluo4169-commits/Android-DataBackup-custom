@@ -242,6 +242,32 @@ class AppsRepo @Inject constructor(
         appsDao.deleteByIds(deletedIds)
     }
 
+    /**
+     * 探测该实体在服务器/本地上**真实存在**的归档相对目录。
+     *
+     * 「云端目录仅用包名」开关可能在两次备份之间翻转（旧的走 legacy 纯包名目录、新的走带应用名的目录），
+     * 因此只看"当前开关"会指向错误路径——比如备份时开关是开的（纯包名），后来关掉，
+     * 按当前开关算出的却是带应用名的路径，与服务器上的实际目录对不上。
+     *
+     * 与恢复列表扫描（loadLocalApps）的双探测保持一致：先试 archivesRelativeDir（带应用名），
+     * 再试 legacyArchivesRelativeDir（纯包名），返回真实存在的那个；都不存在则返回 null。
+     */
+    suspend fun resolveExistingArchiveRelativeDir(app: PackageEntity): String? {
+        val candidates = listOf(app.archivesRelativeDir, app.legacyArchivesRelativeDir).distinct()
+        if (app.indexInfo.cloud.isEmpty()) {
+            val appsDir = pathUtil.getLocalBackupAppsDir()
+            return candidates.firstOrNull { rootService.exists("$appsDir/$it") }
+        }
+        var found: String? = null
+        runCatching {
+            cloudRepo.withClient(app.indexInfo.cloud) { client, entity ->
+                val remoteAppsDir = pathUtil.getCloudRemoteAppsDir(entity.remote)
+                found = candidates.firstOrNull { client.exists("$remoteAppsDir/$it") }
+            }
+        }.withLog()
+        return found
+    }
+
     suspend fun setDataItems(ids: List<Long>, selections: PackageDataStates) {
         appsDao.updatePackageDataStates(ids.map { PackageDataStatesEntity(it, selections) })
     }

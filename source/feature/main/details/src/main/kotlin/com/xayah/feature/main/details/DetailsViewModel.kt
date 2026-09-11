@@ -31,6 +31,7 @@ import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import java.util.UUID
@@ -48,6 +49,10 @@ class DetailsViewModel @Inject constructor(
     private val id: Long = savedStateHandle.get<String>(MainRoutes.ARG_ID)?.toLongOrNull() ?: 0L
     private val target: Target = Target.valueOf(savedStateHandle.get<String>(MainRoutes.ARG_TARGET)!!.decodeURL().trim())
     private val isRefreshing: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    // 详情页「文件路径」用：探测出的、该备份在服务器/本地上真实存在的归档相对目录（可能为 null）。
+    // 不能只看"云端目录仅用包名"开关——备份可能在开关翻转之前就已上传，路径以实际探测为准。
+    private val _archiveDir: MutableStateFlow<String?> = MutableStateFlow(null)
+    val archiveDir: StateFlow<String?> = _archiveDir.asStateFlow()
 
     val uiState: StateFlow<DetailsUiState> = when (target) {
         Target.Apps -> {
@@ -84,6 +89,8 @@ class DetailsViewModel @Inject constructor(
             when (uiState.value) {
                 is Success.App -> {
                     val state: Success.App = uiState.value.castTo()
+                    // 先探测出真实存在的归档目录（网络/IO），再算体积；两者都失败也不影响页面渲染
+                    _archiveDir.value = appsRepo.resolveExistingArchiveRelativeDir(state.app)
                     when (state.app.indexInfo.opType) {
                         OpType.BACKUP -> {
                             isRefreshing.emit(true)

@@ -99,6 +99,8 @@ import kotlinx.coroutines.launch
 internal fun AppDetails(
     coroutineScope: CoroutineScope = rememberCoroutineScope(),
     uiState: DetailsUiState.Success.App,
+    // 探测出的真实归档相对目录（null = 未探测到，回退到按「云端目录仅用包名」开关解析）
+    archiveDir: String? = null,
     onSetDataStates: (Long, PackageDataStates) -> Unit,
     onAddLabel: (String) -> Unit,
     onDeleteLabel: (String) -> Unit,
@@ -142,7 +144,7 @@ internal fun AppDetails(
 
         BackupParts(app = app, isCalculating = uiState.isRefreshing, onSetDataStates = onSetDataStates)
 
-        Info(app = app)
+        Info(app = app, archiveDir = archiveDir)
 
         Permissions(permissions = app.extraInfo.permissions)
     }
@@ -466,15 +468,16 @@ private fun BackupParts(app: PackageEntity, isCalculating: Boolean, onSetDataSta
 
 @OptIn(ExperimentalAnimationApi::class)
 @Composable
-private fun Info(app: PackageEntity) {
+private fun Info(app: PackageEntity, archiveDir: String? = null) {
     val context = LocalContext.current
-    // 「云端目录仅用包名」开关会影响云端实体的真实目录名（关 = 带应用名，开 = 纯包名）；
-    // 详情页「文件路径」必须按同一解析取，否则显示与服务器不一致。
+    // 「云端目录仅用包名」开关只决定"新备份往哪放"；已有备份的真实目录取决于**上传当时**的开关，
+    // 开关中途翻转过时两者并不一致。因此优先使用探测结果 archiveDir（真实存在的那个目录），
+    // 未探测到（null，例如尚未备份或服务器不可达）才回退到按当前开关解析。
     val pkgOnly by context.readCloudPkgOnlyDir().collectAsStateWithLifecycle(initialValue = true)
-    val path = remember(app, pkgOnly) {
+    val path = remember(app, pkgOnly, archiveDir) {
         val dir = app.indexInfo.backupDir.ifEmpty { context.localBackupSaveDir() }
         val isCloud = app.indexInfo.cloud.isNotEmpty()
-        val rel = app.resolveArchivesRelativeDir(pkgOnly = isCloud && pkgOnly)
+        val rel = archiveDir ?: app.resolveArchivesRelativeDir(pkgOnly = isCloud && pkgOnly)
         "$dir/apps/$rel"
     }
     Title(title = stringResource(id = R.string.info)) {

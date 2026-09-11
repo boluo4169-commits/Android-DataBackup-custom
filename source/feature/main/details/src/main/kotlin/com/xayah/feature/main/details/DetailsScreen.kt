@@ -42,6 +42,8 @@ fun DetailsRoute(
 @Composable
 internal fun AppDetailsScreen(uiState: DetailsUiState, viewModel: DetailsViewModel) {
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
+    // 探测出的、备份在服务器/本地上真实存在的归档相对目录（未探测到时为 null，详情页会回退到按开关解析）
+    val archiveDir: String? by viewModel.archiveDir.collectAsStateWithLifecycle()
     Scaffold(
         modifier = Modifier.nestedScroll(scrollBehavior.nestedScrollConnection),
         topBar = {
@@ -59,6 +61,7 @@ internal fun AppDetailsScreen(uiState: DetailsUiState, viewModel: DetailsViewMod
                         is DetailsUiState.Success.App -> {
                             AppDetails(
                                 uiState = uiState,
+                                archiveDir = archiveDir,
                                 onSetDataStates = viewModel::setDataStates,
                                 onAddLabel = viewModel::addLabel,
                                 onDeleteLabel = viewModel::deleteLabel,

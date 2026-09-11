@@ -106,7 +106,50 @@ class ListDataRepo @Inject constructor(
     private lateinit var fileList: Flow<List<File>>
     private lateinit var labelFileRefs: Flow<List<LabelFileCrossRefEntity>> // Labels filtered file refs
 
+    /** 当前已初始化的列表配置，用于判断是否需要重建状态流（见 [initialize]） */
+    private var currentTarget: Target? = null
+    private var currentOpType: OpType? = null
+    private var currentCloudName: String? = null
+    private var currentBackupDir: String? = null
+
+    /**
+     * 只重置瞬时 UI 状态（搜索词、弹层、排序、筛选、用户页签），保留状态流实例本身。
+     * 用 tryEmit：这些是 MutableStateFlow 且总有订阅者未订阅时也能写入最新值。
+     */
+    private fun resetTransientState(target: Target) {
+        if (::searchQuery.isInitialized) searchQuery.tryEmit("")
+        if (::showFilterSheet.isInitialized) showFilterSheet.tryEmit(false)
+        if (::labels.isInitialized) labels.tryEmit(setOf())
+        if (::sortIndex.isInitialized) sortIndex.tryEmit(0)
+        if (::sortType.isInitialized) sortType.tryEmit(SortType.ASCENDING)
+        if (target == Target.Apps) {
+            if (::showDataItemsSheet.isInitialized) showDataItemsSheet.tryEmit(false)
+            if (::filters.isInitialized) {
+                filters.tryEmit(
+                    filters.value.copy(showSystemApps = runBlocking { appsRepo.getLoadSystemApps() })
+                )
+            }
+            if (::userIndex.isInitialized) userIndex.tryEmit(0)
+        }
+    }
+
     fun initialize(target: Target, opType: OpType, cloudName: String, backupDir: String) {
+        // 同一份配置重复初始化时**不要重建状态流**。
+        // 返回栈里可能同时存在两个列表页实例（主页 → 备份应用 → 引导页 → 再点「应用」进入列表），
+        // 先前的那个实例没有销毁，仍持有这批 lateinit flow 的旧引用。一旦在这里重新赋值，
+        // 旧实例就永久失联：界面照常显示最后一次组合的值，但所有依赖共享状态的交互全部失效
+        // ——筛选面板打不开、切换用户空间没反应；而纯本地状态的菜单（勾选清单/更多）照常可用，
+        // 看起来就像"只有某几个按钮坏了"。这里改为重置瞬时 UI 状态，保持 flow 实例不变。
+        if (::listData.isInitialized && currentTarget == target && currentOpType == opType &&
+            currentCloudName == cloudName && currentBackupDir == backupDir
+        ) {
+            resetTransientState(target)
+            return
+        }
+        currentTarget = target
+        currentOpType = opType
+        currentCloudName = cloudName
+        currentBackupDir = backupDir
         when (target) {
             Target.Apps -> {
                 selected = appsRepo.countSelectedApps(opType)

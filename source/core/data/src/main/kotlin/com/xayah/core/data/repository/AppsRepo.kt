@@ -48,6 +48,7 @@ import com.xayah.core.rootservice.service.RemoteRootService
 import com.xayah.core.util.ConfigsPackageRestoreName
 import com.xayah.core.util.DateUtil
 import com.xayah.core.util.IconRelativeDir
+import com.xayah.core.util.LogUtil
 import com.xayah.core.util.PathUtil
 import com.xayah.core.util.command.BaseUtil
 import com.xayah.core.util.command.PackageUtil
@@ -225,11 +226,13 @@ class AppsRepo @Inject constructor(
                     val src = "${appsDir}/${app.archivesRelativeDir}"
                     rootService.deleteRecursively(src)
                 } else {
+                    // 先探测真实存在的目录再删：开关可能在备份之后翻转过，按当前开关（或硬编码
+                    // archivesRelativeDir）都会指向不存在的路径。探测放在开客户端之前，避免嵌套云端连接。
+                    val srcRel = resolveExistingArchiveRelativeDir(app) ?: app.resolveArchivesRelativeDir(pkgOnly)
                     runCatching {
                         cloudRepo.withClient(app.indexInfo.cloud) { client, entity ->
-                            val remote = entity.remote
-                            val remoteArchivesPackagesDir = pathUtil.getCloudRemoteAppsDir(remote)
-                            val src = "${remoteArchivesPackagesDir}/${app.resolveArchivesRelativeDir(pkgOnly)}"
+                            val remoteArchivesPackagesDir = pathUtil.getCloudRemoteAppsDir(entity.remote)
+                            val src = "${remoteArchivesPackagesDir}/$srcRel"
                             // 路径不存在则视为失败并保留本地记录，避免出现「远端还在但本地记没了」的幽灵；
                             // 走 withLog() 之后会留日志，调用方可看到原因。
                             if (client.exists(src)) client.deleteRecursively(src) else error("cloud backup not found at $src")
@@ -900,17 +903,23 @@ class AppsRepo @Inject constructor(
         }
     }
 
-    private suspend fun deleteCloudApp(cloudName: String, app: PackageEntity) = runCatching {
-        cloudRepo.withClient(cloudName) { client, entity ->
-            val remote = entity.remote
-            val remoteAppsDir = pathUtil.getCloudRemoteAppsDir(remote)
-            val src = "${remoteAppsDir}/${app.archivesRelativeDir}"
-            if (client.exists(src)) {
-                client.deleteRecursively(src)
-                if (client.exists(src).not()) {
-                    appsDao.delete(app.id)
-                }
+private suspend fun deleteCloudApp(cloudName: String, app: PackageEntity) = runCatching {
+    // 探测真实存在的目录：开关可能在备份之后翻转过，只看 archivesRelativeDir 会指向
+    // 不存在的路径，导致纯包名目录下的备份删不掉（静默失败，记录还在、又冒出来）。
+    val srcRel = resolveExistingArchiveRelativeDir(app)
+    if (srcRel == null) {
+        LogUtil.log { "AppsRepo" to "deleteCloudApp: archive dir not found for ${app.packageName}" }
+        return@runCatching
+    }
+    cloudRepo.withClient(cloudName) { client, entity ->
+        val remoteAppsDir = pathUtil.getCloudRemoteAppsDir(entity.remote)
+        val src = "$remoteAppsDir/$srcRel"
+        if (client.exists(src)) {
+            client.deleteRecursively(src)
+            if (client.exists(src).not()) {
+                appsDao.delete(app.id)
             }
         }
-    }.withLog()
+    }
+}.withLog()
 }

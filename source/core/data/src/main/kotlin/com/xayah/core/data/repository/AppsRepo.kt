@@ -688,6 +688,9 @@ class AppsRepo @Inject constructor(
                         }
                     }
                 }
+                // 与本地扫描（loadLocalApps）保持一致：清掉扫描后残留的空目录，
+                // 例如删除备份后剩下的空应用文件夹。只清空的，有内容的不动。
+                client.clearEmptyDirectoriesRecursively(path)
                 appsDao.queryPackages(OpType.RESTORE, entity.name, entity.remote).forEach {
                     val src = "${path}/${it.archivesRelativeDir}"
                     // 「云端目录仅用包名」开关开启后，远端目录是 legacyArchivesRelativeDir（纯包名）；

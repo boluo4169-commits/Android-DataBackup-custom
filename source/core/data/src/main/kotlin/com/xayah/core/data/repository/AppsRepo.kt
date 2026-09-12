@@ -226,7 +226,9 @@ class AppsRepo @Inject constructor(
             if (app != null) {
                 val isSuccess = if (app.indexInfo.cloud.isEmpty()) {
                     val src = "${appsDir}/${app.archivesRelativeDir}"
-                    rootService.deleteRecursively(src)
+                    val ok = rootService.deleteRecursively(src)
+                    clearEmptyLocalAppDir(appsDir, app.archivesRelativeDir)
+                    ok
                 } else {
                     // 先探测真实存在的目录再删：开关可能在备份之后翻转过，按当前开关（或硬编码
                     // archivesRelativeDir）都会指向不存在的路径。探测放在开客户端之前，避免嵌套云端连接。
@@ -892,6 +894,18 @@ class AppsRepo @Inject constructor(
     }
 
     /**
+     * 本地删除某个版本后，若应用目录已空则一并清掉，避免残留空文件夹——与云端同一处理。
+     *
+     * 注：本地扫描 loadLocalApps 结尾本来也会清一次，但那是"下次扫描才生效"，
+     * 用户点完删除立刻看目录还是空的壳；这里在删除时就即时清掉。
+     */
+    private suspend fun clearEmptyLocalAppDir(appsDir: String, srcRel: String) {
+        val appDir = srcRel.substringBeforeLast('/')
+        if (appDir.isEmpty()) return
+        rootService.clearEmptyDirectoriesRecursively("$appsDir/$appDir").withLog()
+    }
+
+    /**
      * 取消保护：把保护版本（`user_X@时间戳`）改回正常版本（`user_X`），并把 preserveId 清零。
      *
      * 两条约束：
@@ -959,6 +973,7 @@ class AppsRepo @Inject constructor(
         val src = resolveLocalArchiveDir(app, appsDir)
         if (rootService.deleteRecursively(src)) {
             appsDao.delete(app.id)
+            clearEmptyLocalAppDir(appsDir, src.removePrefix("$appsDir/"))
         }
     }
 

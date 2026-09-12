@@ -45,6 +45,7 @@ import com.xayah.core.model.database.PackageStorageStats
 import com.xayah.core.model.database.PackageUpdateEntity
 import com.xayah.core.model.database.asExternalModel
 import com.xayah.core.rootservice.parcelables.PathParcelable
+import com.xayah.core.network.client.CloudClient
 import com.xayah.core.rootservice.service.RemoteRootService
 import com.xayah.core.util.ConfigsPackageRestoreName
 import com.xayah.core.util.DateUtil
@@ -236,7 +237,9 @@ class AppsRepo @Inject constructor(
                             val src = "${remoteArchivesPackagesDir}/$srcRel"
                             // 路径不存在则视为失败并保留本地记录，避免出现「远端还在但本地记没了」的幽灵；
                             // 走 withLog() 之后会留日志，调用方可看到原因。
-                            if (client.exists(src)) client.deleteRecursively(src) else error("cloud backup not found at $src")
+                            if (client.exists(src).not()) error("cloud backup not found at $src")
+                            client.deleteRecursively(src)
+                            clearEmptyAppDir(client, remoteArchivesPackagesDir, srcRel)
                         }
                     }.withLog().isSuccess
                 }
@@ -876,6 +879,16 @@ class AppsRepo @Inject constructor(
     }.withLog()
 
     /**
+     * 删掉某个版本后，若该应用目录（`remoteAppsDir/<应用目录>`）已经空了，就把它一并清掉，
+     * 避免服务器上残留一堆空的应用文件夹。还有其他版本在时它不为空，自然不会被删。
+     */
+    private fun clearEmptyAppDir(client: CloudClient, remoteAppsDir: String, srcRel: String) {
+        val appDir = srcRel.substringBeforeLast('/')
+        if (appDir.isEmpty()) return
+        runCatching { client.clearEmptyDirectoriesRecursively("$remoteAppsDir/$appDir") }.withLog()
+    }
+
+    /**
      * 取消保护：把保护版本（`user_X@时间戳`）改回正常版本（`user_X`），并把 preserveId 清零。
      *
      * 两条约束：
@@ -961,6 +974,7 @@ class AppsRepo @Inject constructor(
                 client.deleteRecursively(src)
                 if (client.exists(src).not()) {
                     appsDao.delete(app.id)
+                    clearEmptyAppDir(client, remoteAppsDir, srcRel)
                 }
             }
         }

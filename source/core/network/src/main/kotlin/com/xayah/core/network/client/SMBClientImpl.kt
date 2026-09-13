@@ -224,7 +224,10 @@ class SMBClientImpl(private val entity: CloudEntity, private val extra: SMBExtra
         srcInputStream.close()
         countingStream.close()
         dstFile.close()
-        if (countingStream.byteCount == 0L) throw IOException("Failed to write remote file: 0 byte.")
+        if (countingStream.byteCount == 0L) {
+            runCatching { deleteFile(dstPath) }
+            throw IOException("Failed to write remote file: 0 byte.")
+        }
         onUploading(countingStream.byteCount, countingStream.byteCount)
     }
 

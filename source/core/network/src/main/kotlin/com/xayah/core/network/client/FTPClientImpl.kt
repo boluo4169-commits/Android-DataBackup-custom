@@ -118,8 +118,17 @@ class FTPClientImpl(private val entity: CloudEntity, private val extra: FTPExtra
         val stored = client.storeFile(dstPath, countingStream)
         srcInputStream.close()
         countingStream.close()
-        if (stored.not()) throw IOException("Failed to store remote file: $dstPath, reply: ${client.replyString}.")
-        if (countingStream.byteCount != srcFileSize) throw IOException("Incomplete upload: ${countingStream.byteCount}/$srcFileSize bytes.")
+        if (stored.not()) {
+            // 失败时清掉远端半包：残缺归档/迁移包留在云端会被后续列出（导入页会选中它）。
+            // replyString 必须在 deleteFile 之前取 —— 删除会覆盖它。
+            val reply = client.replyString
+            runCatching { client.deleteFile(dstPath) }
+            throw IOException("Failed to store remote file: $dstPath, reply: $reply.")
+        }
+        if (countingStream.byteCount != srcFileSize) {
+            runCatching { client.deleteFile(dstPath) }
+            throw IOException("Incomplete upload: ${countingStream.byteCount}/$srcFileSize bytes.")
+        }
         // 上传后校验服务器端文件大小：跨网段/NAT 下数据连接可能在传输中途失效（客户端 write 已返回、
         // 服务器收 FIN 记为完成），导致「假成功」—— 文件残缺但备份显示成功（2026-09-01 实测 5.8GiB 只到 4.4GiB）。
         // 注意：不能用 client.size() —— 它返回 int，>2GiB 文件溢出后返回 213（恰为 FTP SIZE 响应码），
@@ -127,6 +136,7 @@ class FTPClientImpl(private val entity: CloudEntity, private val extra: FTPExtra
         // listFiles 失败（-1，服务器不支持解析）时跳过，不能误报。
         val remoteSize = client.listFiles(dstPath).firstOrNull()?.size ?: -1L
         if (remoteSize >= 0 && remoteSize != srcFileSize) {
+            runCatching { client.deleteFile(dstPath) }
             throw IOException("Remote file size mismatch after upload: $remoteSize/$srcFileSize bytes. Transfer may have been truncated by the network, please check connectivity and retry.")
         }
         onUploading(countingStream.byteCount, countingStream.byteCount)

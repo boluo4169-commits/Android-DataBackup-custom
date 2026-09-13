@@ -126,6 +126,17 @@ class WebDAVClientImpl(private val entity: CloudEntity, private val extra: WebDA
                 throw IOException("Upload failed: ${response.code}")
             }
         }
+        // 上传后校验远端大小：跨网段/NAT 下数据连接可能在传输中途失效而服务端仍回 2xx，
+        // 只判状态码会把残缺包当成功 —— 随后本地临时包被删，源数据只剩云端残包（2026-09-01
+        // FTP 侧实测过同类「假成功」，5.8GiB 只到 4.4GiB）。与 FTP 实现保持一致。
+        // 只在远端能报出有效大小（>0）时比对：部分 WebDAV 服务端不返回 getcontentlength，
+        // 此时 size() 为 0/-1，不能据此误报。
+        val srcFileSize = srcFile.length()
+        val remoteSize = runCatching { size(dstPath) }.getOrDefault(-1L)
+        if (remoteSize > 0 && remoteSize != srcFileSize) {
+            runCatching { deleteFile(dstPath) }
+            throw IOException("Remote file size mismatch after upload: $remoteSize/$srcFileSize bytes. Transfer may have been truncated by the network, please check connectivity and retry.")
+        }
     }
 
     override fun download(src: String, dst: String, onDownloading: (written: Long, total: Long) -> Unit) = withClient { client ->

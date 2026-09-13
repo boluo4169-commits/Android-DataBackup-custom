@@ -448,6 +448,7 @@
     <string name="migration_stage_import_segment_extracting">Entpacken und Wiederherstellen</string>
     <string name="migration_stage_success_title">Export abgeschlossen</string>
     <string name="migration_stage_success_desc">Migrationsdatei am gewählten Ort gespeichert</string>
+    <string name="migration_stage_success_desc_cloud">Migrationsdatei in die Cloud hochgeladen</string>
     <string name="migration_stage_import_idle_title">Migrationsdatei auswählen</string>
     <string name="migration_stage_import_idle_desc">Tippe unten auf „Sicherung importieren", um eine Migrationsdatei zu wählen</string>
     <string name="migration_stage_parsing_title">Analysiere …</string>

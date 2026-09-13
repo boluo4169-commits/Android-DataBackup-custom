@@ -456,6 +456,7 @@
     <string name="migration_stage_import_segment_extracting">Распаковка и восстановление</string>
     <string name="migration_stage_success_title">Экспорт завершён</string>
     <string name="migration_stage_success_desc">Файл переноса сохранён в выбранное место</string>
+    <string name="migration_stage_success_desc_cloud">Файл переноса загружен в облако</string>
     <string name="migration_stage_import_idle_title">Выберите файл переноса</string>
     <string name="migration_stage_import_idle_desc">Нажмите «Импорт» ниже, чтобы выбрать файл переноса</string>
     <string name="migration_stage_parsing_title">Анализ…</string>

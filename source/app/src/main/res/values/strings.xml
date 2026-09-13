@@ -440,6 +440,7 @@
     <string name="migration_stage_import_segment_extracting">Extracting and restoring</string>
     <string name="migration_stage_success_title">Export complete</string>
     <string name="migration_stage_success_desc">Migration file saved to the selected location</string>
+    <string name="migration_stage_success_desc_cloud">Migration package uploaded to the cloud</string>
     <string name="migration_stage_import_idle_title">Select a migration file</string>
     <string name="migration_stage_import_idle_desc">Tap Import below to pick a migration file</string>
     <string name="migration_stage_parsing_title">Parsing…</string>

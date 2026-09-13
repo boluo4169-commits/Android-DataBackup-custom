@@ -457,6 +457,7 @@
     <string name="migration_stage_import_segment_extracting">解壓與恢復</string>
     <string name="migration_stage_success_title">匯出成功</string>
     <string name="migration_stage_success_desc">遷移包已寫入所選位置</string>
+    <string name="migration_stage_success_desc_cloud">遷移包已上傳到雲端</string>
     <string name="migration_stage_import_idle_title">選擇遷移包</string>
     <string name="migration_stage_import_idle_desc">點擊下方「匯入備份」選擇遷移包檔案</string>
     <string name="migration_stage_parsing_title">解析中…</string>

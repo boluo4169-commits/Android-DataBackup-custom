@@ -448,6 +448,7 @@
     <string name="migration_stage_import_segment_extracting">Estrazione e ripristino</string>
     <string name="migration_stage_success_title">Esportazione completata</string>
     <string name="migration_stage_success_desc">File di migrazione salvato nella posizione scelta</string>
+    <string name="migration_stage_success_desc_cloud">File di migrazione caricato sul cloud</string>
     <string name="migration_stage_import_idle_title">Seleziona un file di migrazione</string>
     <string name="migration_stage_import_idle_desc">Tocca «Importa backup» in basso per scegliere un file di migrazione</string>
     <string name="migration_stage_parsing_title">Analisi…</string>

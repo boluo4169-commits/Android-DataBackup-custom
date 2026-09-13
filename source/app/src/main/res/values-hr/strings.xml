@@ -443,6 +443,7 @@
     <string name="migration_stage_import_segment_extracting">Raspakiravanje i vraćanje</string>
     <string name="migration_stage_success_title">Izvoz je završen</string>
     <string name="migration_stage_success_desc">Datoteka prijenosa spremljena je na odabrano mjesto</string>
+    <string name="migration_stage_success_desc_cloud">Datoteka prijenosa prenesena je u oblak</string>
     <string name="migration_stage_import_idle_title">Odaberite datoteku prijenosa</string>
     <string name="migration_stage_import_idle_desc">Dodirnite „Uvezi” pri dnu da odaberete datoteku prijenosa</string>
     <string name="migration_stage_parsing_title">Analiza u tijeku…</string>

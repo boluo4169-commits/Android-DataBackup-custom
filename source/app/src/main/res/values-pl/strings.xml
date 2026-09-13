@@ -456,6 +456,7 @@
     <string name="migration_stage_import_segment_extracting">Rozpakowywanie i przywracanie</string>
     <string name="migration_stage_success_title">Eksportowanie zakończone</string>
     <string name="migration_stage_success_desc">Plik migracji zapisano w wybranej lokalizacji</string>
+    <string name="migration_stage_success_desc_cloud">Plik migracji przesłany do chmury</string>
     <string name="migration_stage_import_idle_title">Wybierz plik migracji</string>
     <string name="migration_stage_import_idle_desc">Dotknij „Importuj” poniżej, aby wybrać plik migracji</string>
     <string name="migration_stage_parsing_title">Analizowanie…</string>

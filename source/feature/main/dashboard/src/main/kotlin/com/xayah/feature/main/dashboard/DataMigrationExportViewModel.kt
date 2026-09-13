@@ -109,6 +109,13 @@ class DataMigrationExportViewModel @Inject constructor(
     private val _success = MutableStateFlow(false)
     val success: StateFlow<Boolean> = _success.asStateFlow()
 
+    /**
+     * 本次导出是否为「导出到云端」——Success 页据此选择副文案。
+     * 本地导出写的是用户选的位置，云端导出是上传到账号的 migration/ 目录，两者措辞不同。
+     */
+    private val _isCloudExport = MutableStateFlow(false)
+    val isCloudExport: StateFlow<Boolean> = _isCloudExport.asStateFlow()
+
     /** 最近一次成功导出的迁移包 SHA-256，供接收方校验完整性 */
     private val _lastSha256 = MutableStateFlow<String?>(null)
     val lastSha256: StateFlow<String?> = _lastSha256.asStateFlow()
@@ -366,6 +373,7 @@ class DataMigrationExportViewModel @Inject constructor(
         // 窗口，极快连点会并发启动两次导出（双份临时包 + 双份上传 + 两条历史记录）。
         if (_isExporting.value) return
         _isExporting.value = true
+        _isCloudExport.value = false
         viewModelScope.launch { export(uri, stageLabels) }
     }
 
@@ -373,6 +381,7 @@ class DataMigrationExportViewModel @Inject constructor(
     fun startExportToCloud(cloudName: String, stageLabels: List<String>) {
         if (_isExporting.value) return
         _isExporting.value = true
+        _isCloudExport.value = true
         viewModelScope.launch { exportToCloud(cloudName, stageLabels) }
     }
 

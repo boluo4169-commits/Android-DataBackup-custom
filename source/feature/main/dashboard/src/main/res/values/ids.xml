@@ -62,6 +62,7 @@
     <item name="migration_stage_import_segment_extracting" type="string" />
     <item name="migration_stage_success_title" type="string" />
     <item name="migration_stage_success_desc" type="string" />
+    <item name="migration_stage_success_desc_cloud" type="string" />
     <item name="migration_stage_import_idle_title" type="string" />
     <item name="migration_stage_import_idle_desc" type="string" />
     <item name="migration_stage_parsing_title" type="string" />

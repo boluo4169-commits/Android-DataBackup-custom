@@ -456,6 +456,7 @@
     <string name="migration_stage_import_segment_extracting">Puretaan ja palautetaan</string>
     <string name="migration_stage_success_title">Vienti valmis</string>
     <string name="migration_stage_success_desc">Siirtotiedosto tallennettiin valittuun sijaintiin</string>
+    <string name="migration_stage_success_desc_cloud">Siirtotiedosto lähetettiin pilveen</string>
     <string name="migration_stage_import_idle_title">Valitse siirtotiedosto</string>
     <string name="migration_stage_import_idle_desc">Napauta alareunassa «Tuo» valitaksesi siirtotiedoston</string>
     <string name="migration_stage_parsing_title">Jäsennetään…</string>

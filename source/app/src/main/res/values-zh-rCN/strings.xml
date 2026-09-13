@@ -429,6 +429,7 @@
     <string name="migration_stage_import_segment_extracting">解压与恢复</string>
     <string name="migration_stage_success_title">导出成功</string>
     <string name="migration_stage_success_desc">迁移包已写入所选位置</string>
+    <string name="migration_stage_success_desc_cloud">迁移包已上传到云端</string>
     <string name="migration_stage_import_idle_title">选择迁移包</string>
     <string name="migration_stage_import_idle_desc">点击下方「导入备份」选择迁移包文件</string>
     <string name="migration_stage_parsing_title">解析中…</string>

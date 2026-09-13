@@ -456,6 +456,7 @@
     <string name="migration_stage_import_segment_extracting">الاستخراج والاستعادة</string>
     <string name="migration_stage_success_title">اكتمل التصدير</string>
     <string name="migration_stage_success_desc">حُفظ ملف الترحيل في الموقع المختار</string>
+    <string name="migration_stage_success_desc_cloud">تم رفع ملف الترحيل إلى السحابة</string>
     <string name="migration_stage_import_idle_title">حدد ملف ترحيل</string>
     <string name="migration_stage_import_idle_desc">انقر «استيراد» بالأسفل لاختيار ملف ترحيل</string>
     <string name="migration_stage_parsing_title">جارٍ التحليل…</string>

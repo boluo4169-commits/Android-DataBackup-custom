@@ -456,6 +456,7 @@
     <string name="migration_stage_import_segment_extracting">استخراج و بازیابی</string>
     <string name="migration_stage_success_title">صادر کردن کامل شد</string>
     <string name="migration_stage_success_desc">فایل مهاجرت در محل انتخاب‌شده ذخیره شد</string>
+    <string name="migration_stage_success_desc_cloud">فایل مهاجرت در ابر بارگذاری شد</string>
     <string name="migration_stage_import_idle_title">یک فایل مهاجرت انتخاب کنید</string>
     <string name="migration_stage_import_idle_desc">برای انتخاب فایل مهاجرت، «وارد کردن» را در پایین لمس کنید</string>
     <string name="migration_stage_parsing_title">در حال تحلیل…</string>

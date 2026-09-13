@@ -456,6 +456,7 @@
     <string name="migration_stage_import_segment_extracting">Çıkarılıyor ve geri yükleniyor</string>
     <string name="migration_stage_success_title">Dışa aktarma tamamlandı</string>
     <string name="migration_stage_success_desc">Geçiş dosyası seçilen konuma kaydedildi</string>
+    <string name="migration_stage_success_desc_cloud">Geçiş dosyası buluta yüklendi</string>
     <string name="migration_stage_import_idle_title">Bir geçiş dosyası seçin</string>
     <string name="migration_stage_import_idle_desc">Bir geçiş dosyası seçmek için alttaki 「İçe aktar」öğesine dokunun</string>
     <string name="migration_stage_parsing_title">Analiz ediliyor…</string>

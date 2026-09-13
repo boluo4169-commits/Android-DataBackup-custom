@@ -122,6 +122,7 @@ fun PageDataMigrationExport(
     val isExporting by viewModel.isExporting.collectAsStateWithLifecycle()
     val error by viewModel.error.collectAsStateWithLifecycle()
     val success by viewModel.success.collectAsStateWithLifecycle()
+    val isCloudExport by viewModel.isCloudExport.collectAsStateWithLifecycle()
     val stage by viewModel.stage.collectAsStateWithLifecycle()
     val lastSha256 by viewModel.lastSha256.collectAsStateWithLifecycle()
     val clouds by viewModel.clouds.collectAsStateWithLifecycle()
@@ -150,7 +151,11 @@ fun PageDataMigrationExport(
             stepText to context.getString(R.string.migration_stage_processing_desc)
         }
         MigrationStage.Success -> context.getString(R.string.migration_stage_success_title) to
-            context.getString(R.string.migration_stage_success_desc)
+            context.getString(
+                // 云端导出没有「所选位置」，包直接落在账号的 migration/ 目录
+                if (isCloudExport) R.string.migration_stage_success_desc_cloud
+                else R.string.migration_stage_success_desc
+            )
         else -> context.getString(R.string.migration_stage_idle_title) to
             context.getString(R.string.migration_stage_idle_desc)
     }

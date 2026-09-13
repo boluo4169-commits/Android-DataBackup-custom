@@ -456,6 +456,7 @@
     <string name="migration_stage_import_segment_extracting">Extraction et restauration</string>
     <string name="migration_stage_success_title">Export terminé</string>
     <string name="migration_stage_success_desc">Fichier de migration enregistré à l\'emplacement choisi</string>
+    <string name="migration_stage_success_desc_cloud">Fichier de migration téléversé vers le cloud</string>
     <string name="migration_stage_import_idle_title">Sélectionnez un fichier de migration</string>
     <string name="migration_stage_import_idle_desc">Appuyez sur « Importer une sauvegarde » en bas pour choisir un fichier de migration</string>
     <string name="migration_stage_parsing_title">Analyse…</string>

@@ -445,6 +445,7 @@
     <string name="migration_stage_import_segment_extracting">Распакивање и враћање</string>
     <string name="migration_stage_success_title">Извоз је завршен</string>
     <string name="migration_stage_success_desc">Датотека преноса је сачувана на изабрано место</string>
+    <string name="migration_stage_success_desc_cloud">Датотека преноса је отпремљена у облак</string>
     <string name="migration_stage_import_idle_title">Изаберите датотеку преноса</string>
     <string name="migration_stage_import_idle_desc">Додирните „Увези” у дну да изаберете датотеку преноса</string>
     <string name="migration_stage_parsing_title">Анализа у току…</string>

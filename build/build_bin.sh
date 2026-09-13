@@ -11,7 +11,9 @@
 # Whether use dev branch instead of release
 ZSTD_DEV=false
 
-NDK_VERSION=r29 # NDK r28+ 默认 16 KB 页对齐（Android 16 兼容）
+# r25c 是上游验证过的组合；r29 的 Bionic 头与 tar 内嵌 gnulib 旧头冲突
+# 16 KB 页对齐改由链接参数显式保证（zstd/tar 原本就走 BUILD_LDFLAGS）
+NDK_VERSION=r25c
 
 BIN_VERSION=2.1
 ZLIB_VERSION=1.3.1                                               # https://github.com/madler/zlib/releases
@@ -232,11 +234,10 @@ build_external() {
 }
 
 build_busybox() {
-    # 上游 r29 分支已删除，master 可配合 NDK r28+ 的 16 KB 页对齐默认值
-    git clone https://github.com/XayahSuSuSu/ndk-box-kitchen && cd ndk-box-kitchen
     # kitchen 的 run.sh patch 需要 git 提交身份，CI 容器里没有预配置
     git config --global user.email "ci@example.com"
     git config --global user.name "CI"
+    git clone https://github.com/XayahSuSuSu/ndk-box-kitchen -b $NDK_VERSION && cd ndk-box-kitchen
     BUSYBOX_RELEASE=${BUSYBOX_VERSION//_/.} # 1_36_1 -> 1.36.1，busybox.net 下载用点分版本号
     wget https://busybox.net/downloads/busybox-$BUSYBOX_RELEASE.tar.bz2
     tar xf busybox-$BUSYBOX_RELEASE.tar.bz2
@@ -246,7 +247,8 @@ build_busybox() {
     git clone https://android.googlesource.com/platform/external/pcre -b $PCRE_BRANCH jni/pcre
     ./run.sh patch
     ./run.sh generate
-    ndk-build APP_ABI=$TARGET_ARCH
+    # r25c 没有 r28+ 的默认 16 KB 页对齐，用链接参数补齐（与 BUILD_LDFLAGS 一致）
+    ndk-build APP_ABI=$TARGET_ARCH APP_LDFLAGS=" -Wl,-z,max-page-size=16384 -Wl,-z,common-page-size=16384"
     mkdir -p $LOCAL_PATH/busybox/bin
     mv libs/$TARGET_ARCH/busybox $LOCAL_PATH/busybox/bin/busybox
     $STRIP $LOCAL_PATH/busybox/bin/busybox

@@ -5,6 +5,7 @@ import org.gradle.api.Project
 import org.gradle.api.artifacts.VersionCatalog
 import org.gradle.api.artifacts.VersionCatalogsExtension
 import org.gradle.kotlin.dsl.getByType
+import org.gradle.kotlin.dsl.dependencies
 import org.gradle.kotlin.dsl.withType
 import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
@@ -23,6 +24,7 @@ private fun Project.configureCommon() {
             minSdk = catalogLibs.findVersion("minSdk").get().toString().toInt()
         }
         compileOptions {
+            isCoreLibraryDesugaringEnabled = true
             sourceCompatibility = JavaVersion.VERSION_17
             targetCompatibility = JavaVersion.VERSION_17
         }
@@ -33,6 +35,10 @@ private fun Project.configureCommon() {
                 freeCompilerArgs.add("-Xcontext-receivers")
             }
         }
+    }
+
+    dependencies {
+        add("coreLibraryDesugaring", catalogLibs.findLibrary("android-tools-desugar").get())
     }
 }
 

@@ -234,6 +234,9 @@ build_external() {
 build_busybox() {
     # 上游 r29 分支已删除，master 可配合 NDK r28+ 的 16 KB 页对齐默认值
     git clone https://github.com/XayahSuSuSu/ndk-box-kitchen && cd ndk-box-kitchen
+    # kitchen 的 run.sh patch 需要 git 提交身份，CI 容器里没有预配置
+    git config --global user.email "ci@example.com"
+    git config --global user.name "CI"
     BUSYBOX_RELEASE=${BUSYBOX_VERSION//_/.} # 1_36_1 -> 1.36.1，busybox.net 下载用点分版本号
     wget https://busybox.net/downloads/busybox-$BUSYBOX_RELEASE.tar.bz2
     tar xf busybox-$BUSYBOX_RELEASE.tar.bz2

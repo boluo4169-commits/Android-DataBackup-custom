@@ -1,6 +1,7 @@
 package com.xayah.core.service.packages.backup
 
 import android.annotation.SuppressLint
+import android.os.Build
 import com.xayah.core.common.util.toLineString
 import com.xayah.core.datastore.readBackupConfigs
 import com.xayah.core.datastore.readBackupItself
@@ -222,7 +223,11 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
                     cleanP.copy(
                         packageInfo = cleanP.packageInfo.copy(
                             versionName = info.versionName ?: cleanP.packageInfo.versionName,
-                            versionCode = info.longVersionCode,
+                            versionCode = if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.P) {
+                                info.longVersionCode
+                            } else {
+                                info.versionCode.toLong()
+                            },
                         )
                     )
                 }.getOrDefault(cleanP)

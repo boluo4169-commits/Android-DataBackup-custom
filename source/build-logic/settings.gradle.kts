@@ -1,9 +1,14 @@
 dependencyResolutionManagement {
     repositories {
-        maven("https://maven.aliyun.com/repository/google")
-        maven("https://maven.aliyun.com/repository/public")
-        google()
-        mavenCentral()
+        if (System.getenv("CI") != null) {
+            google()
+            mavenCentral()
+        } else {
+            maven("https://maven.aliyun.com/repository/google")
+            maven("https://maven.aliyun.com/repository/public")
+            google()
+            mavenCentral()
+        }
     }
     versionCatalogs {
         create("libs") {

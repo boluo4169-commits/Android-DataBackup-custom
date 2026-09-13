@@ -1,22 +1,35 @@
 pluginManagement {
     includeBuild("build-logic")
     repositories {
-        maven("https://maven.aliyun.com/repository/google")
-        maven("https://maven.aliyun.com/repository/public")
-        maven("https://maven.aliyun.com/repository/gradle-plugin")
-        google()
-        mavenCentral()
-        gradlePluginPortal()
+        if (System.getenv("CI") != null) {
+            // CI 直连官方源：阿里云镜像对海外 IP 可能返回 502，会中断 Gradle 插件解析
+            google()
+            mavenCentral()
+            gradlePluginPortal()
+        } else {
+            maven("https://maven.aliyun.com/repository/google")
+            maven("https://maven.aliyun.com/repository/public")
+            maven("https://maven.aliyun.com/repository/gradle-plugin")
+            google()
+            mavenCentral()
+            gradlePluginPortal()
+        }
     }
 }
 dependencyResolutionManagement {
     repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
     repositories {
-        maven("https://maven.aliyun.com/repository/google")
-        maven("https://maven.aliyun.com/repository/public")
-        google()
-        mavenCentral()
-        maven("https://jitpack.io")
+        if (System.getenv("CI") != null) {
+            google()
+            mavenCentral()
+            maven("https://jitpack.io")
+        } else {
+            maven("https://maven.aliyun.com/repository/google")
+            maven("https://maven.aliyun.com/repository/public")
+            google()
+            mavenCentral()
+            maven("https://jitpack.io")
+        }
     }
 }
 

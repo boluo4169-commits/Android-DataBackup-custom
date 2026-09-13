@@ -132,7 +132,10 @@ class WebDAVClientImpl(private val entity: CloudEntity, private val extra: WebDA
         // 只在远端能报出有效大小（>0）时比对：部分 WebDAV 服务端不返回 getcontentlength，
         // 此时 size() 为 0/-1，不能据此误报。
         val srcFileSize = srcFile.length()
-        val remoteSize = runCatching { size(dstPath) }.getOrDefault(-1L)
+        // 必须传「相对路径」：size() 内部还会再走一次 getPath()，而 dstPath 已经是完整 URL，
+        // 直接传会被拼成 "http://host/http://host/..." → 404（2026-09-13 实测，dufs 日志里
+        // 可见 `PROPFIND /http://192.168.1.3:5000/...` 404），校验会静默失效。
+        val remoteSize = runCatching { size("$dst/$name") }.getOrDefault(-1L)
         if (remoteSize > 0 && remoteSize != srcFileSize) {
             runCatching { deleteFile(dstPath) }
             throw IOException("Remote file size mismatch after upload: $remoteSize/$srcFileSize bytes. Transfer may have been truncated by the network, please check connectivity and retry.")

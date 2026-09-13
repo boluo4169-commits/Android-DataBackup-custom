@@ -58,8 +58,9 @@ class CloudRepository @Inject constructor(
                 out.add(log { stringWriter.toString() })
         }
 
+        // 临时包清理与上传结果解耦：包已完整上传后，本地清理失败只是残留，
+        // 不该把业务判为失败（迁移导出曾因此出现「云端已有完整包、界面却报导出失败」）。
         rootService.deleteRecursively(src).also { result ->
-            isSuccess = isSuccess and result
             if (result.not()) out.add(log { "Failed to delete $src." })
         }
 

@@ -432,6 +432,7 @@
     <string name="migration_stage_segment_packing">Packing</string>
     <string name="migration_stage_segment_hashing">Generating checksum</string>
     <string name="migration_stage_segment_uploading">Uploading</string>
+    <string name="migration_stage_segment_writing">Writing file</string>
     <string name="migration_stage_segment_format">Step %1$d of %2$d</string>
     <string name="migration_stage_import_segment_downloading">Reading file</string>
     <string name="migration_stage_import_segment_verifying">Verifying checksum</string>

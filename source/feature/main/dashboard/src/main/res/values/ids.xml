@@ -54,6 +54,7 @@
     <item name="migration_stage_segment_packing" type="string" />
     <item name="migration_stage_segment_hashing" type="string" />
     <item name="migration_stage_segment_uploading" type="string" />
+    <item name="migration_stage_segment_writing" type="string" />
     <item name="migration_stage_segment_format" type="string" />
     <item name="migration_stage_import_segment_downloading" type="string" />
     <item name="migration_stage_import_segment_verifying" type="string" />

@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.CheckCircle
@@ -22,6 +23,7 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import com.xayah.core.ui.component.BodyLargeText
 import com.xayah.core.ui.component.HeadlineSmallText
+import com.xayah.core.ui.component.SegmentedLinearProgressIndicator
 import com.xayah.core.ui.component.StepperColumn
 import com.xayah.core.ui.component.StepperItem
 import com.xayah.core.ui.component.StepperState
@@ -55,38 +57,73 @@ fun MigrationStageCard(
     stages: List<String> = emptyList(),
     currentStageIndex: Int = 0,
     currentStageProgress: Float = 0f,
+    /** 每段的辅助信息（如"8.2 GB"、"63%"），与 [stages] 等长，缺省为空。 */
+    stageDetails: List<String> = emptyList(),
+    /** 当前段的量化信息（如"已写入 8.2 GB · 00:42 · 877 MiB/s"），为空时回落到 [description]。 */
+    detail: String? = null,
+    /** 当前段无法计算真实进度时置 true，进度条该段走不定态扫描。 */
+    activeIndefinite: Boolean = false,
 ) {
     if (stage == MigrationStage.Idle || stage == MigrationStage.Failure) return
 
     Column(
         modifier = modifier
             .fillMaxWidth()
+            .widthIn(max = 560.dp)
             .padding(vertical = SizeTokens.Level24, horizontal = SizeTokens.Level24),
         horizontalAlignment = Alignment.CenterHorizontally,
         verticalArrangement = Arrangement.spacedBy(SizeTokens.Level16),
     ) {
         when (stage) {
             MigrationStage.Processing -> {
+                val idx = if (stages.isNotEmpty()) currentStageIndex.coerceIn(0, stages.lastIndex) else 0
+                // 主标题直接给出"当前在做什么"，而不是一句孤立的「第 X / N 步」
                 Text(
-                    text = title,
-                    style = MaterialTheme.typography.titleLarge,
+                    text = stages.getOrNull(idx) ?: title,
+                    style = MaterialTheme.typography.headlineSmall,
                     color = ThemedColorSchemeKeyTokens.OnSurface.value,
                     textAlign = TextAlign.Center,
                 )
+                // 副行：量化信息（已写入/百分比/速度）；算不出时回落到描述文案。
+                // 这里**不加** shimmer —— 那会把文字替换成灰块，等于不让人读。
+                Text(
+                    text = detail?.takeIf { it.isNotEmpty() } ?: description,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = ThemedColorSchemeKeyTokens.OnSurfaceVariant.value,
+                    textAlign = TextAlign.Center,
+                    modifier = Modifier.padding(top = SizeTokens.Level4),
+                )
                 if (stages.isNotEmpty()) {
+                    // 分段进度条：已完成段全满、当前段按真实进度。
+                    // 进度还停在 0（要么本就算不出，要么调用方只推 0/1，如导入页）时走不定态扫描，
+                    // 否则当前段会是一根完全静止的空槽，看着像卡住。
+                    SegmentedLinearProgressIndicator(
+                        segmentCount = stages.size,
+                        currentIndex = idx,
+                        currentProgress = currentStageProgress,
+                        activeIndefinite = activeIndefinite || currentStageProgress <= 0f,
+                        modifier = Modifier
+                            .fillMaxWidth()
+                            .padding(top = SizeTokens.Level16),
+                    )
                     val items = stages.mapIndexed { index, label ->
                         val state = when {
                             index < currentStageIndex -> StepperState.Done
                             index == currentStageIndex -> StepperState.Active
                             else -> StepperState.Pending
                         }
-                        StepperItem(title = label, state = state)
+                        StepperItem(
+                            title = label,
+                            state = state,
+                            detail = stageDetails.getOrNull(index),
+                        )
                     }
                     StepperColumn(
                         items = items,
                         modifier = Modifier
-                            .fillMaxWidth(0.7f)
-                            .height(280.dp),
+                            .fillMaxWidth()
+                            .padding(top = SizeTokens.Level8)
+                            .height(240.dp),
                     )
                 } else {
                     // 旧路径（导入页等未启用分段的场景）
@@ -97,16 +134,6 @@ fun MigrationStageCard(
                             .clip(RoundedCornerShape(3.dp)),
                     )
                 }
-                // description 行（带 Shimmer,强调仍在加载）
-                Text(
-                    text = description,
-                    style = MaterialTheme.typography.bodyLarge,
-                    color = ThemedColorSchemeKeyTokens.OnSurfaceVariant.value,
-                    textAlign = TextAlign.Center,
-                    modifier = Modifier
-                        .shimmer()
-                        .padding(top = SizeTokens.Level4),
-                )
             }
 
             MigrationStage.Success -> {

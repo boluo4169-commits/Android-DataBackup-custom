@@ -421,6 +421,7 @@
     <string name="migration_stage_segment_packing">打包中</string>
     <string name="migration_stage_segment_hashing">生成校验码</string>
     <string name="migration_stage_segment_uploading">上传中</string>
+    <string name="migration_stage_segment_writing">写入文件</string>
     <string name="migration_stage_segment_format">第 %1$d / %2$d 步</string>
     <string name="migration_stage_import_segment_downloading">读取迁移包</string>
     <string name="migration_stage_import_segment_verifying">校验完整性</string>

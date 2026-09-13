@@ -1,6 +1,10 @@
 package com.xayah.core.ui.component
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.animateFloat
 import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
@@ -15,6 +19,7 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import com.xayah.core.ui.theme.ThemedColorSchemeKeyTokens
@@ -49,6 +54,13 @@ fun SegmentedLinearProgressIndicator(
         animationSpec = tween(durationMillis = 200),
         label = "segmented-progress",
     )
+    // 不定态段的扫描亮带：左→右循环。亮块宽为段的 35%，按自身宽度换算可移动距离。
+    val sweepFraction by rememberInfiniteTransition(label = "segmented-sweep").animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(animation = tween(durationMillis = 1200, easing = LinearEasing)),
+        label = "segmented-sweep-fraction",
+    )
     Row(
         modifier = modifier.fillMaxWidth(),
         verticalAlignment = Alignment.CenterVertically,
@@ -57,10 +69,10 @@ fun SegmentedLinearProgressIndicator(
         repeat(safeCount) { i ->
             val isCompleted = i < safeIndex
             val isActive = i == safeIndex
+            // 不定态段**不填充**：填满会让人误以为这步已经做完，只用扫描亮带表示"正在跑"。
             val fillFraction = when {
                 isCompleted -> 1f
                 isActive && activeIndefinite.not() -> animatedProgress
-                isActive && activeIndefinite -> 1f
                 else -> 0f
             }
             Box(
@@ -79,13 +91,18 @@ fun SegmentedLinearProgressIndicator(
                             .background(color),
                     )
                 }
-                // 当前段且 indeterminate 时叠加 Shimmer 亮带
+                // 当前段且 indeterminate 时叠加左→右扫描亮带（不用 shimmer：那会盖成灰块）
                 if (isActive && activeIndefinite) {
                     Box(
                         modifier = Modifier
-                            .fillMaxWidth(1f)
+                            .fillMaxWidth(0.35f)
                             .height(height)
-                            .shimmer(),
+                            .align(Alignment.CenterStart)
+                            .graphicsLayer {
+                                translationX = sweepFraction * size.width * (1f / 0.35f - 1f)
+                            }
+                            .clip(RoundedCornerShape(height / 2))
+                            .background(color),
                     )
                 }
             }

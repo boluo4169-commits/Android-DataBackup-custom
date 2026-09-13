@@ -39,6 +39,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.PrimaryScrollableTabRow
 import androidx.compose.material3.Scaffold
+import androidx.compose.material3.SnackbarDuration
 import androidx.compose.material3.SnackbarHost
 import androidx.compose.material3.SnackbarHostState
 import androidx.compose.material3.Tab
@@ -127,6 +128,9 @@ fun PageDataMigrationExport(
     val exportStages by viewModel.exportStages.collectAsStateWithLifecycle()
     val exportCurrentStage by viewModel.exportCurrentStage.collectAsStateWithLifecycle()
     val exportStageProgress by viewModel.exportStageProgress.collectAsStateWithLifecycle()
+    val exportStageDetails by viewModel.exportStageDetails.collectAsStateWithLifecycle()
+    val exportDetail by viewModel.exportDetail.collectAsStateWithLifecycle()
+    val exportIndefinite by viewModel.exportIndefinite.collectAsStateWithLifecycle()
 
     // 阶段卡：Processing 时根据 currentStage 动态显示「第 X / N 步 + 当前段名（带 Shimmer）」
     val (stageTitle, stageDesc) = when (stage) {
@@ -156,8 +160,14 @@ fun PageDataMigrationExport(
             context.getString(R.string.migration_stage_segment_validating),
             context.getString(R.string.migration_stage_segment_packing),
             context.getString(R.string.migration_stage_segment_hashing),
-            context.getString(R.string.migration_stage_segment_uploading),
+            // 本地导出最后一步是写进用户选的位置，不是上传
+            context.getString(R.string.migration_stage_segment_writing),
         )
+    }
+    val exportToCloudStageLabels = remember(context) {
+        exportStageLabels.toMutableList().also {
+            it[it.lastIndex] = context.getString(R.string.migration_stage_segment_uploading)
+        }
     }
 
     val displayItems = remember(allItems, userList, userIndex, searchQuery, sortIndex, sortType) {
@@ -186,8 +196,10 @@ fun PageDataMigrationExport(
                 ) { _ ->
                     Text(text = context.getString(R.string.insurance_desc))
                 }.first
-                // 导出含打包+压缩+复制大文件，必须在 IO 线程执行，否则主线程阻塞 → 卡顿/ANR
-                viewModel.export(it, exportStageLabels)
+                // 交给 viewModelScope 执行：导出含打包+压缩+复制十几 GB，一旦跑在页面的
+                // rememberCoroutineScope 上，屏幕旋转等导致 Activity 重建就会把协程取消，
+                // 出现"打包+校验码都跑完，最后一步失败"的假失败。
+                viewModel.startExport(it, exportStageLabels)
             }
         }
     }
@@ -198,7 +210,15 @@ fun PageDataMigrationExport(
 
     LaunchedEffect(error) {
         error?.let {
-            snackbarHostState.showSnackbar(context.getString(R.string.migration_export_failed))
+            // 失败原因必须让用户看得见：预检缺失目录、tar/zstd 报错等都只在这里暴露，
+            // 否则只弹一句「导出失败」，用户与我们都无从下手（首行是结论，后续行是明细）。
+            val detail = it.lineSequence().firstOrNull { line -> line.isNotBlank() }
+            snackbarHostState.showSnackbar(
+                message = if (detail == null) context.getString(R.string.migration_export_failed)
+                else "${context.getString(R.string.migration_export_failed)}：$detail",
+                withDismissAction = true,
+                duration = SnackbarDuration.Long,
+            )
         }
     }
 
@@ -364,14 +384,17 @@ fun PageDataMigrationExport(
                     .padding(innerPadding),
                 contentAlignment = Alignment.Center,
             ) {
-                MigrationStageCard(
-                    stage = stage,
-                    title = stageTitle,
-                    description = stageDesc,
-                    stages = exportStages,
-                    currentStageIndex = exportCurrentStage,
-                    currentStageProgress = exportStageProgress,
-                )
+                    MigrationStageCard(
+                        stage = stage,
+                        title = stageTitle,
+                        description = stageDesc,
+                        stages = exportStages,
+                        currentStageIndex = exportCurrentStage,
+                        currentStageProgress = exportStageProgress,
+                        stageDetails = exportStageDetails,
+                        detail = exportDetail,
+                        activeIndefinite = exportIndefinite,
+                    )
             }
         } else {
             LazyColumn(modifier = Modifier.fillMaxSize()) {
@@ -480,7 +503,7 @@ fun PageDataMigrationExport(
                 clouds.forEach { cloud ->
                     Surface(onClick = {
                         showCloudSheet = false
-                        scope.launch { viewModel.exportToCloud(cloud.name, exportStageLabels) }
+                        viewModel.startExportToCloud(cloud.name, exportToCloudStageLabels)
                     }) {
                         Row(
                             modifier = Modifier

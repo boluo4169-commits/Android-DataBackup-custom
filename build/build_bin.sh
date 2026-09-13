@@ -232,10 +232,12 @@ build_external() {
 }
 
 build_busybox() {
-    git clone https://github.com/XayahSuSuSu/ndk-box-kitchen -b $NDK_VERSION && cd ndk-box-kitchen
-    wget https://git.busybox.net/busybox/snapshot/busybox-$BUSYBOX_VERSION.tar.bz2
-    tar xf busybox-$BUSYBOX_VERSION.tar.bz2
-    mv busybox-$BUSYBOX_VERSION busybox
+    # 上游 r29 分支已删除，master 可配合 NDK r28+ 的 16 KB 页对齐默认值
+    git clone https://github.com/XayahSuSuSu/ndk-box-kitchen && cd ndk-box-kitchen
+    BUSYBOX_RELEASE=${BUSYBOX_VERSION//_/.} # 1_36_1 -> 1.36.1，busybox.net 下载用点分版本号
+    wget https://busybox.net/downloads/busybox-$BUSYBOX_RELEASE.tar.bz2
+    tar xf busybox-$BUSYBOX_RELEASE.tar.bz2
+    mv busybox-$BUSYBOX_RELEASE busybox
     git clone https://github.com/XayahSuSuSu/selinux jni/selinux
     cd jni/selinux && git checkout $SELINUX_COMMIT && cd ../..
     git clone https://android.googlesource.com/platform/external/pcre -b $PCRE_BRANCH jni/pcre

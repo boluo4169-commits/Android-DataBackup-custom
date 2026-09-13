@@ -13,14 +13,14 @@
     <item name="processing" type="string" />
     <item name="restore" type="string" />
     <item name="backup_completed" type="string" />
-    <item name="uid" type="string" />
+    <item name="uid" type="string" translatable="false" />
     <item name="first_install" type="string" />
     <item name="info" type="string" />
     <item name="items" type="plurals" />
     <item name="delete" type="string" />
     <item name="restore_completed" type="string" />
     <item name="permissions" type="string" />
-    <item name="ssaid" type="string" />
+    <item name="ssaid" type="string" translatable="false" />
     <item name="account" type="string" />
     <item name="cloud" type="string" />
     <item name="local" type="string" />
@@ -51,7 +51,7 @@
     <item name="choose_an_account" type="string" />
     <item name="not_selected" type="string" />
     <item name="no_available_account" type="string" />
-    <item name="id" type="string" />
+    <item name="id" type="string" translatable="false" />
     <item name="unknown" type="string" />
     <item name="_protected" type="string" />
     <item name="calculating" type="string" />
@@ -86,8 +86,8 @@
     <item name="backup_configs_desc" type="string" />
     <item name="nothing_to_backup" type="string" />
 
-    <item name="backup_sort_type_items_apps" type="array" />
-    <item name="flag_type_items" type="array" />
+    <item name="backup_sort_type_items_apps" type="array" translatable="false" />
+    <item name="flag_type_items" type="array" translatable="false" />
 
     <item name="ic_rounded_apps" type="drawable" />
     <item name="ic_rounded_person" type="drawable" />

@@ -1,0 +1,4 @@
+<resources>
+    <!-- 库内占位默认值（库 lint 需要有效格式串），运行时被 app 模块的同名资源覆盖 -->
+    <string name="fix_ownership_report">Found %1$d mismatched directories: fixed %2$d, failed %3$d</string>
+</resources>

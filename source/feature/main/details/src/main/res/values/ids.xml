@@ -15,7 +15,7 @@
     <item name="unblock" type="string" />
     <item name="disabled" type="string" />
     <item name="keystore" type="string" />
-    <item name="ssaid" type="string" />
+    <item name="ssaid" type="string" translatable="false" />
     <item name="freeze" type="string" />
     <item name="unfreeze" type="string" />
     <item name="confirm_freeze" type="string" />
@@ -25,7 +25,7 @@
     <item name="launch" type="string" />
     <item name="info" type="string" />
     <item name="user" type="string" />
-    <item name="uid" type="string" />
+    <item name="uid" type="string" translatable="false" />
     <item name="version" type="string" />
     <item name="first_install" type="string" />
     <item name="granted" type="string" />

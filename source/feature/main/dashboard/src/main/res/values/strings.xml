@@ -1,0 +1,5 @@
+<resources>
+    <!-- 库内占位默认值（库 lint 需要有效格式串），运行时被 app 模块的同名资源覆盖 -->
+    <string name="migration_stage_segment_format">Step %1$d of %2$d</string>
+    <string name="migration_import_parsed">%1$d apps found in the migration file:</string>
+</resources>

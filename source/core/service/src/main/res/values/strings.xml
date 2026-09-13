@@ -1,0 +1,5 @@
+<resources>
+    <!-- 库内占位默认值（库 lint 需要有效格式串），运行时被 app 模块的同名资源覆盖 -->
+    <string name="duplicate_version_reminder">You selected multiple versions of the same app (%1$s). Restoring them together will overwrite each other, only the last restored version will remain. Continue?</string>
+    <string name="restore_user_not_exist">User %1$d no longer exists on this device, skipped</string>
+</resources>

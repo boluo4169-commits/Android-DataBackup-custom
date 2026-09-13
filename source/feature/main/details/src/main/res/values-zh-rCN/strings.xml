@@ -1,6 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
+    <string name="details">详情</string>
     <!-- 取消保护：把受保护版本（user_X@时间戳）恢复成普通版本（user_X） -->
     <string name="unprotect">取消保护</string>
     <string name="unprotect_desc">把这个受保护的版本恢复成普通备份。如果已经存在一个普通版本，为避免覆盖，将拒绝取消保护。</string>
+    <string name="_protected">受保护</string>
+    <string name="add_label">添加标签</string>
+    <string name="backup_parts">备份内容</string>
+    <string name="blacklist">黑名单</string>
+    <string name="block">禁用</string>
+    <string name="confirm">确定</string>
+    <string name="confirm_add_to_blacklist">加入到黑名单中？</string>
+    <string name="confirm_freeze">冻结此应用?</string>
+    <string name="confirm_remove_from_blacklist">从黑名单中移除？</string>
+    <string name="confirm_unfreeze">解冻此应用?</string>
+    <string name="copied">已复制</string>
+    <string name="delete">删除</string>
+    <string name="delete_desc">这将会被删除</string>
+    <string name="denied">未授予</string>
+    <string name="disabled">禁用</string>
+    <string name="failed">失败</string>
+    <string name="file_path">文件路径</string>
+    <string name="first_install">首次安装</string>
+    <string name="freeze">冻结</string>
+    <string name="granted">已授予</string>
+    <string name="info">信息</string>
+    <string name="keystore">密钥</string>
+    <string name="label">标签</string>
+    <string name="labels">标签</string>
+    <string name="last_backup">最近备份</string>
+    <string name="last_update">最近更新</string>
+    <string name="launch">启动</string>
+    <string name="no_labels_here">这里没有标签。</string>
+    <string name="permissions">权限</string>
+    <string name="prompt">提示</string>
+    <string name="protect">保护</string>
+    <string name="protect_desc">防止此备份被覆盖</string>
+    <string name="refresh">刷新</string>
+    <string name="unblock">取消禁用</string>
+    <string name="unfreeze">解冻</string>
+    <string name="user">用户</string>
+    <string name="version">版本</string>
 </resources>

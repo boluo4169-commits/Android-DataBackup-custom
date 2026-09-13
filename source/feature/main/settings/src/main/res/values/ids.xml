@@ -87,7 +87,6 @@
     <item name="fix_ownership_run_btn" type="string" />
     <item name="fix_ownership_running" type="string" />
     <item name="fix_ownership_done" type="string" />
-    <item name="fix_ownership_report" type="string" />
     <item name="device_identity" type="string" />
     <item name="clear_device_fingerprint" type="string" />
     <item name="clear_device_fingerprint_desc" type="string" />

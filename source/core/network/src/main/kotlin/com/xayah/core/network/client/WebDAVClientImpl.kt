@@ -1,5 +1,6 @@
 package com.xayah.core.network.client
 
+import android.annotation.SuppressLint
 import android.content.Context
 import android.net.Uri
 import com.xayah.core.common.util.toPathString
@@ -52,6 +53,8 @@ class WebDAVClientImpl(private val entity: CloudEntity, private val extra: WebDA
         block(client!!)
     }
 
+    // insecure 是用户为自签名证书 WebDAV 主动开启的选项，信任策略仅在 extra.insecure = true 时生效
+    @SuppressLint("TrustAllX509TrustManager")
     override fun connect() {
         // insecure 开关仅用于信任自签名 HTTPS 证书；明文 http 与原版行为一致，直接放行。
         val builder = OkHttpClient.Builder()

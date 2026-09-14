@@ -2,6 +2,36 @@
 
 本文件记录定制版相对原版 [XayahSuSuSu/Android-DataBackup](https://github.com/XayahSuSuSu/Android-DataBackup) 的改动。
 
+## v3.12.0（2026-09-14）
+
+### 新增
+
+- **系统数据备份与恢复**：在原有「应用级备份」之外新增一整类系统数据备份，主页快捷操作新增「系统数据」入口，新增 `feature/main/system` 模块。
+  - **短信**（含彩信）：`/data/data/com.android.providers.telephony/databases/mmssms.db`
+  - **通话记录**：`/data/data/com.android.providers.contacts/databases/calllog.db`
+  - **WiFi 网络**：`WifiConfigStore.xml`（Android 11+ 在 `apexdata` 下，旧版本回退 `/data/misc/wifi`）
+- **本地 / 云端双通路**：三项均可选择存到本地（系统文件管理器选位置）或传到云端（`<远端目录>/system_data/`），云端三项各用真实文件名，避免互相覆盖。
+- **恢复前的结构兼容性检查**：恢复数据库类数据前比对「本机现有库」与「备份库」的表 / 列结构，有差异时弹窗列出缺失项交用户决定。恢复是整库覆盖，跨品牌（一加的 `oplus_*` / `rcs_*` 对小米的 `miui_*`）覆盖后目标机 App 查询会落空，必须提前告知。
+
+### 安全
+
+- WiFi 备份文件中的密码为明文，界面明确提示；含凭据的命令行一律不写日志（实测导出日志 0 条残留）。
+- 恢复时属主 / 权限 / SELinux 标签全部动态读取，不硬编码 uid（手机 `u0_a72`、平板 `u0_a73` 两种机型已验证）。
+
+### 修复
+
+- **结构检查漏判「整表缺失」**：早期实现只在「目标库的表在源库中存在」时才比对列，导致拿通话记录库恢复短信库时（`sms` / `threads` 等表整体不存在）被判定为「无差异」而静默覆盖。现整表缺失同样计入差异。
+
+### 优化
+
+- **「高级 - 历史记录」**：去掉前置图标，中文名称由「历史」改为「历史记录」，补齐副标题 —— 该行原本是区块内唯一没有副标题的项，行高与相邻项不一致。
+
+### 工程
+
+- 抽出 `SystemDataUtil.stageToCache` / `restoreFromStaged` 作为本地与云端两条通路的共用中间层，两条通路的差异仅剩「文件从哪来」。
+- 云端下载不复用 `CloudRepository.download`：其内部先用 root 重建目标目录，属主变为 root 后应用写不进去（`EACCES`）；改为应用身份建目录（并显式 `chown` 兜底历史遗留的 root 属主）+ 直接调 `client.download`。
+- 云端为网络操作，统一走 `withIOContext`，避免主线程 `NetworkOnMainThreadException`。
+
 ## v3.11.0（2026-09-13）
 
 ### 修复

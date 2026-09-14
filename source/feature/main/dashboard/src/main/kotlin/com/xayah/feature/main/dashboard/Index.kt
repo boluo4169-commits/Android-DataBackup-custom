@@ -19,7 +19,7 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.outlined.Cloud
 import androidx.compose.material.icons.outlined.Settings
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
-import androidx.compose.material.icons.rounded.ListAlt
+import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material.icons.rounded.SwapHoriz
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Text
@@ -231,14 +231,14 @@ fun PageDashboard() {
                     QuickActionsButton(
                         modifier = Modifier.weight(1f),
                         enabled = nullBackupDir.not(),
-                        title = stringResource(R.string.history),
-                        icon = Icons.Rounded.ListAlt,
+                        title = stringResource(id = R.string.system_data),
+                        icon = Icons.Rounded.Storage,
                         colorContainer = ThemedColorSchemeKeyTokens.PinkPrimaryContainer,
                         colorL80D20 = ThemedColorSchemeKeyTokens.PinkL80D20,
                         onColorContainer = ThemedColorSchemeKeyTokens.PinkOnPrimaryContainer,
                         actionIcon = Icons.Rounded.KeyboardArrowRight
                     ) {
-                        navController.navigateSingle(MainRoutes.History.route)
+                        navController.navigateSingle(MainRoutes.SystemData.route)
                     }
                     Box(modifier = Modifier.weight(1f)) {
                         QuickActionsButton(

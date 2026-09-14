@@ -1,0 +1,22 @@
+<resources>
+    <item name="system_data" type="string" />
+    <item name="sms" type="string" />
+    <item name="call_log" type="string" />
+    <item name="wifi_networks" type="string" />
+    <item name="sms_desc" type="string" />
+    <item name="call_log_desc" type="string" />
+    <item name="wifi_desc" type="string" />
+    <item name="backup" type="string" />
+    <item name="restore" type="string" />
+    <item name="system_data_backup_done" type="string" />
+    <item name="system_data_restore_done" type="string" />
+    <item name="system_data_failed" type="string" />
+    <item name="system_data_wifi_plain_text" type="string" />
+    <item name="system_data_local" type="string" />
+    <item name="system_data_local_desc" type="string" />
+    <item name="system_data_schema_warning" type="string" />
+    <item name="system_data_schema_warning_desc" type="string" />
+    <item name="confirm" type="string" />
+    <item name="cancel" type="string" />
+    <item name="migration_no_cloud" type="string" />
+</resources>

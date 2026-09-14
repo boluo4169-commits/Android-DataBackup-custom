@@ -153,6 +153,12 @@ fun PageSettings() {
                     exportLogLauncher.launch("DataBackup_logs_${DateUtil.formatTimestamp(DateUtil.getTimestamp(), "yyyyMMdd_HHmmss")}.zip")
                 }
                 Clickable(
+                    title = stringResource(id = R.string.history),
+                    value = stringResource(id = R.string.history_desc),
+                ) {
+                    navController.navigateSingle(MainRoutes.History.route)
+                }
+                Clickable(
                     title = stringResource(id = R.string.configurations),
                     value = stringResource(id = R.string.configurations_desc),
                 ) {

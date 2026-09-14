@@ -73,6 +73,7 @@ sealed class MainRoutes(val route: String) {
     }
 
     data object History : MainRoutes(route = "main_history")
+    data object SystemData : MainRoutes(route = "main_system_data")
     data object DataMigration : MainRoutes(route = "main_data_migration")
     data object DataMigrationExport : MainRoutes(route = "main_data_migration_export")
     data object DataMigrationImport : MainRoutes(route = "main_data_migration_import")

@@ -137,6 +137,7 @@ dependencies {
     implementation(project(":feature:main:details"))
     implementation(project(":feature:main:history"))
     implementation(project(":feature:main:directory"))
+    implementation(project(":feature:main:system"))
 
     // Splash Screen
     implementation(libs.androidx.core.splashscreen)

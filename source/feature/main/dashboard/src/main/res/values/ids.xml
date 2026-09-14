@@ -21,6 +21,7 @@
     <item name="changelog" type="string" />
     <item name="args_update_from" type="string" />
     <item name="history" type="string" />
+    <item name="system_data" type="string" />
     <item name="data_migration" type="string" />
     <item name="backup_and_migration" type="string" />
     <item name="import_backup" type="string" />

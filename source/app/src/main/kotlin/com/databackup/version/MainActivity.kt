@@ -32,6 +32,7 @@ import com.xayah.feature.main.details.DetailsRoute
 import com.xayah.feature.main.directory.PageDirectory
 import com.xayah.feature.main.history.HistoryRoute
 import com.xayah.feature.main.history.TaskDetailsRoute
+import com.xayah.feature.main.system.SystemDataRoute
 import com.xayah.feature.main.list.ListRoute
 import com.xayah.feature.main.processing.medium.backup.MediumBackupProcessingGraph
 import com.xayah.feature.main.processing.medium.restore.MediumRestoreProcessingGraph
@@ -142,6 +143,9 @@ class MainActivity : AppCompatActivity() {
                         }
                         composable(MainRoutes.History.route) {
                             HistoryRoute()
+                        }
+                        composable(MainRoutes.SystemData.route) {
+                            SystemDataRoute()
                         }
                         composable(MainRoutes.DataMigration.route) {
                             PageDataMigration()

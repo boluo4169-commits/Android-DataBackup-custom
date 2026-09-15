@@ -61,6 +61,35 @@ internal class RemoteRootServiceImpl(private val context: Context) : IRemoteRoot
     private var activityManager: ActivityManagerHidden
     private var appOpsManager: AppOpsManagerHidden
 
+    /**
+     * 权限定义（protection / protectionFlags）与权限名到 AppOps code 的映射都是**系统级**的，
+     * 对所有应用完全一致。原实现对每条 requestedPermission 都调一次
+     * [PackageManager.getPermissionInfo]（外加一次 permissionToOpCode），即每个应用 M 次 IPC；
+     * 实测单个应用就有 20 条权限，N 个应用 = N×M 次跨进程调用。这里按权限名缓存。
+     *
+     * 生命周期与 root service 进程一致（每次 bind 重建），权限定义在运行期不会变化，
+     * 因此不需要失效策略。
+     */
+    private val permissionInfoCache = mutableMapOf<String, PermissionInfo?>()
+    private val permissionOpCache = mutableMapOf<String, Int>()
+
+    /**
+     * [SsaidUtil] 的构造会新建 HandlerThread 并把整个 ssaid 文件读进来解析，
+     * 原实现每次查询都 new 一个（线程不 quit、实例不复用），N 个应用就是 N 个线程 + N 次全文件解析。
+     * 这里按 userId 复用单例。
+     */
+    private val ssaidUtilCache = mutableMapOf<Int, SsaidUtil>()
+
+    private fun getCachedPermissionInfo(name: String): PermissionInfo? = when {
+        permissionInfoCache.containsKey(name) -> permissionInfoCache[name]
+        else -> runCatching { packageManager.getPermissionInfo(name, 0) }.getOrNull().also { permissionInfoCache[name] = it }
+    }
+
+    private fun getCachedOpCode(name: String): Int =
+        permissionOpCache[name] ?: AppOpsManagerHidden.permissionToOpCode(name).also { permissionOpCache[name] = it }
+
+    private fun getSsaidUtil(userId: Int): SsaidUtil = ssaidUtilCache.getOrPut(userId) { SsaidUtil(userId) }
+
     private fun getSystemContext(): Context = ActivityThread.systemMain().systemContext
 
     @TargetApi(Build.VERSION_CODES.O)
@@ -435,9 +464,11 @@ internal class RemoteRootServiceImpl(private val context: Context) : IRemoteRoot
         }
     }
 
-    override fun getPackageSsaidAsUser(packageName: String, uid: Int, userId: Int): String? = synchronized(lock) { SsaidUtil(userId).getSsaid(packageName, uid) }
+    override fun getPackageSsaidAsUser(packageName: String, uid: Int, userId: Int): String? =
+        synchronized(lock) { getSsaidUtil(userId).getSsaid(packageName, uid) }
+
     override fun setPackageSsaidAsUser(packageName: String, uid: Int, userId: Int, ssaid: String) {
-        synchronized(lock) { SsaidUtil(userId).setSsaid(packageName, uid, ssaid) }
+        synchronized(lock) { getSsaidUtil(userId).setSsaid(packageName, uid, ssaid) }
     }
 
     override fun randomizeGaid(): Boolean = synchronized(lock) {
@@ -505,11 +536,11 @@ internal class RemoteRootServiceImpl(private val context: Context) : IRemoteRoot
         }.getOrNull()
         requestedPermissions.forEachIndexed { i, name ->
             runCatching {
-                val permissionInfo = packageManager.getPermissionInfo(name, 0)
+                val permissionInfo = getCachedPermissionInfo(name) ?: return@runCatching
                 val protection = PermissionInfoCompat.getProtection(permissionInfo)
                 val protectionFlags = PermissionInfoCompat.getProtectionFlags(permissionInfo)
                 val isGranted = (requestedPermissionsFlags[i] and PackageInfo.REQUESTED_PERMISSION_GRANTED) != 0
-                val op = AppOpsManagerHidden.permissionToOpCode(name)
+                val op = getCachedOpCode(name)
                 val mode = ops?.get(op) ?: AppOpsManager.MODE_IGNORED
                 if ((op != AppOpsManagerHidden.OP_NONE)
                     || (protection == PermissionInfo.PROTECTION_DANGEROUS || (protectionFlags and PermissionInfo.PROTECTION_FLAG_DEVELOPMENT) != 0)

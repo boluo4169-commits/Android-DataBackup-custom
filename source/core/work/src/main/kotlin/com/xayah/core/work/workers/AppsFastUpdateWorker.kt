@@ -54,7 +54,7 @@ internal class AppsFastUpdateWorker @AssistedInject constructor(
                     max,
                     cur
                 )
-                setForeground(
+                setForegroundSafely(
                     mNotificationInfo!!
                 )
             }

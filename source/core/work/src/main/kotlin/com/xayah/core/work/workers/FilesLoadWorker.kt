@@ -57,7 +57,7 @@ internal class FilesLoadWorker @AssistedInject constructor(
                     max,
                     cur
                 )
-                setForeground(
+                setForegroundSafely(
                     mNotificationInfo!!
                 )
             }

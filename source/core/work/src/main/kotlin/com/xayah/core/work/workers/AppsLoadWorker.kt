@@ -57,7 +57,7 @@ internal class AppsLoadWorker @AssistedInject constructor(
                     max,
                     cur
                 )
-                setForeground(
+                setForegroundSafely(
                     mNotificationInfo!!
                 )
             }

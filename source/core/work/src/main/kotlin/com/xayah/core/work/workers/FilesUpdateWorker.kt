@@ -41,7 +41,7 @@ internal class FilesUpdateWorker @AssistedInject constructor(
     }
 
     override suspend fun doWork(): Result = withContext(defaultDispatcher) {
-        setForeground(getForegroundInfo())
+        setForegroundSafely(getForegroundInfo())
         filesRepo.initialize()
         Result.success()
     }

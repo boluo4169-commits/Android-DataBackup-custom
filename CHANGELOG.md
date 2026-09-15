@@ -2,6 +2,24 @@
 
 本文件记录定制版相对原版 [XayahSuSuSu/Android-DataBackup](https://github.com/XayahSuSuSu/Android-DataBackup) 的改动。
 
+## v3.12.1（2026-09-15）
+
+### 修复
+
+- **扫描应用列表时主线程被通知刷新占满**：每处理一个应用就更新一次前台通知，而系统更新通知只能在主线程执行，且每次含一次跨进程调用。实测（OPD2413 / Android 16，47 个第三方应用）扫描全程仅 145 ms，通知刷新却在 0.79 秒内触发 **291 次**、全部落在主线程，开销达实际工作量的 5 倍以上；应用数量上百时主线程被连续占满直至 ANR。现改为按 250 ms 合帧（首尾必发），复测 291 → 6 次。
+- **后台启动时加载任务直接失败**：App 处于后台时系统拒绝 `startForegroundService()`（`ForegroundServiceStartNotAllowedException`，Android 12+ 限制），异常沿 `doWork` 冒泡使 Worker 以 failure 收场。实测后台冷启动下 `AppsLoadWorker` FAILED，恢复页备份列表加载不出来。现以 `setForegroundSafely` 统一吞掉该异常——通知只是进度展示，不应让业务失败（7 处调用点）。
+
+### 优化
+
+- **权限定义按权限名缓存**：`getPermissions` 原先对每条 requestedPermission 各调一次 `getPermissionInfo`，实测单应用 20 条权限，N 个应用即 N×M 次跨进程调用；权限定义是系统级共享的，改为进程级缓存（含 `permissionToOpCode` 映射）。
+- **`SsaidUtil` 按 userId 复用**：其构造会新建 HandlerThread 并解析整个 ssaid 文件，原实现每次查询都 new 且从不 quit；改为按 userId 复用单例。
+- **Room `Converters` 复用 Gson 实例**：原先每次调用都新建 `GsonUtil`（含 `GsonBuilder().create()`）并重建 TypeToken，而 converter 是逐行逐列调用的（实测 permissions 列平均 1385 B/行）。
+
+### 工程
+
+- 新增 `ForegroundProgressThrottler` 单元测试 7 条（首条 / 间隔内 / 末条 / 0-based 末尾 / 空区间 / 整场景收敛）；`core:util` 补上 `library.test` 插件。
+- 复测方法沉淀：`build/analyze_notify.py`（通知次数 / 主线程归属 / 速率对比）、`build/perf_probe.sh`（设备侧原语耗时探针）。
+
 ## v3.12.0（2026-09-14）
 
 ### 新增

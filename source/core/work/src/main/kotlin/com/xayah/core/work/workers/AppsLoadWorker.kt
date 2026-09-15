@@ -12,6 +12,7 @@ import com.xayah.core.data.repository.AppsRepo
 import com.xayah.core.data.repository.INPUT_DATA_KEY_CLOUD_NAME
 import com.xayah.core.datastore.di.DbDispatchers.Default
 import com.xayah.core.datastore.di.Dispatcher
+import com.xayah.core.util.ForegroundProgressThrottler
 import com.xayah.core.util.NotificationUtil
 import com.xayah.core.work.R
 import dagger.assisted.Assisted
@@ -44,18 +45,22 @@ internal class AppsLoadWorker @AssistedInject constructor(
 
     override suspend fun doWork(): Result = withContext(defaultDispatcher) {
         val cloudName = inputData.getString(INPUT_DATA_KEY_CLOUD_NAME)
+        val throttler = ForegroundProgressThrottler()
         appsRepo.load(cloudName) { cur, max, content ->
-            mNotificationInfo = NotificationUtil.createForegroundInfo(
-                appContext,
-                mNotificationBuilder,
-                appContext.getString(R.string.loading_backups),
-                content,
-                max,
-                cur
-            )
-            setForeground(
-                mNotificationInfo!!
-            )
+            // 逐包刷新前台通知会把主线程占满（实测 47 个应用 291 次 notify 全在主线程），这里限速，最后一条必发
+            if (throttler.shouldEmit(cur, max)) {
+                mNotificationInfo = NotificationUtil.createForegroundInfo(
+                    appContext,
+                    mNotificationBuilder,
+                    appContext.getString(R.string.loading_backups),
+                    content,
+                    max,
+                    cur
+                )
+                setForeground(
+                    mNotificationInfo!!
+                )
+            }
         }
         Result.success()
     }

@@ -1,6 +1,7 @@
 plugins {
     alias(libs.plugins.library.common)
     alias(libs.plugins.library.hilt)
+    alias(libs.plugins.library.test)
 }
 
 android {

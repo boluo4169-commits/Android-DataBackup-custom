@@ -22,13 +22,18 @@ Windows 上一键部署 FTP 备份服务器,配合 [DataBackup 定制版](https:
 
 **方式二（透明可审）**：下载/查看本目录的 `DataBackupFTPServer.bat` 脚本版（需要联网自动安装 Python 环境）。
 
-两者之后：
+两者都是**图形界面**，操作一样：
 
-1. 按提示回车/输入即可（会自动请求管理员权限）
-2. 启动完成后，窗口会显示**连接信息卡片**（地址/端口/用户名/密码）
-3. 手机 DataBackup → 云备份 → FTP，照卡片填写即可
+1. 首次运行会请求管理员权限（配置防火墙需要），随后打开主窗口
+2. 在窗口里填**用户名 / 密码 / 备份目录 / 端口**——密码可点「随机」自动生成，目录可点「浏览」选择，之后会被记住，下次打开自动带出
+3. 点 **「开启」**：服务启动并自动做一次本地回环自检，通过后上方显示「● 服务运行中」
+4. 上方**连接信息卡片**列出了手机端要填的全部内容，点「复制全部」可直接粘贴
+5. 手机 DataBackup → 云备份 → FTP，照卡片填写
+6. 用完点 **「停止」** 或直接关窗口（关窗口会先停止服务）
 
-全部选项支持直接回车用默认值；密码留空会自动生成 8 位随机强密码并当场显示。
+配置文件在 `%USERPROFILE%\.databackup_ftp_config.json`（明文，仅限可信局域网场景）。
+
+命令行参数会**预填**到界面（不做无界面安装）：`DataBackupFTPServer.exe <用户名> <密码> <备份目录>`。
 
 ## 手机端配置对照
 
@@ -45,18 +50,17 @@ Windows 上一键部署 FTP 备份服务器,配合 [DataBackup 定制版](https:
 
 | 现象 | 处理 |
 |------|------|
-| 手机连不上 | 确认同一局域网;关闭电脑端「公用网络」防火墙配置文件或改「专用网络」;逐个尝试卡片列出的 IP |
-| 启动报端口占用 | 关闭其他 FTP 服务,或修改脚本中的 `FTP_PORT` 与被动端口段 |
-| 自检失败 | 查看防火墙放行;确认杀毒软件未拦截 python.exe |
+| 手机连不上 | 确认同一局域网;关闭电脑端「公用网络」防火墙配置文件或改「专用网络」;点卡片「刷新地址」逐个尝试列出的 IP |
+| 启动报端口占用 | 关闭其他 FTP 服务,或在界面里把端口改成别的（如 2122，手机端同步改） |
+| 自检失败 | 查看防火墙放行;确认杀毒软件未拦截 python.exe / 本程序 |
 | 传输中断 | 关闭电脑休眠(控制面板 → 电源选项) |
 
 ## 诊断信息导出（反馈问题时使用）
 
 遇到「连不上 / 备份找不到 / 文件异常」等问题需要反馈维护者时，**不要只发截图**，一键导出诊断包：
 
-```
-DataBackupFTPServer.exe --diagnose
-```
+- **界面里**：点左下角 **「生成诊断包」**
+- **命令行**：`DataBackupFTPServer.exe --diagnose`
 
 - 在**备份目录**生成 `DataBackup_diagnose_<时间>.zip`，包含：
   - `environment.txt`：系统 / Python 版本 / 局域网 IP / 防火墙状态 / 端口占用 / 磁盘空间
@@ -64,8 +68,20 @@ DataBackupFTPServer.exe --diagnose
   - `file_inventory.txt`：备份目录完整文件清单 + 按 apps/files/migration 分组统计
   - `integrity_check.txt`：完整性检查——应用配置 json 是否合法、归档与 .md5 是否配对、0 字节文件、云端迁移包列表
   - `diagnose.json`：机器可读汇总（异常列表）
-- 备份目录不在默认位置时指定：`DataBackupFTPServer.exe --diagnose --backup-dir <路径>`
+- 备份目录不在默认位置时指定：`DataBackupFTPServer.exe --diagnose --backup-dir <路径>`（不带此参数时用默认目录）
 - 请**配合手机端 DataBackup「设置 → 高级 → 导出日志」**一起发送，形成完整反馈材料
+
+## 维护者说明
+
+- 服务核心在 `src/ftp_core.py`（无 UI 依赖：凭证、启停、自检、诊断、更新检查），界面入口为 `src/DataBackupFTPServer.py`。**改逻辑改 `ftp_core.py`，两边入口同时生效。**
+- `DataBackupFTPServer.bat` 是**自包含脚本版**，尾部内嵌了上面两个文件的副本（运行时提取到 `%TEMP%\DataBackupFTP_server` 执行）。**不要手改内嵌块**，改完 `src/` 后执行一次：
+
+  ```
+  python tools/sync_bat.py           # 重新生成 bat 并自检（逐字节比对）
+  python tools/sync_bat.py --check   # 只检查是否已同步
+  ```
+
+- 无界面参数（供 CI / 自动化）：`--exit-after-selftest <用户名> <密码> <目录>` 起服务→回环自检→退出（0 通过 / 2 失败）；`--diagnose` 生成诊断包后退出。
 
 ## 安全提示
 

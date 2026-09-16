@@ -30,13 +30,16 @@ jobs:
         env:
           RELEASE_TAG: ${{ github.event.release.tag_name }}
 
+      - name: Check .bat embedded sources are in sync
+        run: python companion/ftp-server/tools/sync_bat.py --check
+
       - name: Build single-file exe
         run: >
-          pyinstaller --onefile --console --name DataBackupFTPServer
+          pyinstaller --onefile --windowed --name DataBackupFTPServer
           --distpath dist --workpath build --specpath build
           companion/ftp-server/src/DataBackupFTPServer.py
 
-      - name: Smoke test (--exit-after-selftest, positional args skip interactive prompts)
+      - name: Smoke test (--exit-after-selftest, positional args prefilled)
         run: |
           New-Item -ItemType Directory -Force "$env:TEMP\smokedir" | Out-Null
           $proc = Start-Process -FilePath "dist\DataBackupFTPServer.exe" -ArgumentList "--exit-after-selftest databackup smokepass $env:TEMP\smokedir" -PassThru -NoNewWindow -RedirectStandardOutput "out.txt"

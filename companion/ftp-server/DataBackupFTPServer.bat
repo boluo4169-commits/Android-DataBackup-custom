@@ -334,7 +334,9 @@ DEFAULT_CONFIG = {
     "port": DEFAULT_PORT,
     "backup_dir": "",
     "dir_history": [],
+    "theme": "light",  # light / dark
 }
+THEMES = ("light", "dark")
 
 
 def load_config():
@@ -357,6 +359,8 @@ def load_config():
                 hist = data.get("dir_history")
                 if isinstance(hist, list):
                     cfg["dir_history"] = [d for d in hist if isinstance(d, str) and d]
+                if data.get("theme") in THEMES:
+                    cfg["theme"] = data["theme"]
         else:
             # 旧版 cred 文件（仅账号密码）迁移，首次保存后即写入新配置文件
             if os.path.exists(LEGACY_CRED_PATH):
@@ -374,7 +378,7 @@ def load_config():
     return cfg
 
 
-def save_config(user, password, port, backup_dir, dir_history=None):
+def save_config(user, password, port, backup_dir, dir_history=None, theme="light"):
     """保存配置（明文，仅限可信局域网场景；与旧版 cred 文件同口径）"""
     data = {
         "user": user,
@@ -382,6 +386,7 @@ def save_config(user, password, port, backup_dir, dir_history=None):
         "port": int(port),
         "backup_dir": backup_dir,
         "dir_history": list(dir_history or [])[:10],
+        "theme": theme if theme in THEMES else "light",
     }
     try:
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:
@@ -898,6 +903,20 @@ import ftp_core
 APP_TITLE = "DataBackup Companion — FTP 数据服务器 %s" % ftp_core.COMPANION_VERSION
 LOG_MAX_LINES = 800
 
+# 浅/深两套配色（零依赖：ttk 用 clam 主题 + 手工配色，tk.Text 单独设色）
+PALETTES = {
+    "light": {
+        "bg": "#F5F4F0", "field": "#FFFFFF", "text": "#2C2C2A", "muted": "#888780",
+        "border": "#D3D1C7", "btn": "#EDEBE5", "btn_active": "#E2DFD7",
+        "select": "#B5D4F4", "ok": "#0F6E56", "err": "#A32D2D",
+    },
+    "dark": {
+        "bg": "#1F1F1E", "field": "#141413", "text": "#E8E6E1", "muted": "#8A8880",
+        "border": "#4A4A47", "btn": "#2A2A28", "btn_active": "#34342F",
+        "select": "#0C447C", "ok": "#5DCAA5", "err": "#F09595",
+    },
+}
+
 
 def attach_parent_console():
     """--windowed 打包下从 cmd 运行时，把输出接回父控制台，使 --diagnose 仍可见。"""
@@ -975,6 +994,9 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
     password0 = preset_password or cfg["password"]
     dir0 = preset_dir or cfg["backup_dir"]
     port0 = cfg["port"]
+    theme_name = cfg.get("theme", "light")
+    if theme_name not in PALETTES:
+        theme_name = "light"
     dir_history = list(cfg["dir_history"])
     if dir0 not in dir_history:
         dir_history.insert(0, dir0)
@@ -1150,10 +1172,101 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
         text="项目主页",
         command=lambda: webbrowser.open(ftp_core.REPO_URL),
     ).pack(side=tk.LEFT, padx=(8, 0))
+
+    is_dark_var = tk.BooleanVar(value=(theme_name == "dark"))
+    theme_check = ttk.Checkbutton(bottom, text="深色模式", variable=is_dark_var)
+    theme_check.pack(side=tk.LEFT, padx=(12, 0))
+
     ttk.Label(
         bottom,
         text="FTP 为明文协议，仅限可信局域网内使用",
     ).pack(side=tk.RIGHT)
+
+    # ---------- 主题（零依赖：clam 主题 + 手工配色） ----------
+    def apply_theme(name):
+        """切换浅色/深色。ttk 走 clam 主题逐项配色，tk.Text 与经典滚动条单独设色。"""
+        pal = PALETTES.get(name, PALETTES["light"])
+        style = ttk.Style(root)
+        try:
+            style.theme_use("clam")  # vista/winnative 不允许自定义大部分颜色
+        except tk.TclError:
+            pass
+
+        style.configure(
+            ".", background=pal["bg"], foreground=pal["text"],
+            fieldbackground=pal["field"], bordercolor=pal["border"],
+            lightcolor=pal["bg"], darkcolor=pal["bg"], troughcolor=pal["field"],
+            focuscolor=pal["select"],
+        )
+        style.configure("TFrame", background=pal["bg"])
+        style.configure("TLabelframe", background=pal["bg"], bordercolor=pal["border"])
+        style.configure("TLabelframe.Label", background=pal["bg"], foreground=pal["muted"])
+        style.configure("TLabel", background=pal["bg"], foreground=pal["text"])
+        style.configure(
+            "TButton", background=pal["btn"], foreground=pal["text"],
+            bordercolor=pal["border"], arrowcolor=pal["text"],
+        )
+        style.map(
+            "TButton",
+            background=[("active", pal["btn_active"]), ("disabled", pal["bg"])],
+            foreground=[("disabled", pal["muted"])],
+        )
+        style.configure(
+            "TCheckbutton", background=pal["bg"], foreground=pal["text"],
+            indicatorcolor=pal["field"],
+        )
+        style.map("TCheckbutton", background=[("active", pal["bg"])])
+        style.configure(
+            "TEntry", fieldbackground=pal["field"], foreground=pal["text"],
+            insertcolor=pal["text"], bordercolor=pal["border"],
+        )
+        style.configure(
+            "TCombobox", fieldbackground=pal["field"], background=pal["btn"],
+            foreground=pal["text"], arrowcolor=pal["text"],
+            bordercolor=pal["border"],
+        )
+        style.map(
+            "TCombobox",
+            fieldbackground=[("readonly", pal["field"])],
+            foreground=[("readonly", pal["text"])],
+        )
+        # 下拉列表是经典 Listbox，只能通过 option 数据库改色
+        root.option_add("*TCombobox*Listbox.background", pal["field"])
+        root.option_add("*TCombobox*Listbox.foreground", pal["text"])
+        root.option_add("*TCombobox*Listbox.selectBackground", pal["select"])
+        root.option_add("*TCombobox*Listbox.selectForeground", pal["text"])
+
+        root.configure(bg=pal["bg"])
+        for text_widget in (card_text, log_widget):
+            text_widget.configure(
+                bg=pal["field"], fg=pal["text"], insertbackground=pal["text"],
+                selectbackground=pal["select"], highlightbackground=pal["border"],
+            )
+            # scrolledtext 自带的是经典 tk.Scrollbar（tk.Text 的兄弟控件）
+            for sibling in text_widget.master.winfo_children():
+                if sibling.winfo_class() == "Scrollbar":
+                    sibling.configure(
+                        bg=pal["btn"], troughcolor=pal["bg"],
+                        activebackground=pal["btn_active"],
+                        highlightbackground=pal["bg"],
+                    )
+
+        # 状态文本颜色随主题（文字本身由 set_running 控制）
+        set_running(service.is_running)
+        return pal
+
+    def on_theme_toggle():
+        nonlocal theme_name
+        theme_name = "dark" if is_dark_var.get() else "light"
+        apply_theme(theme_name)
+        log("[界面] 已切换到%s模式" % ("深色" if theme_name == "dark" else "浅色"))
+        try:
+            ftp_core.save_config(
+                user_var.get().strip(), pass_var.get(), _current_port(),
+                dir_var.get().strip(), list(dir_box.cget("values")), theme_name,
+            )
+        except Exception:
+            pass
 
     # ---------- 状态机 ----------
     def _current_port():
@@ -1178,13 +1291,13 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
 
         if running:
             status_var.set("● 服务运行中")
-            status_label.configure(foreground="#0F6E56")
+            status_label.configure(foreground=PALETTES[theme_name]["ok"])
             start_button.configure(state=tk.DISABLED)
             stop_button.configure(state=tk.NORMAL)
             set_enabled((user_holder, pass_holder, port_holder, dir_holder), False)
         else:
             status_var.set("● 未启动")
-            status_label.configure(foreground="#A32D2D")
+            status_label.configure(foreground=PALETTES[theme_name]["err"])
             start_button.configure(state=tk.NORMAL)
             stop_button.configure(state=tk.DISABLED)
             set_enabled((user_holder, pass_holder, port_holder, dir_holder), True)
@@ -1212,7 +1325,7 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
             return
 
         remember_dir(path)
-        ftp_core.save_config(user, password, port, path, list(dir_box.cget("values")))
+        ftp_core.save_config(user, password, port, path, list(dir_box.cget("values")), theme_name)
         refresh_card()
         set_running(True)
 
@@ -1264,6 +1377,7 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
                     _current_port(),
                     dir_var.get().strip(),
                     list(dir_box.cget("values")),
+                    theme_name,
                 )
             except Exception:
                 pass
@@ -1279,6 +1393,8 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
         log("[提示] 端口 %d 已被占用，可能是其它 FTP 服务正在运行" % _current_port())
     refresh_card()
     pump_log_queue()
+    theme_check.configure(command=on_theme_toggle)
+    apply_theme(theme_name)
 
     def check_update_async():
         """后台检查配套 App 是否有新版本（exe 随 App release 发布）"""

@@ -150,7 +150,9 @@ DEFAULT_CONFIG = {
     "port": DEFAULT_PORT,
     "backup_dir": "",
     "dir_history": [],
+    "theme": "light",  # light / dark
 }
+THEMES = ("light", "dark")
 
 
 def load_config():
@@ -173,6 +175,8 @@ def load_config():
                 hist = data.get("dir_history")
                 if isinstance(hist, list):
                     cfg["dir_history"] = [d for d in hist if isinstance(d, str) and d]
+                if data.get("theme") in THEMES:
+                    cfg["theme"] = data["theme"]
         else:
             # 旧版 cred 文件（仅账号密码）迁移，首次保存后即写入新配置文件
             if os.path.exists(LEGACY_CRED_PATH):
@@ -190,7 +194,7 @@ def load_config():
     return cfg
 
 
-def save_config(user, password, port, backup_dir, dir_history=None):
+def save_config(user, password, port, backup_dir, dir_history=None, theme="light"):
     """保存配置（明文，仅限可信局域网场景；与旧版 cred 文件同口径）"""
     data = {
         "user": user,
@@ -198,6 +202,7 @@ def save_config(user, password, port, backup_dir, dir_history=None):
         "port": int(port),
         "backup_dir": backup_dir,
         "dir_history": list(dir_history or [])[:10],
+        "theme": theme if theme in THEMES else "light",
     }
     try:
         with open(CONFIG_PATH, "w", encoding="utf-8") as f:

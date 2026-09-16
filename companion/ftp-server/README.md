@@ -31,6 +31,8 @@ Windows 上一键部署 FTP 备份服务器,配合 [DataBackup 定制版](https:
 5. 手机 DataBackup → 云备份 → FTP，照卡片填写
 6. 用完点 **「停止」** 或直接关窗口（关窗口会先停止服务）
 
+界面左下角有 **「深色模式」** 勾选框，可随时在浅色/深色之间切换（零依赖实现，选择会记住）。
+
 配置文件在 `%USERPROFILE%\.databackup_ftp_config.json`（明文，仅限可信局域网场景）。
 
 命令行参数会**预填**到界面（不做无界面安装）：`DataBackupFTPServer.exe <用户名> <密码> <备份目录>`。

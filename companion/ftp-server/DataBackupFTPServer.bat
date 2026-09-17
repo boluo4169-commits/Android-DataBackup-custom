@@ -457,14 +457,50 @@ class FtpService:
             return ("%s@%s" % (name, ip)) if ip else ""
 
         class CompanionFTPHandler(FTPHandler):
+            # 日志区只给「人看得懂的中文」：pyftpdlib 原始 log()/logline() 里的命令流
+            # （ready / FEAT / USER / PASS / TYPE / PASV / Goodbye…）全部丢弃，
+            # 关键节点改由下面的回调输出；传输结果从 log() 的 "completed=1" 行里解析。
             # pyftpdlib 2.2.0 签名: log(msg, logfun=logger.info) / logerror(msg)
-            # 覆盖 log 即覆盖「登录成功 + 传输完成 + 白名单命令(DELE/RMD/CWD/MKD…)」；
-            # logline 是 DEBUG 开关控制的逐条命令流，不覆盖（日志区没必要刷屏）。
+            _login_user = ""
+
             def log(self, msg, logfun=None):
-                service._log("%s %s" % (_prefix(self), msg))
+                text = str(msg)
+                if "completed=1" in text:
+                    head, _, tail = text.partition(" completed=1 bytes=")
+                    size = tail.split(" ", 1)[0] if tail else "?"
+                    verb = {"STOR": "上传完成", "RETR": "下载完成", "APPE": "追加完成"}.get(
+                        head.split(" ", 1)[0], "传输完成"
+                    )
+                    path = head.split(" ", 1)[1] if " " in head else head
+                    service._log("%s: %s（%s 字节）" % (verb, path, size))
+                    return
+                # 文件/目录类命令翻译成中文，其余（握手、编码、被动模式、退出等）不显示
+                for cmd, label in (
+                    ("DELE", "删除文件"),
+                    ("RMD", "删除目录"),
+                    ("MKD", "新建目录"),
+                    ("RNFR", "重命名"),
+                    ("RNTO", "重命名为"),
+                    ("CWD", "切换目录"),
+                ):
+                    if text.startswith(cmd + " "):
+                        # pyftpdlib 的消息尾部会带 FTP 状态码（如 "DELE <path> 250"），去掉
+                        detail = text[len(cmd) + 1:].rstrip()
+                        if detail.rsplit(" ", 1)[-1].isdigit():
+                            detail = detail.rsplit(" ", 1)[0]
+                        service._log("%s: %s" % (label, detail))
+                        return
 
             def logerror(self, msg):
                 service._log("%s [错误] %s" % (_prefix(self), msg))
+
+            def on_login(self, username):
+                self._login_user = username or ""
+                # 手机端点「测试通信」就是连接 + 登录，走到这里即可确认链路通
+                service._log("通信正常: 账号 %s 登录成功（来自 %s）" % (username, self.remote_ip))
+
+            def on_login_failed(self, username, password):
+                service._log("登录失败: 账号 %s（来自 %s）" % (username or "(空)", self.remote_ip))
 
             def on_connect(self):
                 service.connections += 1

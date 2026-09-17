@@ -1,5 +1,6 @@
 package com.xayah.feature.main.system
 
+import android.annotation.SuppressLint
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.ExperimentalAnimationApi
@@ -64,6 +65,10 @@ fun SystemDataRoute(
     SystemDataScreen(uiState = uiState, viewModel = viewModel)
 }
 
+// system_data_schema_warning_desc 在本模块是 ids.xml 里的空占位符（本模块依赖不到 :app，
+// 靠 app 模块同名资源在运行时覆盖）。lint 只看得到那个空串，于是误报「给不含格式符的串传参」，
+// 抑制掉；同类写法在 core/service 里也有（AbstractProcessingService / AbstractBackupService）。
+@SuppressLint("StringFormatInvalid")
 @OptIn(ExperimentalMaterial3Api::class, ExperimentalAnimationApi::class, ExperimentalFoundationApi::class)
 @Composable
 internal fun SystemDataScreen(

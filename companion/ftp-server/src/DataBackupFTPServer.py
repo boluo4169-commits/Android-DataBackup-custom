@@ -239,11 +239,6 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
 
     ttk.Button(card_buttons, text="复制全部", command=copy_card).pack(side=tk.LEFT)
     ttk.Button(card_buttons, text="刷新地址", command=refresh_card).pack(side=tk.LEFT, padx=(6, 0))
-    # 容易踩的坑：卡片里「远程路径」是默认值 /，手机上那个账号可能填的是子目录
-    ttk.Label(
-        card_buttons,
-        text="提示：远程路径留 / 就用备份目录本身；填 pad 则存到 <备份目录>\\pad\\",
-    ).pack(side=tk.LEFT, padx=(10, 0))
 
     # ---------- 日志 ----------
     log_box = ttk.LabelFrame(root, text="运行日志")
@@ -371,9 +366,10 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
         command=lambda: webbrowser.open(ftp_core.REPO_URL),
     ).pack(side=tk.LEFT, padx=(8, 0))
 
-    is_dark_var = tk.BooleanVar(value=(theme_name == "dark"))
-    theme_check = ttk.Checkbutton(bottom, text="深色模式", variable=is_dark_var)
-    theme_check.pack(side=tk.LEFT, padx=(12, 0))
+    # 主题切换用按钮而不是复选框：clam 的复选框选中字形是个「X」，深色下很扎眼，
+    # 而且这个字形的颜色/形状在 ttk 里改不干净（2026-09-17 用户反馈）。按钮跟着界面其他按钮走，最省心。
+    theme_button = ttk.Button(bottom, text="切换到深色", width=12)
+    theme_button.pack(side=tk.LEFT, padx=(12, 0))
 
     ttk.Label(
         bottom,
@@ -410,18 +406,14 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
             foreground=[("disabled", pal["muted"])],
         )
         style.configure(
-            "TCheckbutton", background=pal["bg"], foreground=pal["text"],
-            indicatorcolor=pal["field"],
-        )
-        style.map("TCheckbutton", background=[("active", pal["bg"])])
-        style.configure(
             "TEntry", fieldbackground=pal["field"], foreground=pal["text"],
             insertcolor=pal["text"], bordercolor=pal["border"],
+            lightcolor=pal["border"], darkcolor=pal["border"],
         )
         style.configure(
             "TCombobox", fieldbackground=pal["field"], background=pal["btn"],
             foreground=pal["text"], arrowcolor=pal["text"],
-            bordercolor=pal["border"],
+            bordercolor=pal["border"], lightcolor=pal["border"], darkcolor=pal["border"],
         )
         style.map(
             "TCombobox",
@@ -455,8 +447,9 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
 
     def on_theme_toggle():
         nonlocal theme_name
-        theme_name = "dark" if is_dark_var.get() else "light"
+        theme_name = "light" if theme_name == "dark" else "dark"
         apply_theme(theme_name)
+        theme_button.configure(text="切换到浅色" if theme_name == "dark" else "切换到深色")
         log("[界面] 已切换到%s模式" % ("深色" if theme_name == "dark" else "浅色"))
         try:
             ftp_core.save_config(
@@ -597,7 +590,10 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
         log("[提示] 端口 %d 已被占用，可能是其它 FTP 服务正在运行" % _current_port())
     refresh_card()
     pump_log_queue()
-    theme_check.configure(command=on_theme_toggle)
+    theme_button.configure(
+        command=on_theme_toggle,
+        text="切换到浅色" if theme_name == "dark" else "切换到深色",
+    )
     apply_theme(theme_name)
 
     def check_update_async():

@@ -62,7 +62,9 @@ class FTPClientImpl(private val entity: CloudEntity, private val extra: FTPExtra
             autodetectUTF8 = true
             connect(entity.host, extra.port)
             soTimeout = 300_000
-            if (login(entity.user, entity.pass).not()) throw LoginException("Failed to login, user: ${entity.user}, pass: ${entity.pass}.")
+            // 提示文案里不要带密码：这条消息会显示在界面上、也会进日志，用户一截图就外泄
+            // （2026-09-17 用户反馈实例）。排查登录失败只看用户名 + 服务端应答码就够了。
+            if (login(entity.user, entity.pass).not()) throw LoginException("Failed to login, user: ${entity.user}.")
             enterLocalPassiveMode()
             val fileType = FTP.BINARY_FILE_TYPE
             if (setFileType(fileType).not()) throw LoginException("Failed to set file type: $fileType.")

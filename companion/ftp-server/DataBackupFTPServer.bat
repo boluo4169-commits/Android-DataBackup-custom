@@ -1,8 +1,8 @@
 @echo off
 chcp 65001 >nul
 setlocal EnableExtensions EnableDelayedExpansion
-set "SCRIPT_VER=2.0"
-title DataBackup Companion - FTP Backup Server v2.0 (GUI)
+set "SCRIPT_VER=2.5"
+title DataBackup Companion - FTP Backup Server v2.5 (GUI)
 
 REM ============================================================
 REM  DataBackup Companion - FTP Backup Server (Windows, GUI)
@@ -195,12 +195,14 @@ import json
 import logging
 import os
 import platform
+import re
 import secrets
 import shutil
 import socket
 import string
 import subprocess
 import sys
+import tempfile
 import threading
 import time
 import zipfile
@@ -214,7 +216,7 @@ except ImportError:  # 由调用方决定如何提示（GUI 弹窗 / 控制台�
 
 
 # companion 自身的版本号（独立于 App；更新时手动 bump 这里）
-COMPANION_VERSION = "v2.0"
+COMPANION_VERSION = "v2.5"
 REPO_URL = "https://github.com/boluo4169-commits/Android-DataBackup-custom"
 
 DEFAULT_PORT = int(os.environ.get("FTP_PORT", "2121"))
@@ -322,6 +324,62 @@ def port_in_use(port):
         return True
     finally:
         s.close()
+
+
+def port_owner(port):
+    """查端口占用者，返回「进程名 (PID 123)」；查不到返回空串。
+
+    只看 LISTENING 的连接；仅 Windows 有效（netstat + tasklist），失败一律静默返回空。
+    有了它才能区分「占用 2121 的是本工具」还是「别的 FTP 软件」—— 老版本只报
+    「已被占用」，用户和我们都没法判断。
+    """
+    try:
+        out = subprocess.run(
+            ["netstat", "-ano", "-p", "TCP"],
+            capture_output=True, text=True, timeout=10, errors="replace",
+        ).stdout
+    except Exception:
+        return ""
+
+    pids = set()
+    for line in out.splitlines():
+        parts = line.split()
+        # 数据行形如: TCP  0.0.0.0:2121  0.0.0.0:0  LISTENING  9960
+        if len(parts) >= 5 and parts[0].upper() == "TCP" and parts[3].upper() == "LISTENING":
+            if parts[1].endswith(":%d" % port):
+                pids.add(parts[4])
+    if not pids:
+        return ""
+
+    owners = []
+    for pid in sorted(pids):
+        name = ""
+        try:
+            csv = subprocess.run(
+                ["tasklist", "/FI", "PID eq %s" % pid, "/FO", "CSV", "/NH"],
+                capture_output=True, text=True, timeout=10, errors="replace",
+            ).stdout.strip()
+            if csv and csv.startswith('"'):
+                name = csv.split(",")[0].strip('"')
+        except Exception:
+            pass
+        owners.append("%s (PID %s)" % (name or "未知进程", pid))
+    return "、".join(owners)
+
+
+def describe_port(port, service_running=False):
+    """端口状态的一句话描述，用于诊断报告"""
+    if not port_in_use(port):
+        return "空闲"
+    owner = port_owner(port)
+    if service_running:
+        return "已被占用（本工具服务运行中%s）" % ("；占用进程 %s" % owner if owner else "")
+    if not owner:
+        return "已被占用（查不到占用进程，可能权限不足或已被其它 FTP 服务占）"
+    # 无头诊断（bat --diagnose）不知道自己是否在跑，占用的也是 python/pythonw 时无法断定
+    if os.path.basename(owner.split(" ")[0]).lower().startswith("python"):
+        return "已被占用（占用进程 %s）—— 若界面显示「服务运行中」则属正常；否则可能是其它 FTP 软件，建议换端口" % owner
+    return "已被占用（占用进程 %s）—— 不是本工具，可能是其它 FTP 软件，建议换端口" % owner
 
 
 # ---------------------------------------------------------------------------
@@ -678,7 +736,302 @@ def human_size(num):
     return "%.1f B" % num
 
 
-def collect_environment(backup_dir, port):
+# ---------------------------------------------------------------------------
+# 日志落盘（对标手机端 LogUtil：日志常驻磁盘 + 滚动保留 + 一键打包）
+#   以前日志只留在界面文本框里，进程一退就没了，诊断包里一条日志都没有 ——
+#   「手机到底连没连上、被拒了几次」全靠用户口述，定位成本高。
+# ---------------------------------------------------------------------------
+LOG_DIR_NAME = "DataBackupFTP"
+LOG_MAX_FILES = 5  # 滚动保留的日志文件个数
+LOG_TAIL_LINES = 300  # 诊断包里最多带多少行
+
+_log_path = None
+_log_lock = threading.Lock()
+
+
+def log_dir():
+    """日志目录：固定在临时目录下，**绝不写进用户的备份目录**（避免污染备份数据）"""
+    return os.path.join(tempfile.gettempdir(), LOG_DIR_NAME, "logs")
+
+
+def _open_log():
+    global _log_path
+    os.makedirs(log_dir(), exist_ok=True)
+    _log_path = os.path.join(
+        log_dir(), "log_%s.txt" % datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+    )
+
+
+def _prune_logs():
+    """只保留最近 LOG_MAX_FILES 个日志文件"""
+    try:
+        names = sorted(
+            n for n in os.listdir(log_dir()) if n.startswith("log_") and n.endswith(".txt")
+        )
+        for name in names[:-LOG_MAX_FILES]:
+            try:
+                os.remove(os.path.join(log_dir(), name))
+            except OSError:
+                pass
+    except Exception:
+        pass
+
+
+def log_to_file(text, tag=""):
+    """追加一行日志（带时间戳）。日志出错绝不能影响主流程，一律静默。"""
+    global _log_path
+    if not text:
+        return
+    try:
+        with _log_lock:
+            if _log_path is None:
+                _open_log()
+                _prune_logs()
+            line = "[%s]%s %s\n" % (
+                datetime.datetime.now().strftime("%H:%M:%S"),
+                (" %s" % tag if tag else ""),
+                str(text).rstrip(),
+            )
+            with open(_log_path, "a", encoding="utf-8", errors="replace") as f:
+                f.write(line)
+    except Exception:
+        pass
+
+
+def recent_log_text(max_lines=LOG_TAIL_LINES):
+    """诊断包用：返回最近一个日志文件的末尾若干行（含来源说明）"""
+    try:
+        d = log_dir()
+        names = sorted(n for n in os.listdir(d) if n.startswith("log_") and n.endswith(".txt"))
+        if not names:
+            return ""
+        path = os.path.join(d, names[-1])
+        with open(path, encoding="utf-8", errors="replace") as f:
+            lines = f.read().splitlines()
+        tail = lines[-max_lines:]
+        header = [
+            "# 日志目录: %s" % d,
+            "# 文件: %s" % names[-1],
+            "# 共 %d 行，以下为后 %d 行%s" % (len(lines), len(tail), "（已截断）" if len(lines) > max_lines else ""),
+            "",
+        ]
+        return "\n".join(header + tail)
+    except Exception:
+        return ""
+
+
+def is_admin():
+    """当前进程是否管理员（非管理员时防火墙相关探测可能静默失败）"""
+    if os.name != "nt":
+        return None
+    try:
+        import ctypes
+
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except Exception:
+        return None
+
+
+def running_mode():
+    """运行方式：打包 exe / 源码，供诊断判断"""
+    return "exe（PyInstaller 打包）" if getattr(sys, "frozen", False) else "源码/脚本"
+
+
+def probe_port_banner(port, host="127.0.0.1", timeout=2.0):
+    """连上端口读一行问候语 —— 用来判断「占着端口的是不是本工具」。
+
+    只读不登录，避免往日志里塞测试用的登录记录。连不上/无响应返回空串。
+    """
+    try:
+        s = socket.create_connection((host, port), timeout=timeout)
+        s.settimeout(timeout)
+        try:
+            data = s.recv(256)
+        finally:
+            s.close()
+        if not data:
+            return ""
+        return data.decode("utf-8", errors="replace").strip().splitlines()[0]
+    except Exception:
+        return ""
+
+
+def _decode_console(raw):
+    """按控制台编码解码系统命令的字节输出。
+
+    中文 Windows 上 `netsh` 输出的是 **GBK** 字节；若按 UTF-8 解会得到一片乱码，
+    导致按英文字段名（Enabled/Program）匹配全部失效 —— 2026-09-17 实测踩到。
+    另外字段名与取值本身也会本地化（`已启用: 是` / `操作: 阻止`），所以统一用
+    「英文 or 中文」两套标签来识别。
+    """
+    best = ""
+    for enc in ("utf-8", "gbk", "cp936"):
+        try:
+            text = raw.decode(enc)
+        except (UnicodeDecodeError, LookupError):
+            continue
+        if any(k in text for k in ("Rule Name", "规则名称", "Enabled", "已启用", "程序")):
+            return text
+        if not best:
+            best = text
+    return best or raw.decode("utf-8", errors="replace")
+
+
+def _run_console(args, timeout=25):
+    """跑系统命令并返回解码后的文本（失败返回空串）"""
+    try:
+        raw = subprocess.run(args, capture_output=True, timeout=timeout).stdout
+    except Exception:
+        return ""
+    return _decode_console(raw or b"")
+
+
+# netsh 字段标签（英文 / 中文两套）
+_NETSH_LABELS = {
+    "name": r"(?:Rule Name|规则名称)",
+    "enabled": r"(?:Enabled|已启用)",
+    "action": r"(?:Action|操作)",
+    "program": r"(?:Program|程序)",
+    "profiles": r"(?:Profiles|配置文件)",
+}
+_YES_WORDS = ("yes", "true", "是")
+
+
+def _netsh_field(text, key):
+    m = re.search(r"%s\s*:\s*(.*)" % _NETSH_LABELS[key], text)
+    return m.group(1).strip() if m else ""
+
+
+def firewall_rule_state(name):
+    """查某条入站规则：(是否存在, 是否启用)。查不到返回 (False, None)"""
+    text = _run_console(
+        ["netsh", "advfirewall", "firewall", "show", "rule", "name=%s" % name], timeout=15
+    )
+    if not text.strip():
+        return (False, None)
+    if not _netsh_field(text, "name"):
+        # 没有「规则名称」字段 = 规则不存在（各语言的提示语不同，不靠提示语判断）
+        return (False, None)
+    enabled = _netsh_field(text, "enabled").lower()
+    return (True, (enabled in _YES_WORDS) if enabled else None)
+
+
+def blocked_programs(keywords=("python",)):
+    """扫入站规则里「针对某程序的 Block 规则」。
+
+    踩过的坑：Windows 防火墙里若存在 `python.exe` 的 Block 规则，用 python.exe 起的服务
+    **收不到任何连接**（netstat 看不到、服务端无日志），而 bat/GUI 走 pythonw.exe 不受影响。
+    ★ 必须带 verbose，否则 netsh 不输出「程序」字段（2026-09-17 实测）。
+    返回给人读的字符串列表。
+    """
+    text = _run_console(
+        ["netsh", "advfirewall", "firewall", "show", "rule", "name=all", "dir=in", "verbose"],
+        timeout=30,
+    )
+    if not text:
+        return []
+
+    hits = []
+    cur = []
+
+    def flush(block):
+        if not block:
+            return
+        body = "\n".join(block)
+        action = _netsh_field(body, "action").lower()
+        if action not in ("block", "阻止"):
+            return
+        program = _netsh_field(body, "program")
+        if not program or not any(k.lower() in program.lower() for k in keywords):
+            return
+        hits.append(
+            "%s | 程序 %s | 配置文件 %s"
+            % (
+                _netsh_field(body, "name") or "?",
+                program,
+                _netsh_field(body, "profiles") or "?",
+            )
+        )
+
+    for line in text.splitlines():
+        if re.match(r"^\s*%s\s*:" % _NETSH_LABELS["name"], line) and cur:
+            flush(cur)
+            cur = [line]
+        else:
+            cur.append(line)
+    flush(cur)
+    return hits
+
+
+def network_details():
+    """网卡明细（地址/掩码/网关/是否虚拟网卡）。用 CIM 查询，失败返回空列表。"""
+    ps = (
+        "Get-CimInstance Win32_NetworkAdapterConfiguration -Filter \"IPEnabled=True\" | "
+        "ForEach-Object { '{0}|{1}|{2}|{3}' -f $_.Description, ($_.IPAddress -join ','), "
+        "($_.IPSubnet -join ','), (($_.DefaultIPGateway | ForEach-Object { $_ }) -join ',') }"
+    )
+    try:
+        text = subprocess.run(
+            ["powershell", "-NoProfile", "-Command", ps],
+            capture_output=True, text=True, timeout=20, errors="replace",
+        ).stdout
+    except Exception:
+        return []
+
+    out = []
+    for line in text.splitlines():
+        parts = [p.strip() for p in line.split("|")]
+        if len(parts) < 4:
+            continue
+        desc, ips, masks, gws = parts[0], parts[1], parts[2], parts[3]
+        lowered = desc.lower()
+        virtual = any(
+            k in lowered
+            for k in ("vmware", "virtualbox", "tap-", "hyper-v", "wintun", "tun", "radmin", "vpn", "clash")
+        )
+        for ip in [x for x in ips.split(",") if x and ":" not in x]:
+            out.append(
+                {
+                    "desc": desc,
+                    "ip": ip,
+                    "mask": (masks.split(",")[0] if masks else ""),
+                    "gateway": (gws.split(",")[0] if gws else ""),
+                    "virtual": virtual,
+                }
+            )
+    return out
+
+
+def dir_writable(path):
+    """备份目录可写测试（写临时文件再删），返回 (是否可写, 说明)"""
+    try:
+        os.makedirs(path, exist_ok=True)
+        probe = os.path.join(path, "__write_test__")
+        with open(probe, "w", encoding="utf-8") as f:
+            f.write("x")
+        os.remove(probe)
+        return (True, "可写")
+    except Exception as e:
+        return (False, str(e))
+
+
+def passive_ports_occupied(sample=5):
+    """被动端口段抽查：返回被占用的端口列表（传文件失败的常见原因之一）"""
+    if PASSIVE_COUNT <= 0:
+        return []
+    step = max(1, PASSIVE_COUNT // sample)
+    ports = [PASSIVE_MIN + i * step for i in range(sample) if PASSIVE_MIN + i * step < PASSIVE_MIN + PASSIVE_COUNT]
+    busy = []
+    for p in ports:
+        try:
+            if port_in_use(p):
+                busy.append(p)
+        except Exception:
+            pass
+    return busy
+
+
+def collect_environment(backup_dir, port, service_running=False, password="", extra=None):
     """环境信息文本"""
     lines = []
     lines.append("DataBackup Companion 诊断报告")
@@ -689,33 +1042,74 @@ def collect_environment(backup_dir, port):
     lines.append("Python: %s" % sys.version.replace("\n", " "))
     lines.append("主机名: %s" % socket.gethostname())
     lines.append("局域网 IP: %s" % (" 或 ".join(list_lan_ips())))
+    # 网卡明细：掩码/网关/是否虚拟网卡 —— 用户常常不知道该填哪个地址
+    for nic in network_details():
+        lines.append(
+            "  网卡: %s/%s 网关 %s [%s]  %s"
+            % (
+                nic["ip"], nic["mask"] or "?", nic["gateway"] or "无",
+                "虚拟网卡·不要填" if nic["virtual"] else "真实网卡·手机填这个",
+                nic["desc"],
+            )
+        )
     lines.append("备份目录: %s" % backup_dir)
+    writable, why = dir_writable(backup_dir)
+    lines.append("备份目录可写: %s" % ("是" if writable else "否（%s）" % why))
     try:
         usage = shutil.disk_usage(os.path.abspath(backup_dir) if os.path.exists(backup_dir) else ".")
         lines.append("磁盘空间: 总 %s / 剩余 %s" % (human_size(usage.total), human_size(usage.free)))
     except Exception as e:
         lines.append("磁盘空间: 读取失败 (%s)" % e)
-    lines.append("端口 %d: %s" % (port, "已被占用（可能有其他 FTP 服务）" if port_in_use(port) else "空闲"))
+    lines.append("端口 %d: %s" % (port, describe_port(port, service_running)))
+    banner = probe_port_banner(port)
+    if banner:
+        lines.append("端口 %d 的 FTP 问候语: %s" % (port, banner))
+        lines.append(
+            "是否本工具的服务: %s"
+            % ("是" if "DataBackup Companion" in banner else "否（问候语不匹配，占端口的是其它 FTP 软件）")
+        )
+    elif port_in_use(port):
+        lines.append("端口 %d 的 FTP 问候语: 连上了但没吐数据 —— 多半不是 FTP 服务（或不是本工具）" % port)
     lines.append("被动端口段: %d ~ %d" % (PASSIVE_MIN, PASSIVE_MIN + PASSIVE_COUNT - 1))
+    busy = passive_ports_occupied()
+    lines.append("被动端口抽查: %s" % ("被占用 %s" % busy if busy else "抽查端口均空闲"))
+    # 本工具自身信息
+    lines.append("工具版本: %s（构建 tag %s）" % (COMPANION_VERSION, app_build_tag()))
+    lines.append("运行方式: %s" % running_mode())
+    admin = is_admin()
+    lines.append("管理员权限: %s" % ("是" if admin else ("否" if admin is False else "未知")))
     # 防火墙当前配置文件状态（可能需管理员，失败则记录）
-    try:
-        out = subprocess.run(
-            ["netsh", "advfirewall", "show", "currentprofile"],
-            capture_output=True, text=True, timeout=10, errors="replace",
-        ).stdout
-        lines.append("防火墙(当前配置): %s" % " ".join(out.split()) if out.strip() else "无输出")
-    except Exception as e:
-        lines.append("防火墙: 查询失败 (%s)" % e)
+    profile_text = _run_console(["netsh", "advfirewall", "show", "currentprofile"], timeout=15)
+    lines.append(
+        "防火墙(当前配置): %s" % (" ".join(profile_text.split()) if profile_text.strip() else "无输出")
+    )
+    # 我们自己的两条规则是否真的生效
+    for name in ("DataBackup FTP %d" % port, "DataBackup FTP Passive %d-%d" % (PASSIVE_MIN, PASSIVE_MIN + PASSIVE_COUNT - 1)):
+        exists, enabled = firewall_rule_state(name)
+        lines.append(
+            "防火墙规则[%s]: %s" % (name, "缺失" if not exists else ("已启用" if enabled else "存在但未启用"))
+        )
+    # 程序级 Block 规则（用 python.exe 起服务会被它拦，且表现是「毫无反应」）
+    blocked = blocked_programs()
+    if blocked:
+        lines.append("!! 检测到程序级阻止规则（用它起服务会收不到任何连接，建议用 bat/exe 的 pythonw 启动）：")
+        for b in blocked:
+            lines.append("   %s" % b)
     return "\n".join(lines) + "\n"
 
 
-def collect_ftp_status(user, port):
-    """FTP 服务状态文本（密码不输出）"""
+def collect_ftp_status(user, port, password="", service_running=False, backup_dir="", theme=""):
+    """FTP 服务状态文本（密码永不输出，只记是否为空与长度）"""
     lines = []
     lines.append("[FTP 服务]")
-    lines.append("用户名: %s（密码不输出）" % (user or DEFAULT_USER))
+    lines.append("用户名: %s" % (user or DEFAULT_USER))
+    lines.append("密码: %s" % ("未设置（空）" if not password else "已设置，长度 %d（不输出内容）" % len(password)))
     lines.append("监听端口: %d" % port)
     lines.append("端口状态: %s" % ("已被占用" if port_in_use(port) else "空闲"))
+    lines.append("服务状态: %s" % ("运行中" if service_running else "未运行（诊断模式不会启动服务）"))
+    lines.append("备份目录: %s" % (backup_dir or ""))
+    if theme:
+        lines.append("界面主题: %s" % theme)
     lines.append("自检: 诊断模式未启动服务，跳过（正常启动时会自动自检）")
     return "\n".join(lines) + "\n"
 
@@ -886,26 +1280,78 @@ def collect_summary_json(backup_dir, anomalies, port):
     }
 
 
-def create_diagnose_zip(user, backup_dir, port):
+DIAGNOSE_README = """DataBackup Companion 诊断包
+================================================
+配合手机端 DataBackup 的「导出日志」一起发来，定位效率最高。
+
+文件说明
+------------------------------------------------
+  README.txt          本说明
+  environment.txt     系统/网络/端口/防火墙/版本等环境信息
+  ftp_status.txt      账号与端口状态（**密码永不写入**，只记录是否为空与长度）
+  file_inventory.txt  备份目录的文件清单
+  integrity_check.txt 归档与 .md5 / config json 的完整性检查
+  session_logs.txt    本工具的运行日志（最近若干行，含连接与登录记录）
+  diagnose.json       以上信息的结构化版本，便于脚本比对
+
+自查顺序（多数问题在前两步就能看出来）
+------------------------------------------------
+  1. environment.txt 里「端口 N」那一行
+       - 「已被占用（占用进程 xxx）—— 不是本工具」→ 换端口或关掉那个程序
+       - 「已被占用（本工具服务运行中）」→ 正常，看第 2 步
+  2. session_logs.txt
+       - 有「客户端已连接」+「通信正常: 账号 xxx」→ 手机连上了，问题在后面
+       - 有「登录失败: 账号 xxx」→ 手机端填的用户名/密码与电脑不一致
+       - 手机点测试通信后**完全没有任何新行** → 手机连的不是本工具，多半是端口被别的软件占了
+  3. environment.txt 里「防火墙规则[...]」与「程序级阻止规则」
+       - 规则「缺失」或检测到 Block 规则 → 以管理员身份重新运行一次本工具（bat 会自动加规则）
+  4. environment.txt 里「网卡」各行
+       - 手机要填标着「真实网卡·手机填这个」的那个地址；虚拟网卡（VMware/Clash/VPN）不要填
+
+隐私提示
+------------------------------------------------
+  诊断包不含密码；但日志里可能包含内网 IP 与账号名，转发前请确认可接受。
+"""
+
+
+def create_diagnose_zip(user, backup_dir, port, service_running=False, password="", theme=""):
     """生成诊断 zip，返回 (zip 路径, 异常条数)；失败抛异常由调用方处理。
-    注意：诊断包不再打印任何东西——GUI 与控制台各自决定怎么展示。"""
+    注意：诊断包不再打印任何东西——GUI 与控制台各自决定怎么展示。
+    service_running 由调用方告知（GUI 知道自己的服务状态），用于区分「端口是本工具占的」
+    还是「被别的软件占了」。"""
     backup_dir = backup_dir or default_backup_dir()
     os.makedirs(backup_dir, exist_ok=True)
 
-    env_text = collect_environment(backup_dir, port)
-    ftp_text = collect_ftp_status(user, port)
+    env_text = collect_environment(backup_dir, port, service_running)
+    ftp_text = collect_ftp_status(user, port, password, service_running, backup_dir, theme)
     inv_text = collect_file_inventory(backup_dir)
     integrity_text, anomalies = collect_integrity(backup_dir)
     summary = collect_summary_json(backup_dir, anomalies, port)
+    summary["port_owner"] = port_owner(port) if port_in_use(port) else ""
+    summary["service_running"] = bool(service_running)
+    summary["version"] = COMPANION_VERSION
+    summary["build_tag"] = app_build_tag()
+    summary["running_mode"] = running_mode()
+    summary["admin"] = is_admin()
+    summary["port_banner"] = probe_port_banner(port)
+    summary["nics"] = network_details()
 
     ts = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
     zip_path = os.path.join(backup_dir, "DataBackup_diagnose_%s.zip" % ts)
 
     with zipfile.ZipFile(zip_path, "w", zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("README.txt", DIAGNOSE_README, compress_type=zipfile.ZIP_DEFLATED)
         zf.writestr("environment.txt", env_text, compress_type=zipfile.ZIP_DEFLATED)
         zf.writestr("ftp_status.txt", ftp_text, compress_type=zipfile.ZIP_DEFLATED)
         zf.writestr("file_inventory.txt", inv_text, compress_type=zipfile.ZIP_DEFLATED)
         zf.writestr("integrity_check.txt", integrity_text, compress_type=zipfile.ZIP_DEFLATED)
+        # 会话日志：判断「手机连没连上 / 登录被拒几次」的关键材料
+        log_text = recent_log_text()
+        zf.writestr(
+            "session_logs.txt",
+            log_text or "（未采集到日志：本机尚未运行过服务，或日志目录不可写）",
+            compress_type=zipfile.ZIP_DEFLATED,
+        )
         zf.writestr(
             "diagnose.json",
             json.dumps(summary, ensure_ascii=False, indent=2),
@@ -927,6 +1373,7 @@ Usage:
     DataBackupFTPServer.exe --diagnose [--backup-dir=<路径>]   无界面生成诊断包
     DataBackupFTPServer.exe --exit-after-selftest <user> <pass> <dir>  无界面自检（CI 冒烟）
 """
+import datetime
 import os
 import queue
 import subprocess
@@ -970,10 +1417,14 @@ def attach_parent_console():
 
 
 def out(text=""):
-    """无界面模式的输出（无控制台时静默丢弃，不影响退出码）"""
+    """无界面模式的输出（无控制台时静默丢弃，不影响退出码）；同时落盘供诊断包回溯"""
     try:
         if sys.stdout is not None:
             print(text)
+    except Exception:
+        pass
+    try:
+        ftp_core.log_to_file(text, tag="[无头]")
     except Exception:
         pass
 
@@ -1149,6 +1600,11 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
 
     ttk.Button(card_buttons, text="复制全部", command=copy_card).pack(side=tk.LEFT)
     ttk.Button(card_buttons, text="刷新地址", command=refresh_card).pack(side=tk.LEFT, padx=(6, 0))
+    # 容易踩的坑：卡片里「远程路径」是默认值 /，手机上那个账号可能填的是子目录
+    ttk.Label(
+        card_buttons,
+        text="提示：远程路径留 / 就用备份目录本身；填 pad 则存到 <备份目录>\\pad\\",
+    ).pack(side=tk.LEFT, padx=(10, 0))
 
     # ---------- 日志 ----------
     log_box = ttk.LabelFrame(root, text="运行日志")
@@ -1158,17 +1614,68 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
     log_widget.configure(state=tk.DISABLED)
 
     def log(text):
-        """界面线程内写日志"""
+        """界面线程内写日志：带时间戳 + 同步落盘（诊断包要靠它回溯）"""
         if not text:
             return
+        stamp = datetime.datetime.now().strftime("%H:%M:%S")
+        line = "[%s] %s" % (stamp, text)
         log_widget.configure(state=tk.NORMAL)
-        log_widget.insert(tk.END, text + "\n")
+        log_widget.insert(tk.END, line + "\n")
         # 超长时裁掉最早的行，避免长时间运行内存膨胀
         line_count = int(log_widget.index("end-1c").split(".")[0])
         if line_count > LOG_MAX_LINES:
             log_widget.delete("1.0", "%d.0" % (line_count - LOG_MAX_LINES))
         log_widget.see(tk.END)
         log_widget.configure(state=tk.DISABLED)
+        ftp_core.log_to_file(text)
+
+    # 日志区右键菜单：复制 / 清空 / 保存到文件（出问题时要能把日志发给维护者）
+    def log_copy():
+        try:
+            selected = log_widget.get(tk.SEL_FIRST, tk.SEL_LAST)
+        except tk.TclError:
+            selected = log_widget.get("1.0", tk.END)
+        if not selected.strip():
+            return
+        root.clipboard_clear()
+        root.clipboard_append(selected)
+        log("[界面] 日志已复制（%d 行）" % len(selected.strip().splitlines()))
+
+    def log_clear():
+        log_widget.configure(state=tk.NORMAL)
+        log_widget.delete("1.0", tk.END)
+        log_widget.configure(state=tk.DISABLED)
+        log("[界面] 日志已清空（磁盘日志仍保留在 %s）" % ftp_core.log_dir())
+
+    def log_save():
+        from tkinter import filedialog
+
+        default = "DataBackup_日志_%s.txt" % datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        path = filedialog.asksaveasfilename(
+            title="保存运行日志", defaultextension=".txt", initialfile=default
+        )
+        if not path:
+            return
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(log_widget.get("1.0", tk.END))
+            log("[界面] 日志已保存: %s" % path)
+        except Exception as e:
+            messagebox.showerror("保存失败", str(e))
+
+    log_menu = tk.Menu(root, tearoff=0)
+    log_menu.add_command(label="复制选中（未选中则复制全部）", command=log_copy)
+    log_menu.add_command(label="保存到文件…", command=log_save)
+    log_menu.add_separator()
+    log_menu.add_command(label="清空日志区", command=log_clear)
+
+    def popup_log_menu(event):
+        try:
+            log_menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            log_menu.grab_release()
+
+    log_widget.bind("<Button-3>", popup_log_menu)
 
     # ---------- 底部 ----------
     bottom = ttk.Frame(root)
@@ -1191,13 +1698,29 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
         def work():
             try:
                 zip_path, anomalies = ftp_core.create_diagnose_zip(
-                    user=user_var.get().strip(), backup_dir=path, port=_current_port()
+                    user=user_var.get().strip(),
+                    backup_dir=path,
+                    port=_current_port(),
+                    service_running=service.is_running,
+                    password=pass_var.get(),
+                    theme=theme_name,
                 )
                 log_queue.put("[诊断] 诊断包已生成: %s（异常 %d 条）" % (zip_path, len(anomalies)))
                 for a in anomalies[:10]:
                     log_queue.put("  x %s" % a)
+                # 生成完顺手问一句要不要打开所在文件夹：用户要的就是把它发给我们
+                folder = os.path.dirname(os.path.abspath(zip_path))
+                if messagebox.askyesno(
+                    "诊断包已生成",
+                    "已生成：\n%s\n\n异常 %d 条\n\n是否打开所在文件夹？"
+                    % (os.path.basename(zip_path), len(anomalies)),
+                ):
+                    try:
+                        os.startfile(folder)  # type: ignore[attr-defined]
+                    except Exception as e:
+                        messagebox.showwarning("打开失败", str(e))
             except Exception as e:
-                log_queue.put("[诊断] 生成失败: %s" % e)
+                log_queue.put("[诊断] 生成失败: %s: %s" % (type(e).__name__, e))
 
         threading.Thread(target=work, daemon=True).start()
 
@@ -1355,10 +1878,15 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
         port = _current_port()
 
         ok, msg = service.start(user, password, path, port)
-        log("[服务] %s" % msg)
         if not ok:
-            messagebox.showerror("无法启动", msg)
+            # 端口被占是最常见的启动失败原因 —— 提示里带上占用进程名，用户才知道该关谁
+            hint = ftp_core.describe_port(port, False)
+            log("[服务] 启动失败: %s（端口 %d %s）" % (msg, port, hint))
+            messagebox.showerror(
+                "无法启动", "%s\n\n端口 %d：%s" % (msg, port, hint)
+            )
             return
+        log("[服务] %s" % msg)
 
         remember_dir(path)
         ftp_core.save_config(user, password, port, path, list(dir_box.cget("values")), theme_name)
@@ -1392,8 +1920,9 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
             drained += 1
             if isinstance(item, tuple) and item[0] == "CONN":
                 count = item[1]
-                extra = "（%d 个连接）" % count if service.is_running else ""
-                status_var.set("● 服务运行中%s" % (extra if count else ""))
+                status_var.set(
+                    "● 服务运行中 · 当前连接 %d" % count if service.is_running else "● 未启动"
+                )
                 continue
             log(item)
         root.after(150, pump_log_queue)

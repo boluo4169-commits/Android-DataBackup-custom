@@ -12,6 +12,7 @@ Usage:
     DataBackupFTPServer.exe --diagnose [--backup-dir=<路径>]   无界面生成诊断包
     DataBackupFTPServer.exe --exit-after-selftest <user> <pass> <dir>  无界面自检（CI 冒烟）
 """
+import datetime
 import os
 import queue
 import subprocess
@@ -55,10 +56,14 @@ def attach_parent_console():
 
 
 def out(text=""):
-    """无界面模式的输出（无控制台时静默丢弃，不影响退出码）"""
+    """无界面模式的输出（无控制台时静默丢弃，不影响退出码）；同时落盘供诊断包回溯"""
     try:
         if sys.stdout is not None:
             print(text)
+    except Exception:
+        pass
+    try:
+        ftp_core.log_to_file(text, tag="[无头]")
     except Exception:
         pass
 
@@ -234,6 +239,11 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
 
     ttk.Button(card_buttons, text="复制全部", command=copy_card).pack(side=tk.LEFT)
     ttk.Button(card_buttons, text="刷新地址", command=refresh_card).pack(side=tk.LEFT, padx=(6, 0))
+    # 容易踩的坑：卡片里「远程路径」是默认值 /，手机上那个账号可能填的是子目录
+    ttk.Label(
+        card_buttons,
+        text="提示：远程路径留 / 就用备份目录本身；填 pad 则存到 <备份目录>\\pad\\",
+    ).pack(side=tk.LEFT, padx=(10, 0))
 
     # ---------- 日志 ----------
     log_box = ttk.LabelFrame(root, text="运行日志")
@@ -243,17 +253,68 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
     log_widget.configure(state=tk.DISABLED)
 
     def log(text):
-        """界面线程内写日志"""
+        """界面线程内写日志：带时间戳 + 同步落盘（诊断包要靠它回溯）"""
         if not text:
             return
+        stamp = datetime.datetime.now().strftime("%H:%M:%S")
+        line = "[%s] %s" % (stamp, text)
         log_widget.configure(state=tk.NORMAL)
-        log_widget.insert(tk.END, text + "\n")
+        log_widget.insert(tk.END, line + "\n")
         # 超长时裁掉最早的行，避免长时间运行内存膨胀
         line_count = int(log_widget.index("end-1c").split(".")[0])
         if line_count > LOG_MAX_LINES:
             log_widget.delete("1.0", "%d.0" % (line_count - LOG_MAX_LINES))
         log_widget.see(tk.END)
         log_widget.configure(state=tk.DISABLED)
+        ftp_core.log_to_file(text)
+
+    # 日志区右键菜单：复制 / 清空 / 保存到文件（出问题时要能把日志发给维护者）
+    def log_copy():
+        try:
+            selected = log_widget.get(tk.SEL_FIRST, tk.SEL_LAST)
+        except tk.TclError:
+            selected = log_widget.get("1.0", tk.END)
+        if not selected.strip():
+            return
+        root.clipboard_clear()
+        root.clipboard_append(selected)
+        log("[界面] 日志已复制（%d 行）" % len(selected.strip().splitlines()))
+
+    def log_clear():
+        log_widget.configure(state=tk.NORMAL)
+        log_widget.delete("1.0", tk.END)
+        log_widget.configure(state=tk.DISABLED)
+        log("[界面] 日志已清空（磁盘日志仍保留在 %s）" % ftp_core.log_dir())
+
+    def log_save():
+        from tkinter import filedialog
+
+        default = "DataBackup_日志_%s.txt" % datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        path = filedialog.asksaveasfilename(
+            title="保存运行日志", defaultextension=".txt", initialfile=default
+        )
+        if not path:
+            return
+        try:
+            with open(path, "w", encoding="utf-8") as f:
+                f.write(log_widget.get("1.0", tk.END))
+            log("[界面] 日志已保存: %s" % path)
+        except Exception as e:
+            messagebox.showerror("保存失败", str(e))
+
+    log_menu = tk.Menu(root, tearoff=0)
+    log_menu.add_command(label="复制选中（未选中则复制全部）", command=log_copy)
+    log_menu.add_command(label="保存到文件…", command=log_save)
+    log_menu.add_separator()
+    log_menu.add_command(label="清空日志区", command=log_clear)
+
+    def popup_log_menu(event):
+        try:
+            log_menu.tk_popup(event.x_root, event.y_root)
+        finally:
+            log_menu.grab_release()
+
+    log_widget.bind("<Button-3>", popup_log_menu)
 
     # ---------- 底部 ----------
     bottom = ttk.Frame(root)
@@ -276,13 +337,29 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
         def work():
             try:
                 zip_path, anomalies = ftp_core.create_diagnose_zip(
-                    user=user_var.get().strip(), backup_dir=path, port=_current_port()
+                    user=user_var.get().strip(),
+                    backup_dir=path,
+                    port=_current_port(),
+                    service_running=service.is_running,
+                    password=pass_var.get(),
+                    theme=theme_name,
                 )
                 log_queue.put("[诊断] 诊断包已生成: %s（异常 %d 条）" % (zip_path, len(anomalies)))
                 for a in anomalies[:10]:
                     log_queue.put("  x %s" % a)
+                # 生成完顺手问一句要不要打开所在文件夹：用户要的就是把它发给我们
+                folder = os.path.dirname(os.path.abspath(zip_path))
+                if messagebox.askyesno(
+                    "诊断包已生成",
+                    "已生成：\n%s\n\n异常 %d 条\n\n是否打开所在文件夹？"
+                    % (os.path.basename(zip_path), len(anomalies)),
+                ):
+                    try:
+                        os.startfile(folder)  # type: ignore[attr-defined]
+                    except Exception as e:
+                        messagebox.showwarning("打开失败", str(e))
             except Exception as e:
-                log_queue.put("[诊断] 生成失败: %s" % e)
+                log_queue.put("[诊断] 生成失败: %s: %s" % (type(e).__name__, e))
 
         threading.Thread(target=work, daemon=True).start()
 
@@ -440,10 +517,15 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
         port = _current_port()
 
         ok, msg = service.start(user, password, path, port)
-        log("[服务] %s" % msg)
         if not ok:
-            messagebox.showerror("无法启动", msg)
+            # 端口被占是最常见的启动失败原因 —— 提示里带上占用进程名，用户才知道该关谁
+            hint = ftp_core.describe_port(port, False)
+            log("[服务] 启动失败: %s（端口 %d %s）" % (msg, port, hint))
+            messagebox.showerror(
+                "无法启动", "%s\n\n端口 %d：%s" % (msg, port, hint)
+            )
             return
+        log("[服务] %s" % msg)
 
         remember_dir(path)
         ftp_core.save_config(user, password, port, path, list(dir_box.cget("values")), theme_name)
@@ -477,8 +559,9 @@ def main_gui(preset_user="", preset_password="", preset_dir=""):
             drained += 1
             if isinstance(item, tuple) and item[0] == "CONN":
                 count = item[1]
-                extra = "（%d 个连接）" % count if service.is_running else ""
-                status_var.set("● 服务运行中%s" % (extra if count else ""))
+                status_var.set(
+                    "● 服务运行中 · 当前连接 %d" % count if service.is_running else "● 未启动"
+                )
                 continue
             log(item)
         root.after(150, pump_log_queue)

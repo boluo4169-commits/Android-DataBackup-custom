@@ -33,8 +33,8 @@ MARKER_HEAD = "###FILE:%s###"
 LAUNCHER = r"""@echo off
 chcp 65001 >nul
 setlocal EnableExtensions EnableDelayedExpansion
-set "SCRIPT_VER=2.0"
-title DataBackup Companion - FTP Backup Server v2.0 (GUI)
+set "SCRIPT_VER=2.5"
+title DataBackup Companion - FTP Backup Server v2.5 (GUI)
 
 REM ============================================================
 REM  DataBackup Companion - FTP Backup Server (Windows, GUI)

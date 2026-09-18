@@ -107,7 +107,11 @@ object LogUtil {
     /**
      * 收集系统级取证信息（需 root，失败静默跳过）：
      * 1. 全系统 logcat 尾部（诊断「恢复后目标应用闪退」类问题的关键证据）；
-     * 2. 系统 dropbox 中最近的 app crash 条目（目标应用崩溃的官方记录）。
+     * 2. 崩溃专用缓冲区（crash），未捕获异常/ANR 在这里留档，比 main 缓冲区保得久；
+     * 3. 系统 dropbox 中最近的 crash / ANR 条目 —— **.gz 必须解压后再读**：
+     *    以前用 head -c 直接读，gzip 二进制被编码替换字符吃掉，ANR 明细永远读不出来
+     *    （2026-09-18 实测：一条 ANR 记录 7188 处 U+FFFD，主线程栈全丢）；
+     * 4. ANR trace（/data/anr/）与原生崩溃墓碑（/data/tombstones/）列表。
      */
     private fun collectSystemEvidence(): String = buildString {
         appendLine("======== System logcat (tail 1000) ========")
@@ -116,25 +120,78 @@ object LogUtil {
             appendLine(r.outString)
         }.onFailure { appendLine("unavailable: ${it.message}") }
         appendLine("")
+
+        appendLine("======== System logcat crash buffer ========")
+        runCatching {
+            val r = runBlocking { BaseUtil.execute("logcat", "-b", "crash", "-d", "-t", "300", log = false) }
+            appendLine(r.outString.ifBlank { "(empty)" })
+        }.onFailure { appendLine("unavailable: ${it.message}") }
+        appendLine("")
+
         appendLine("======== System dropbox recent crashes ========")
         runCatching {
             val ls = runBlocking { BaseUtil.execute("ls", "-t", "/data/system/dropbox", log = false) }
+            // tombstone 也要收：原生崩溃只在这里，且实测设备上最新几条都是它
             val candidates = ls.out
                 .map { it.trim() }
-                .filter { it.contains("crash", ignoreCase = true) || it.contains("anr", ignoreCase = true) }
+                .filter {
+                    it.contains("crash", ignoreCase = true) ||
+                        it.contains("anr", ignoreCase = true) ||
+                        it.contains("tombstone", ignoreCase = true)
+                }
                 .take(3)
             if (candidates.isEmpty()) {
                 appendLine("(no crash entries)")
             } else {
                 candidates.forEach { name ->
                     appendLine("---- $name ----")
-                    // 单条目截断 20000 字符，避免超大文件撑爆日志
-                    val cat = runBlocking {
-                        BaseUtil.execute("head", "-c", "20000", com.xayah.core.util.SymbolUtil.shellQuote("/data/system/dropbox/$name"), log = false)
+                    // .dat.gz / .pb 是 proto 二进制，解压出来也是乱码，直接跳过（别重蹈 head -c 的覆辙）
+                    val isBinary = name.endsWith(".pb") || (name.endsWith(".gz") && !name.endsWith(".txt.gz"))
+                    if (isBinary) {
+                        appendLine("(binary entry, skipped)")
+                        return@forEach
                     }
-                    appendLine(cat.outString)
+                    val path = SymbolUtil.shellQuote("/data/system/dropbox/$name")
+                    // dropbox 里大多是 *.txt.gz：解压后再读；zcat / gunzip 谁在就用谁，都不在则标注
+                    val body = if (name.endsWith(".gz")) {
+                        val unzipped = runBlocking { BaseUtil.execute("zcat", path, log = false) }
+                        if (unzipped.outString.isNotBlank()) {
+                            unzipped.outString
+                        } else {
+                            runBlocking { BaseUtil.execute("gunzip", "-c", path, log = false) }.outString
+                        }
+                    } else {
+                        // 单条目截断 20000 字符，避免超大文件撑爆日志
+                        runBlocking { BaseUtil.execute("head", "-c", "20000", path, log = false) }.outString
+                    }
+                    appendLine(body.ifBlank { "(unreadable or empty)" }.take(20000))
                 }
             }
+        }.onFailure { appendLine("unavailable: ${it.message}") }
+        appendLine("")
+
+        appendLine("======== ANR traces (/data/anr) ========")
+        runCatching {
+            val ls = runBlocking { BaseUtil.execute("ls", "-t", "/data/anr", log = false) }
+            val names = ls.out.map { it.trim() }.filter { it.isNotBlank() }.take(2)
+            if (names.isEmpty()) {
+                appendLine("(none)")
+            } else {
+                names.forEach { name ->
+                    appendLine("---- $name ----")
+                    val trace = runBlocking {
+                        BaseUtil.execute("tail", "-c", "20000", SymbolUtil.shellQuote("/data/anr/$name"), log = false)
+                    }
+                    appendLine(trace.outString.ifBlank { "(empty)" })
+                }
+            }
+        }.onFailure { appendLine("unavailable: ${it.message}") }
+        appendLine("")
+
+        appendLine("======== Tombstones (/data/tombstones) ========")
+        runCatching {
+            val ls = runBlocking { BaseUtil.execute("ls", "-t", "/data/tombstones", log = false) }
+            appendLine(ls.outString.ifBlank { "(none)" })
         }.onFailure { appendLine("unavailable: ${it.message}") }
     }
 

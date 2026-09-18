@@ -84,6 +84,11 @@ fun PageDashboard() {
         updateAvailable = uiState.latestRelease != null,
         onVersionChipClick = {
             scope.launch {
+                // 没有新版本时，版本号徽章就是"看更新日志"的入口（当前版本 + 历史版本）
+                if (uiState.latestRelease == null) {
+                    navController.navigateSingle(MainRoutes.Changelog.route)
+                    return@launch
+                }
                 val state = dialogState.open(
                     initialState = false,
                     title = context.getString(R.string.update_available),
@@ -113,11 +118,9 @@ fun PageDashboard() {
                         }
                     }
 
-                    DismissState.CANCEL -> {
-                        uiState.latestRelease?.url?.apply {
-                            viewModel.emitIntent(IndexUiIntent.ToBrowser(context = context, url = this))
-                        }
-                    }
+                    // dismissText 那个按钮（文案是「更新日志」）走的是 CANCEL 分支：
+                    // 直接打开应用内更新日志页（原来这里跳 GitHub 网页版）
+                    DismissState.CANCEL -> navController.navigateSingle(MainRoutes.Changelog.route)
 
                     DismissState.DISMISS -> {}
                 }

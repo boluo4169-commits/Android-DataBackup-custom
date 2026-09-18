@@ -150,7 +150,9 @@ fun PageAboutSettings() {
                         icon = Icons.Outlined.Assignment,
                         text = stringResource(id = R.string.changelog)
                     ) {
-                        viewModel.emitIntentOnIO(IndexUiIntent.ToBrowser(context, ConstantUtil.CHANGELOG_LINK))
+                        // 应用内更新日志页（当前版本 + 历史版本，数据来自打包进 assets 的 CHANGELOG.md）；
+                        // 原来这里跳 GitHub 网页版，改动后同一个入口在离线也能看。
+                        navController.navigateSingle(MainRoutes.Changelog.route)
                     }
                     OutlinedButtonIconTextButton(
                         modifier = Modifier.width(SizeTokens.Level128),

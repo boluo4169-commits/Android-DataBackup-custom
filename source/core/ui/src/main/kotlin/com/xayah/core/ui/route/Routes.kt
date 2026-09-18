@@ -56,6 +56,7 @@ sealed class MainRoutes(val route: String) {
     data object BlackList : MainRoutes(route = "main_blacklist")
     data object Configurations : MainRoutes(route = "main_configurations")
     data object About : MainRoutes(route = "main_about")
+    data object Changelog : MainRoutes(route = "main_changelog")
     data object Translators : MainRoutes(route = "main_translators")
 
     data object List : MainRoutes(route = "main_list/{$ARG_TARGET}/{$ARG_OP_TYPE}/{$ARG_ACCOUNT_NAME}/{$ARG_ACCOUNT_REMOTE}?$ARG_RETURN_TO_SETUP={$ARG_RETURN_TO_SETUP}") {

@@ -57,6 +57,7 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.runBlocking
 import javax.inject.Inject
+import com.xayah.feature.main.settings.changelog.PageChangelog
 
 @AndroidEntryPoint
 class MainActivity : AppCompatActivity() {
@@ -216,6 +217,9 @@ class MainActivity : AppCompatActivity() {
                         }
                         composable(MainRoutes.About.route) {
                             PageAboutSettings()
+                        }
+                        composable(MainRoutes.Changelog.route) {
+                            PageChangelog()
                         }
                         composable(MainRoutes.Translators.route) {
                             PageTranslatorsSettings()

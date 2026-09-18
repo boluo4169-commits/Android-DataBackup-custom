@@ -63,7 +63,7 @@ fun MainIndexSubScaffold(
                                     Badge(modifier = Modifier.size(SizeTokens.Level6))
                             }
                         ) {
-                            RoundChip(modifier = Modifier.fillMaxHeight(), onClick = if (updateAvailable) onVersionChipClick else null) {
+                            RoundChip(modifier = Modifier.fillMaxHeight(), onClick = onVersionChipClick) {
                                 var version by remember {
                                     mutableStateOf("${BuildConfigUtil.VERSION_NAME} ${BuildConfigUtil.FLAVOR_feature.capitalizeString()}")
                                 }

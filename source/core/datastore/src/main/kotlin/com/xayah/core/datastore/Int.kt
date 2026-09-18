@@ -18,6 +18,7 @@ fun Context.readScreenOffCountDown() = readStoreInt(key = KeyScreenOffCountDown,
 fun Context.readScreenOffTimeout() = readStoreInt(key = KeyScreenOffTimeout, defValue = DEFAULT_IDLE_TIMEOUT)
 fun Context.readRestoreUser() = readStoreInt(key = KeyRestoreUser, defValue = -1)
 fun Context.readCompressionLevel() = readStoreInt(key = KeyCompressionLevel, defValue = 1)
+/** 默认 1 线程：压缩更慢但发热最低，避免备份大应用时被系统温控打断（用户可在设置里自定义） */
 fun Context.readCompressionThreads() = readStoreInt(key = KeyCompressionThreads, defValue = 2)
 fun Context.readMaxPreserveCount() = readStoreInt(key = KeyMaxPreserveCount, defValue = 3)
 

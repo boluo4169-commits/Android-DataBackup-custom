@@ -63,6 +63,8 @@
     <item name="contact" type="string" />
     <item name="docs" type="string" />
     <item name="changelog" type="string" />
+    <item name="changelog_current" type="string" />
+    <item name="changelog_empty" type="string" />
     <item name="translators" type="string" />
     <item name="translators_desc" type="string" />
     <item name="unknown" type="string" />
@@ -96,10 +98,12 @@
     <item name="clear_device_fingerprint_help" type="string" />
     <item name="restore_permissions_help" type="string" />
     <item name="compression_level" type="string" />
+    <item name="compression_level_custom" type="string" />
     <item name="compression_level_desc" type="string" />
     <item name="compression_level_tar_disabled" type="string" />
     <item name="args_current_level" type="string" />
     <item name="compression_threads" type="string" />
+    <item name="compression_threads_custom" type="string" />
     <item name="compression_threads_desc" type="string" />
     <item name="compression_threads_tar_disabled" type="string" />
     <item name="args_current_threads" type="string" />

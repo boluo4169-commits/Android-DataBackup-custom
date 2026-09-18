@@ -377,6 +377,8 @@
     <string name="contact">联系</string>
     <string name="docs">文档</string>
     <string name="changelog">更新日志</string>
+    <string name="changelog_current">当前版本</string>
+    <string name="changelog_empty">未找到更新日志</string>
     <string name="translators">翻译者</string>
     <string name="translators_desc">感谢他们的付出</string>
     <string name="no_root_directory">请勿选择根目录</string>
@@ -509,10 +511,12 @@
     <string name="experimental">实验功能</string>
     <string name="clear_device_fingerprint_help">这个功能目前只对《暗区突围》这款应用生效，其余应用无效</string>
     <string name="compression_level">压缩等级</string>
+    <string name="compression_level_custom">自定义等级</string>
     <string name="compression_level_desc">数字越小，压缩速度越快，数字越大，压缩率越高</string>
     <string name="compression_level_tar_disabled">当前压缩方式为 TAR（不压缩），此等级不生效</string>
     <string name="args_current_level">当前等级：%1$s</string>
     <string name="compression_threads">压缩线程数</string>
+    <string name="compression_threads_custom">自定义线程数</string>
     <string name="compression_threads_desc">线程越多压缩越快，但发热越高。备份微信等大应用建议用较少的线程（如 2）避免被系统温控打断。</string>
     <string name="compression_threads_tar_disabled">当前压缩方式为 TAR（不压缩），此设置不生效</string>
     <string name="args_current_threads">当前线程数：%1$s</string>

@@ -71,6 +71,10 @@ import kotlin.math.roundToInt
 import androidx.compose.ui.text.font.FontWeight
 import com.xayah.core.ui.theme.ThemedColorSchemeKeyTokens
 import com.xayah.core.ui.theme.value
+import com.xayah.core.datastore.KeyCustomCompressionLevel
+import com.xayah.core.datastore.readCustomCompressionLevel
+import com.xayah.core.datastore.KeyCustomCompressionThreads
+import com.xayah.core.datastore.readCustomCompressionThreads
 
 @SuppressLint("StringFormatInvalid")
 @ExperimentalLayoutApi
@@ -118,41 +122,120 @@ fun PageBackupSettings() {
                 }
 
                 val scope = rememberCoroutineScope()
-                val compressionType by context.readCompressionType().collectAsStateWithLifecycle(initialValue = CompressionType.ZSTD)
-                val level by context.readCompressionLevel().collectAsStateWithLifecycle(initialValue = 1)
-                Slideable(
-                    enabled = compressionType != CompressionType.TAR,
-                    title = stringResource(id = R.string.compression_level),
-                    value = level.toFloat(),
-                    valueRange = 1F..22F,
-                    steps = 20,
-                    desc = remember(level, compressionType) {
-                        if (compressionType == CompressionType.TAR) context.getString(R.string.compression_level_tar_disabled)
-                        else "${context.getString(R.string.args_current_level, level)}\n${context.getString(R.string.compression_level_desc)}"
+                val splitSizeOptions = stringArrayResource(id = R.array.cloud_split_size_options)
+                val splitSizeDialogItems by remember(splitSizeOptions) {
+                    mutableStateOf(splitSizeOptions.mapIndexed { index, s ->
+                        DialogRadioItem(enum = CloudSplitSize.indexOf(index), title = s, desc = null)
+                    })
+                }
+
+                val splitSize by context.readCloudSplitSize().collectAsStateWithLifecycle(initialValue = CloudSplitSize.DISABLED)
+                val splitSizeIndex by remember(splitSize) { mutableIntStateOf(splitSize.ordinal) }
+                // 行点击打开选择弹窗（关闭 / 1 GB / 2 GB / 4 GB）
+                suspend fun pickSplitSize() {
+                    val (state, selectedIndex) = dialogState.select(
+                        title = context.getString(R.string.cloud_split_size),
+                        defIndex = splitSizeIndex,
+                        items = splitSizeDialogItems
+                    )
+                    if (state.isConfirm) {
+                        context.saveCloudSplitSize(splitSizeDialogItems[selectedIndex].enum!!)
                     }
+                }
+                Selectable(
+                    title = stringResource(id = R.string.cloud_split_size),
+                    value = stringResource(id = R.string.cloud_split_size_desc),
+                    current = splitSizeOptions[splitSizeIndex],
+                    titleTrailingContent = {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(SizeTokens.Level16)
+                                .clickable {
+                                    scope.launch {
+                                        dialogState.open(
+                                            initialState = Unit,
+                                            title = context.getString(R.string.cloud_split_size),
+                                            icon = Icons.Outlined.Info,
+                                            confirmText = context.getString(R.string.got_it),
+                                            dismissText = context.getString(R.string.cancel),
+                                        ) { _ ->
+                                            Text(text = context.getString(R.string.cloud_split_size_help))
+                                        }
+                                    }
+                                },
+                        )
+                    },
                 ) {
-                    if (compressionType != CompressionType.TAR) {
-                        scope.launch {
-                            context.saveCompressionLevel(it.roundToInt())
+                    pickSplitSize()
+                }
+
+                val compressionType by context.readCompressionType().collectAsStateWithLifecycle(initialValue = CompressionType.ZSTD)
+                // 与「保留历史备份」同一形态：开关控制展开/折叠（默认展开，行为与之前一致）
+                val customLevel by context.readCustomCompressionLevel().collectAsStateWithLifecycle(initialValue = true)
+                Switchable(
+                    key = KeyCustomCompressionLevel,
+                    defValue = true,
+                    title = stringResource(id = R.string.compression_level),
+                    checkedText = stringResource(id = R.string.compression_level_desc),
+                )
+
+                AnimatedVisibility(
+                    visible = customLevel,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut(),
+                ) {
+                    val level by context.readCompressionLevel().collectAsStateWithLifecycle(initialValue = 1)
+                    Slideable(
+                        enabled = compressionType != CompressionType.TAR,
+                        title = stringResource(id = R.string.compression_level_custom),
+                        value = level.toFloat(),
+                        valueRange = 1F..22F,
+                        steps = 20,
+                        desc = remember(level, compressionType) {
+                            if (compressionType == CompressionType.TAR) context.getString(R.string.compression_level_tar_disabled)
+                            else context.getString(R.string.args_current_level, level)
+                        }
+                    ) {
+                        if (compressionType != CompressionType.TAR) {
+                            scope.launch {
+                                context.saveCompressionLevel(it.roundToInt())
+                            }
                         }
                     }
                 }
 
-                val threads by context.readCompressionThreads().collectAsStateWithLifecycle(initialValue = 2)
-                Slideable(
-                    enabled = compressionType != CompressionType.TAR,
+                // 与「保留历史备份」同一形态：开关控制展开/折叠（默认展开，行为与之前一致）
+                val customThreads by context.readCustomCompressionThreads().collectAsStateWithLifecycle(initialValue = true)
+                Switchable(
+                    key = KeyCustomCompressionThreads,
+                    defValue = true,
                     title = stringResource(id = R.string.compression_threads),
-                    value = threads.toFloat(),
-                    valueRange = 1F..8F,
-                    steps = 6,
-                    desc = remember(threads, compressionType) {
-                        if (compressionType == CompressionType.TAR) context.getString(R.string.compression_threads_tar_disabled)
-                        else "${context.getString(R.string.args_current_threads, threads)}\n${context.getString(R.string.compression_threads_desc)}"
-                    }
+                    checkedText = stringResource(id = R.string.compression_threads_desc),
+                )
+
+                AnimatedVisibility(
+                    visible = customThreads,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut(),
                 ) {
-                    if (compressionType != CompressionType.TAR) {
-                        scope.launch {
-                            context.saveCompressionThreads(it.roundToInt())
+                    val threads by context.readCompressionThreads().collectAsStateWithLifecycle(initialValue = 2)
+                    Slideable(
+                        enabled = compressionType != CompressionType.TAR,
+                        title = stringResource(id = R.string.compression_threads_custom),
+                        value = threads.toFloat(),
+                        valueRange = 1F..8F,
+                        steps = 6,
+                        desc = remember(threads, compressionType) {
+                            if (compressionType == CompressionType.TAR) context.getString(R.string.compression_threads_tar_disabled)
+                            else context.getString(R.string.args_current_threads, threads)
+                        }
+                    ) {
+                        if (compressionType != CompressionType.TAR) {
+                            scope.launch {
+                                context.saveCompressionThreads(it.roundToInt())
+                            }
                         }
                     }
                 }
@@ -203,55 +286,6 @@ fun PageBackupSettings() {
                             context.saveMaxPreserveCount(it.roundToInt())
                         }
                     }
-                }
-
-                val splitSizeOptions = stringArrayResource(id = R.array.cloud_split_size_options)
-                val splitSizeDialogItems by remember(splitSizeOptions) {
-                    mutableStateOf(splitSizeOptions.mapIndexed { index, s ->
-                        DialogRadioItem(enum = CloudSplitSize.indexOf(index), title = s, desc = null)
-                    })
-                }
-
-                val splitSize by context.readCloudSplitSize().collectAsStateWithLifecycle(initialValue = CloudSplitSize.DISABLED)
-                val splitSizeIndex by remember(splitSize) { mutableIntStateOf(splitSize.ordinal) }
-                // 行点击打开选择弹窗（关闭 / 1 GB / 2 GB / 4 GB）
-                suspend fun pickSplitSize() {
-                    val (state, selectedIndex) = dialogState.select(
-                        title = context.getString(R.string.cloud_split_size),
-                        defIndex = splitSizeIndex,
-                        items = splitSizeDialogItems
-                    )
-                    if (state.isConfirm) {
-                        context.saveCloudSplitSize(splitSizeDialogItems[selectedIndex].enum!!)
-                    }
-                }
-                Selectable(
-                    title = stringResource(id = R.string.cloud_split_size),
-                    value = stringResource(id = R.string.cloud_split_size_desc),
-                    current = splitSizeOptions[splitSizeIndex],
-                    titleTrailingContent = {
-                        Icon(
-                            imageVector = Icons.Outlined.Info,
-                            contentDescription = null,
-                            modifier = Modifier
-                                .size(SizeTokens.Level16)
-                                .clickable {
-                                    scope.launch {
-                                        dialogState.open(
-                                            initialState = Unit,
-                                            title = context.getString(R.string.cloud_split_size),
-                                            icon = Icons.Outlined.Info,
-                                            confirmText = context.getString(R.string.got_it),
-                                            dismissText = context.getString(R.string.cancel),
-                                        ) { _ ->
-                                            Text(text = context.getString(R.string.cloud_split_size_help))
-                                        }
-                                    }
-                                },
-                        )
-                    },
-                ) {
-                    pickSplitSize()
                 }
 
                 Switchable(

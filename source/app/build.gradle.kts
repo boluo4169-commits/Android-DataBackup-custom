@@ -8,9 +8,26 @@ plugins {
     alias(libs.plugins.refine)
 }
 
+// 应用内「更新日志」页读仓库根的 CHANGELOG.md（release-please 维护的单一来源）：
+// 构建期拷进 assets，避免在源码里再维护一份副本。
+val copyChangelogToAssets by tasks.registering(Copy::class) {
+    from(rootProject.file("../CHANGELOG.md"))
+    into(layout.buildDirectory.dir("generated/changelogAssets"))
+}
+// 生成的 assets 目录既被 merge*Assets 消费，也被 lint 的 model 任务读取，
+// 两处都要显式声明依赖，否则 Gradle 任务校验会报 implicit dependency。
+// 注意排除本任务自身：它的名字里也含 "Assets"，否则会自环。
+tasks.matching { (it.name.endsWith("Assets") || it.name.contains("lint", ignoreCase = true)) && it.name != "copyChangelogToAssets" }.configureEach {
+    dependsOn(copyChangelogToAssets)
+}
+
 android {
     namespace = "com.databackup.version"
     compileSdk = libs.versions.compileSdk.get().toInt()
+
+    sourceSets.getByName("main") {
+        assets.srcDir(layout.buildDirectory.dir("generated/changelogAssets"))
+    }
 
     defaultConfig {
         applicationId = "com.databackup.version"

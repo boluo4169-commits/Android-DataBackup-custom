@@ -388,6 +388,8 @@ Off by default. If your drive limits a single file to 4 GB, 2 GB is a safe choic
     <string name="contact">Contact</string>
     <string name="docs">Docs</string>
     <string name="changelog">Changelog</string>
+    <string name="changelog_current">Current version</string>
+    <string name="changelog_empty">Changelog not found</string>
     <string name="translators">Translators</string>
     <string name="translators_desc">We appreciate their efforts</string>
     <string name="no_root_directory">Please do not select the root directory</string>
@@ -520,10 +522,12 @@ Off by default. If your drive limits a single file to 4 GB, 2 GB is a safe choic
     <string name="experimental">Experimental</string>
     <string name="clear_device_fingerprint_help">This feature currently only applies to \u201CArena Breakout\u201D, no effect on other apps</string>
     <string name="compression_level">Compression level</string>
+    <string name="compression_level_custom">Custom level</string>
     <string name="compression_level_desc">Lower numbers provide faster compression, higher numbers yield better compression ratios</string>
     <string name="compression_level_tar_disabled">Compression type is TAR (no compression), so this level has no effect</string>
     <string name="args_current_level">Current level: %1$s</string>
     <string name="compression_threads">Compression threads</string>
+    <string name="compression_threads_custom">Thread count</string>
     <string name="compression_threads_desc">More threads compress faster but generate more heat. Use fewer threads (e.g. 2) for large apps like WeChat to avoid thermal throttling.</string>
     <string name="compression_threads_tar_disabled">Compression type is TAR (no compression), so this setting has no effect</string>
     <string name="args_current_threads">Current threads: %1$s</string>

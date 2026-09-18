@@ -24,6 +24,8 @@ val KeyRandomizeSsaid = booleanPreferencesKey("randomize_ssaid")
 val KeyRandomizeGaid = booleanPreferencesKey("randomize_gaid")
 val KeyClearDeviceFingerprint = booleanPreferencesKey("clear_device_fingerprint")
 val KeyPreserveBackups = booleanPreferencesKey("preserve_backups")
+val KeyCustomCompressionLevel = booleanPreferencesKey("custom_compression_level")
+val KeyCustomCompressionThreads = booleanPreferencesKey("custom_compression_threads")
     val KeyFixDataOwnership = booleanPreferencesKey("fix_data_ownership")
     val KeyDefaultBackupAll = booleanPreferencesKey("default_backup_all")
 val KeyCloudPkgOnlyDir = booleanPreferencesKey("cloud_pkg_only_dir")
@@ -56,6 +58,12 @@ fun Context.readRandomizeSsaid() = readStoreBoolean(key = KeyRandomizeSsaid, def
 fun Context.readRandomizeGaid() = readStoreBoolean(key = KeyRandomizeGaid, defValue = false)
 fun Context.readClearDeviceFingerprint() = readStoreBoolean(key = KeyClearDeviceFingerprint, defValue = false)
 fun Context.readPreserveBackups() = readStoreBoolean(key = KeyPreserveBackups, defValue = true)
+
+/** 「压缩等级」是否展开自定义滑块（默认展开，与折叠开关上线前行为一致） */
+fun Context.readCustomCompressionLevel() = readStoreBoolean(key = KeyCustomCompressionLevel, defValue = true)
+
+/** 「压缩线程数」是否展开自定义滑块（默认展开，与折叠开关上线前行为一致） */
+fun Context.readCustomCompressionThreads() = readStoreBoolean(key = KeyCustomCompressionThreads, defValue = true)
 fun Context.readFixDataOwnership() = readStoreBoolean(key = KeyFixDataOwnership, defValue = true)
 fun Context.readDefaultBackupAll() = readStoreBoolean(key = KeyDefaultBackupAll, defValue = false)
 fun Context.readCloudPkgOnlyDir() = readStoreBoolean(key = KeyCloudPkgOnlyDir, defValue = true)

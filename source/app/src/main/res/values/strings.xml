@@ -222,6 +222,16 @@
     <string name="recommend">Recommend</string>
     <string name="limited_4gb">4GB limited</string>
     <string name="outdated_fs_warning">The file system on this device does not support creating a file over 4 GB.</string>
+    <string name="cloud_split_size">Cloud split size</string>
+    <string name="cloud_split_size_desc">Archives larger than this are split into volumes when uploading</string>
+    <string name="cloud_split_size_help">Only affects cloud uploads: when an archive is larger than this size, it is split into several volumes before uploading, which works around the single-file size limit of some drives (WebDAV and similar).
+
+Local backups are not affected — the local archive always stays one complete file. When restoring, the volumes are downloaded in order and merged automatically, so the data is identical to an unsplit archive.
+
+Off by default. If your drive limits a single file to 4 GB, 2 GB is a safe choice.</string>
+    <string name="cloud_split_size_1g">1 GB</string>
+    <string name="cloud_split_size_2g">2 GB</string>
+    <string name="cloud_split_size_4g">4 GB</string>
     <string name="check_keystore">Check keystore</string>
     <string name="check_keystore_desc">Check if the app uses KeyStore while refreshing, this will significantly slow down the process</string>
     <string name="back_up_to_cloud">Back up to cloud</string>

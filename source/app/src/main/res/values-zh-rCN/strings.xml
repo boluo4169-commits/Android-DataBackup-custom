@@ -214,6 +214,16 @@
     <string name="recommend">推荐</string>
     <string name="limited_4gb">4GB限制</string>
     <string name="outdated_fs_warning">此设备的文件系统不支持创建超过4GB的单文件。</string>
+    <string name="cloud_split_size">云端分卷大小</string>
+    <string name="cloud_split_size_desc">超过该大小的备份会分卷上传到云端</string>
+    <string name="cloud_split_size_help">只影响云端上传：归档超过该大小时，上传前会切成多个分卷，用于绕开部分网盘（WebDAV 等）的单文件大小限制。
+
+本机备份不受影响，本地始终是一个完整文件；恢复时会按顺序下载各分卷并自动合并，数据与不分卷时完全一致。
+
+默认关闭。网盘单文件限制为 4G 时，选 2G 比较稳妥；1G 留给限制更严的网盘，4G 用于没有限制但想减小单次请求体积的场景。</string>
+    <string name="cloud_split_size_1g">1 GB</string>
+    <string name="cloud_split_size_2g">2 GB</string>
+    <string name="cloud_split_size_4g">4 GB</string>
     <string name="check_keystore">检查密钥</string>
     <string name="check_keystore_desc">刷新时检查应用是否使用密钥, 这会明显减慢刷新速度</string>
     <string name="back_up_to_cloud">备份到云端</string>

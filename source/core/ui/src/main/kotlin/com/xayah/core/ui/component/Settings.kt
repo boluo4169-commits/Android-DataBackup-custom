@@ -221,6 +221,8 @@ fun Selectable(
     desc: String? = null,
     current: String,
     trailingExtra: (@Composable RowScope.() -> Unit)? = null,
+    /** 放在标题右侧的插槽（例如帮助图标）；不传则与原来完全一致 */
+    titleTrailingContent: (@Composable RowScope.() -> Unit)? = null,
     onClick: suspend () -> Unit = suspend {}
 ) {
     val scope = rememberCoroutineScope()
@@ -229,6 +231,7 @@ fun Selectable(
         title = title,
         value = value,
         desc = desc,
+        titleTrailingContent = titleTrailingContent,
         leadingContent = if (leadingIcon == null) null else {
             { Icon(imageVector = leadingIcon, contentDescription = null) }
         },

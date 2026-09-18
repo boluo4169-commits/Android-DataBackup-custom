@@ -1,6 +1,8 @@
 package com.xayah.core.datastore
 
 import android.content.Context
+import com.xayah.core.model.util.RomUtil
+import com.xayah.core.model.util.defaultRestorePermissions
 import androidx.datastore.preferences.core.booleanPreferencesKey
 
 // -----------------------------------------Keys-----------------------------------------
@@ -39,7 +41,16 @@ fun Context.readLoadSystemApps() = readStoreBoolean(key = KeyLoadSystemApps, def
 fun Context.readReloadDumpApk() = readStoreBoolean(key = KeyReloadDumpApk, defValue = true)
 fun Context.readAutoScreenOff() = readStoreBoolean(key = KeyAutoScreenOff, defValue = false)
 fun Context.readBackupConfigs() = readStoreBoolean(key = KeyBackupConfigs, defValue = true)
-fun Context.readRestorePermissions() = readStoreBoolean(key = KeyRestorePermissions, defValue = true)
+/**
+ * 「恢复权限」的默认值：**澎湃系统默认关闭**。
+ *
+ * 澎湃/MIUI 上这个选项不是"还原备份时的授权状态"，而是**恢复时强制授予全部权限**
+ * （见 restore_permissions_help），默认打开容易让用户恢复后拿到一堆本不该有的授权，
+ * 所以在澎湃上默认关掉、交给系统自己恢复；用户手动改过则以用户设置为准。
+ */
+val DEFAULT_RESTORE_PERMISSIONS: Boolean = defaultRestorePermissions(isHyperOs = RomUtil.isHyperOs)
+
+fun Context.readRestorePermissions() = readStoreBoolean(key = KeyRestorePermissions, defValue = DEFAULT_RESTORE_PERMISSIONS)
 fun Context.readRestoreSsaid() = readStoreBoolean(key = KeyRestoreSsaid, defValue = true)
 fun Context.readRandomizeSsaid() = readStoreBoolean(key = KeyRandomizeSsaid, defValue = false)
 fun Context.readRandomizeGaid() = readStoreBoolean(key = KeyRandomizeGaid, defValue = false)

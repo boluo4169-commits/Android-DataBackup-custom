@@ -162,6 +162,28 @@ enum class KillAppOption {
     companion object
 }
 
+/**
+ * 云端分卷大小：归档超过该大小时，上传前切成多卷，用于绕开网盘/云盘的单文件大小限制。
+ * 只在云端上传生效（本地备份始终是完整单文件）；恢复时按序下载并自动合并。
+ */
+enum class CloudSplitSize {
+    DISABLED,
+    SIZE_1G,
+    SIZE_2G,
+    SIZE_4G;
+
+    /** 分卷阈值（字节）；DISABLED 表示不分卷 */
+    val bytes: Long
+        get() = when (this) {
+            DISABLED -> 0L
+            SIZE_1G -> 1024L * 1024 * 1024
+            SIZE_2G -> 2L * 1024 * 1024 * 1024
+            SIZE_4G -> 4L * 1024 * 1024 * 1024
+        }
+
+    companion object
+}
+
 enum class ProcessingInfoType {
     NONE,
     NECESSARY_PREPARATIONS,

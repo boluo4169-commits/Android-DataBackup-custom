@@ -1,5 +1,6 @@
 package com.xayah.core.model.util
 
+import com.xayah.core.model.CloudSplitSize
 import com.xayah.core.model.CompressionType
 import com.xayah.core.model.DataType
 import com.xayah.core.model.KillAppOption
@@ -107,6 +108,40 @@ fun KillAppOption.Companion.indexOf(index: Int): KillAppOption = when (index) {
 
 fun KillAppOption.Companion.of(name: String?): KillAppOption =
     runCatching { KillAppOption.valueOf(name!!.uppercase()) }.getOrDefault(KillAppOption.OPTION_II)
+
+fun CloudSplitSize.Companion.indexOf(index: Int): CloudSplitSize = when (index) {
+    1 -> CloudSplitSize.SIZE_1G
+    2 -> CloudSplitSize.SIZE_2G
+    3 -> CloudSplitSize.SIZE_4G
+    else -> CloudSplitSize.DISABLED
+}
+
+/**
+ * 「恢复权限」的默认值：**澎湃系统默认关闭**。
+ *
+ * 澎湃/MIUI 上这个开关不是"还原备份时的授权状态"，而是恢复时**强制授予全部权限**；
+ * 默认打开会让用户恢复后拿到一堆本不该有的授权，故在澎湃上默认关掉、交给系统自己恢复。
+ * 纯函数放在这里是为了可单测（ROM 判定在 RomUtil，读系统属性）。
+ */
+/** 云端分卷提醒阈值：归档超过该大小且未开分卷时提示用户（10 GB，避免对大归档用户漏提醒） */
+const val CLOUD_SPLIT_SUGGEST_BYTES: Long = 10L * 1024 * 1024 * 1024
+
+/** 提醒日志的识别标记：同一次任务只提示一次（靠日志里已否含该串判断），避免每个大文件都刷一遍 */
+const val CLOUD_SPLIT_HINT_MARK = "Cloud split size"
+
+/** 是否应提醒开启云端分卷：未开分卷 + 归档超过阈值 */
+fun shouldSuggestCloudSplit(cloudSplitSize: CloudSplitSize, archiveBytes: Long): Boolean =
+    cloudSplitSize == CloudSplitSize.DISABLED && archiveBytes > CLOUD_SPLIT_SUGGEST_BYTES
+
+/** 云端分卷提醒文案（[sizeText] 由调用方格式化） */
+fun cloudSplitSuggestion(sizeText: String): String =
+    "This archive is $sizeText and may exceed the drive's single-file limit. " +
+        "If the upload fails, turn on \"$CLOUD_SPLIT_HINT_MARK\" in Backup settings to upload it in volumes."
+
+fun defaultRestorePermissions(isHyperOs: Boolean): Boolean = isHyperOs.not()
+
+fun CloudSplitSize.Companion.of(name: String?): CloudSplitSize =
+    runCatching { CloudSplitSize.valueOf(name!!.uppercase()) }.getOrDefault(CloudSplitSize.DISABLED)
 
 fun Info.set(
     bytes: Long? = null,

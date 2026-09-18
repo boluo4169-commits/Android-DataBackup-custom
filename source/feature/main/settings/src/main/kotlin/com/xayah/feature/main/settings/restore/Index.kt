@@ -33,6 +33,7 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.stringArrayResource
 import androidx.compose.ui.res.stringResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.xayah.core.datastore.DEFAULT_RESTORE_PERMISSIONS
 import com.xayah.core.datastore.KeyCleanRestoring
 import com.xayah.core.datastore.KeyClearDeviceFingerprint
 import com.xayah.core.datastore.KeyFixDataOwnership
@@ -117,7 +118,7 @@ fun PageRestoreSettings() {
 
                 Switchable(
                     key = KeyRestorePermissions,
-                    defValue = true,
+                    defValue = DEFAULT_RESTORE_PERMISSIONS,
                     title = stringResource(id = R.string.restore_permissions),
                     checkedText = stringResource(id = R.string.restore_permissions_desc),
                     titleTrailingContent = {

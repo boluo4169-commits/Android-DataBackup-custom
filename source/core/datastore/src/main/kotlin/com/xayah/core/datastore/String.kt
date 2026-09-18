@@ -2,6 +2,7 @@ package com.xayah.core.datastore
 
 import android.content.Context
 import androidx.datastore.preferences.core.stringPreferencesKey
+import com.xayah.core.model.CloudSplitSize
 import com.xayah.core.model.CompressionType
 import com.xayah.core.model.KillAppOption
 import com.xayah.core.model.SelectionType
@@ -18,6 +19,7 @@ val KeySelectionType = stringPreferencesKey("selection_type")
 val KeyThemeType = stringPreferencesKey("theme_type")
 val KeyCustomSUFile = stringPreferencesKey("custom_su_file")
 val KeyKillAppOption = stringPreferencesKey("kill_app_option")
+val KeyCloudSplitSize = stringPreferencesKey("cloud_split_size")
 val KeyLanguage = stringPreferencesKey("language")
 val KeyLastUpdateNotifyVersion = stringPreferencesKey("last_update_notify_version")
 
@@ -30,6 +32,7 @@ fun Context.readLoadedIconMD5() = readStoreString(key = KeyLoadedIconMD5, defVal
 fun Context.readSelectionType() = readStoreString(key = KeySelectionType, defValue = "").map { SelectionType.of(it) }
 fun Context.readThemeType() = readStoreString(key = KeyThemeType, defValue = "").map { ThemeType.of(it) }
 fun Context.readKillAppOption() = readStoreString(key = KeyKillAppOption, defValue = "").map { KillAppOption.of(it) }
+fun Context.readCloudSplitSize() = readStoreString(key = KeyCloudSplitSize, defValue = "").map { CloudSplitSize.of(it) }
 fun Context.readLanguage() = readStoreString(key = KeyLanguage, defValue = ConstantUtil.LANGUAGE_SYSTEM)
 fun Context.readLastUpdateNotifyVersion() = readStoreString(key = KeyLastUpdateNotifyVersion, defValue = "")
 
@@ -51,5 +54,6 @@ suspend fun Context.saveThemeType(value: ThemeType) = saveStoreString(key = KeyT
 suspend fun Context.saveBackupSavePath(value: String) = saveStoreString(key = KeyBackupSavePath, value = value.trim())
 suspend fun Context.saveCustomSUFile(value: String) = saveStoreString(key = KeyCustomSUFile, value = value.trim())
 suspend fun Context.saveKillAppOption(value: KillAppOption) = saveStoreString(key = KeyKillAppOption, value = value.name.trim())
+suspend fun Context.saveCloudSplitSize(value: CloudSplitSize) = saveStoreString(key = KeyCloudSplitSize, value = value.name.trim())
 suspend fun Context.saveLanguage(value: String) = saveStoreString(key = KeyLanguage, value = value.trim())
 suspend fun Context.saveLastUpdateNotifyVersion(value: String) = saveStoreString(key = KeyLastUpdateNotifyVersion, value = value.trim())

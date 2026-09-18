@@ -4,17 +4,21 @@ import android.content.Context
 import androidx.annotation.StringRes
 import com.xayah.core.database.dao.CloudDao
 import com.xayah.core.datastore.readCloudActivatedAccountName
+import com.xayah.core.datastore.readCloudSplitSize
 import com.xayah.core.model.database.CloudEntity
 import com.xayah.core.network.client.CloudClient
 import com.xayah.core.network.client.getCloud
 import com.xayah.core.rootservice.service.RemoteRootService
 import com.xayah.core.util.LogUtil
 import com.xayah.core.util.PathUtil
+import com.xayah.core.util.SplitUtil
 import com.xayah.core.util.model.ShellResult
 import com.xayah.core.util.withLog
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.first
+import java.io.File
+import java.io.IOException
 import java.io.PrintWriter
 import java.io.StringWriter
 import javax.inject.Inject
@@ -35,6 +39,26 @@ class CloudRepository @Inject constructor(
     suspend fun queryByName(name: String) = cloudDao.queryByName(name)
     suspend fun query() = cloudDao.query()
 
+    /**
+     * 归档在云端是否存在 —— **分卷形态也算存在**。
+     *
+     * 分卷上传后云端只有 `<归档>.part.aaa/.aab/…`，整档并不存在；恢复侧若只判断
+     * `client.exists(src)` 会把分卷归档当成"没有"，直接跳过（2026-09-18 真机实测：
+     * 恢复时 user.tar.zst 被跳过，日志 `Failed to connect to cloud or file not exist`）。
+     * 所有恢复路径的存在性判断都应走这里。
+     */
+    fun exists(client: CloudClient, src: String): Boolean =
+        client.exists(src) || splitParts(client = client, src = src).isNotEmpty()
+
+    /** 该归档在云端的分卷列表（按名字排序 == 按字节顺序）；无分卷返回空列表 */
+    fun splitParts(client: CloudClient, src: String): List<String> = runCatching {
+        val name = PathUtil.getFileName(src)
+        client.walkFileTree(PathUtil.getParentPath(src))
+            .map { it.pathString }
+            .filter { SplitUtil.isPartOf(PathUtil.getFileName(it), name) }
+            .sorted()
+    }.getOrDefault(emptyList())
+
     val clouds = cloudDao.queryFlow().distinctUntilChanged()
 
     suspend fun delete(entity: CloudEntity) = cloudDao.delete(entity)
@@ -46,9 +70,34 @@ class CloudRepository @Inject constructor(
         val out = mutableListOf<String>()
         PathUtil.setFilesDirSELinux(context)
 
+        // 云端分卷：只在「上传」这一层生效 —— 归档本身与本地文件都不动，
+        // 所有备份（APK/USER/USER_DE/DATA/OBB/MEDIA）与迁移导出都走这里，一处改动全覆盖。
+        val splitBytes = context.readCloudSplitSize().first().bytes
+        val srcBytes = File(src).length()
+        var parts: List<String> = emptyList()
+
         runCatching {
-            client.upload(src = src, dst = dstDir, onUploading = onUploading)
-            out.add("Upload succeed.")
+            if (splitBytes > 0 && srcBytes > splitBytes) {
+                val splitted = SplitUtil.split(src = src, bytes = splitBytes)
+                if (splitted.isSuccess.not()) throw IOException("Failed to split $src: ${splitted.outString}")
+                parts = SplitUtil.listParts(src)
+                if (parts.isEmpty()) throw IOException("Split produced no volumes for $src.")
+                log { "Split $srcBytes bytes into ${parts.size} volumes ($splitBytes bytes each)." }
+
+                var uploaded = 0L
+                parts.forEach { part ->
+                    client.upload(
+                        src = part,
+                        dst = dstDir,
+                        onUploading = { read, _ -> onUploading(uploaded + read, srcBytes) }
+                    )
+                    uploaded += File(part).length()
+                }
+                out.add(log { "Upload succeed (${parts.size} volumes)." })
+            } else {
+                client.upload(src = src, dst = dstDir, onUploading = onUploading)
+                out.add("Upload succeed.")
+            }
         }.onFailure {
             isSuccess = false
             val stringWriter = StringWriter()
@@ -56,6 +105,13 @@ class CloudRepository @Inject constructor(
             it.printStackTrace(printWriter)
             if (it.localizedMessage != null)
                 out.add(log { stringWriter.toString() })
+        }
+
+        // 临时分卷清理同样与上传结果解耦：卷都已上传后清理失败只是残留，不该把业务判为失败
+        parts.forEach { part ->
+            rootService.deleteRecursively(part).also { result ->
+                if (result.not()) out.add(log { "Failed to delete $part." })
+            }
         }
 
         // 临时包清理与上传结果解耦：包已完整上传后，本地清理失败只是残留，
@@ -84,8 +140,36 @@ class CloudRepository @Inject constructor(
             rootService.mkdirs(dstDir)
             PathUtil.setFilesDirSELinux(context)
 
+            val srcName = PathUtil.getFileName(src)
             runCatching {
-                client.download(src = src, dst = dstDir, onDownloading = onDownloading)
+                if (client.exists(src)) {
+                    client.download(src = src, dst = dstDir, onDownloading = onDownloading)
+                } else {
+                    // 分卷归档：整档不存在 → 按序下载各卷再合并成完整归档。
+                    // 后续 .md5 校验、解压链路完全不变（md5 一直是整档的校验值）。
+                    val parts = splitParts(client = client, src = src)
+                    if (parts.isEmpty())
+                        throw IOException("Neither $srcName nor its volumes were found in ${PathUtil.getParentPath(src)}.")
+
+                    log { "Found split archive $srcName in ${parts.size} volumes." }
+                    val total = parts.sumOf { client.size(it) }
+                    var downloaded = 0L
+                    val localParts = mutableListOf<String>()
+                    parts.forEach { part ->
+                        client.download(
+                            src = part,
+                            dst = dstDir,
+                            onDownloading = { read, _ -> onDownloading(downloaded + read, total) }
+                        )
+                        downloaded += client.size(part)
+                        localParts.add("$dstDir/${PathUtil.getFileName(part)}")
+                    }
+
+                    if (SplitUtil.merge(parts = localParts, dst = "$dstDir/$srcName").not())
+                        throw IOException("Failed to merge ${parts.size} volumes into $srcName.")
+                    localParts.forEach { rootService.deleteRecursively(it) }
+                    log { "Merged ${parts.size} volumes into $srcName." }
+                }
             }.onFailure {
                 code = -2
                 if (it.localizedMessage != null)

@@ -36,6 +36,9 @@ import kotlinx.coroutines.launch
 import java.io.File
 import java.security.MessageDigest
 import javax.inject.Inject
+import com.xayah.core.datastore.readCloudSplitSize
+import com.xayah.core.model.util.cloudSplitSuggestion
+import com.xayah.core.model.util.shouldSuggestCloudSplit
 
 data class DataMigrationVersionItem(
     val key: String,        // "user_0" 或 "user_0@<preserveId>"
@@ -480,6 +483,15 @@ class DataMigrationExportViewModel @Inject constructor(
             }.also { tempPackage = it }
             // 阶段 3：上传到云端 migration/ 目录
             setExportStage(stageUploading, progress = 0f)
+            // 迁移包过大且未开分卷：在上传阶段给出提示（与备份路径共用阈值与文案）。
+            // 迁移导出是直接调 cloudRepo.upload，不经过 MediumBackupUtil/PackagesBackupUtil，
+            // 所以这里要单独接一次，否则"归档过大提醒"覆盖不到迁移包。
+            runCatching {
+                val packageBytes = java.io.File(dstPath).length()
+                if (shouldSuggestCloudSplit(cloudSplitSize = context.readCloudSplitSize().first(), archiveBytes = packageBytes)) {
+                    setStageDetail(stageUploading, cloudSplitSuggestion(packageBytes.toDouble().formatSize()))
+                }
+            }
             cloudRepo.withClient(cloudName) { client, entity ->
                 val remoteMigrationDir = "${entity.remote}/migration"
                 // 首次上传时目标目录可能不存在（如刚配置的云端），先逐级创建

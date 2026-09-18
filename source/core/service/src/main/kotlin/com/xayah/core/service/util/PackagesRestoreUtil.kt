@@ -580,7 +580,7 @@ class PackagesRestoreUtil @Inject constructor(
         val (ct, src) = CompressionType.resolveArchive(
             expected = p.indexInfo.compressionType,
             pathOf = { packageRepository.getArchiveDst(dstDir = srcDir, dataType = dataType, ct = it) },
-            exists = { client.exists(it) },
+            exists = { cloudRepository.exists(client = client, src = it) },
         )
 
         if (p.getDataSelected(dataType).not()) {
@@ -588,7 +588,7 @@ class PackagesRestoreUtil @Inject constructor(
         } else {
             t.updateInfo(dataType = dataType, state = OperationState.DOWNLOADING)
 
-            if (client.exists(src)) {
+            if (cloudRepository.exists(client = client, src = src)) {
                 var flag = true
                 var progress = 0.0
                 with(CoroutineScope(coroutineContext)) {

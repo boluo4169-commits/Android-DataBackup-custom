@@ -32,4 +32,10 @@
         <item>@string/option_i</item>
         <item>@string/option_ii</item>
     </string-array>
+    <string-array name="cloud_split_size_options">
+        <item>@string/disabled</item>
+        <item>@string/cloud_split_size_1g</item>
+        <item>@string/cloud_split_size_2g</item>
+        <item>@string/cloud_split_size_4g</item>
+    </string-array>
 </resources>

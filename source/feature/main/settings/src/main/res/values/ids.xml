@@ -146,5 +146,13 @@
     <item name="ic_rounded_folder_open" type="drawable" />
     <item name="ic_rounded_emoticon" type="drawable" />
 
+    <item name="cloud_split_size" type="string" />
+    <item name="cloud_split_size_desc" type="string" />
+    <item name="cloud_split_size_help" type="string" />
+    <item name="cloud_split_size_1g" type="string" />
+    <item name="cloud_split_size_2g" type="string" />
+    <item name="cloud_split_size_4g" type="string" />
+    <item name="cloud_split_size_options" type="array" />
+
     <item name="kill_app_options" type="array" />
 </resources>

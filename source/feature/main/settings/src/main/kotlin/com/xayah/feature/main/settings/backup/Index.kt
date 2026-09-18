@@ -43,14 +43,17 @@ import com.xayah.core.datastore.KeyPreserveBackups
 import com.xayah.core.datastore.readCompressionLevel
 import com.xayah.core.datastore.readCompressionThreads
 import com.xayah.core.datastore.readCompressionType
+import com.xayah.core.datastore.readCloudSplitSize
 import com.xayah.core.datastore.readKillAppOption
 import com.xayah.core.datastore.readMaxPreserveCount
 import com.xayah.core.datastore.readPreserveBackups
 import com.xayah.core.datastore.saveCompressionLevel
 import com.xayah.core.datastore.saveCompressionThreads
+import com.xayah.core.datastore.saveCloudSplitSize
 import com.xayah.core.datastore.saveKillAppOption
 import com.xayah.core.datastore.saveMaxPreserveCount
 import com.xayah.core.model.CompressionType
+import com.xayah.core.model.CloudSplitSize
 import com.xayah.core.model.KillAppOption
 import com.xayah.core.model.util.indexOf
 import com.xayah.core.ui.component.InnerBottomSpacer
@@ -65,6 +68,9 @@ import com.xayah.feature.main.settings.R
 import com.xayah.feature.main.settings.SettingsScaffold
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
+import androidx.compose.ui.text.font.FontWeight
+import com.xayah.core.ui.theme.ThemedColorSchemeKeyTokens
+import com.xayah.core.ui.theme.value
 
 @SuppressLint("StringFormatInvalid")
 @ExperimentalLayoutApi
@@ -197,6 +203,55 @@ fun PageBackupSettings() {
                             context.saveMaxPreserveCount(it.roundToInt())
                         }
                     }
+                }
+
+                val splitSizeOptions = stringArrayResource(id = R.array.cloud_split_size_options)
+                val splitSizeDialogItems by remember(splitSizeOptions) {
+                    mutableStateOf(splitSizeOptions.mapIndexed { index, s ->
+                        DialogRadioItem(enum = CloudSplitSize.indexOf(index), title = s, desc = null)
+                    })
+                }
+
+                val splitSize by context.readCloudSplitSize().collectAsStateWithLifecycle(initialValue = CloudSplitSize.DISABLED)
+                val splitSizeIndex by remember(splitSize) { mutableIntStateOf(splitSize.ordinal) }
+                // 行点击打开选择弹窗（关闭 / 1 GB / 2 GB / 4 GB）
+                suspend fun pickSplitSize() {
+                    val (state, selectedIndex) = dialogState.select(
+                        title = context.getString(R.string.cloud_split_size),
+                        defIndex = splitSizeIndex,
+                        items = splitSizeDialogItems
+                    )
+                    if (state.isConfirm) {
+                        context.saveCloudSplitSize(splitSizeDialogItems[selectedIndex].enum!!)
+                    }
+                }
+                Selectable(
+                    title = stringResource(id = R.string.cloud_split_size),
+                    value = stringResource(id = R.string.cloud_split_size_desc),
+                    current = splitSizeOptions[splitSizeIndex],
+                    titleTrailingContent = {
+                        Icon(
+                            imageVector = Icons.Outlined.Info,
+                            contentDescription = null,
+                            modifier = Modifier
+                                .size(SizeTokens.Level16)
+                                .clickable {
+                                    scope.launch {
+                                        dialogState.open(
+                                            initialState = Unit,
+                                            title = context.getString(R.string.cloud_split_size),
+                                            icon = Icons.Outlined.Info,
+                                            confirmText = context.getString(R.string.got_it),
+                                            dismissText = context.getString(R.string.cancel),
+                                        ) { _ ->
+                                            Text(text = context.getString(R.string.cloud_split_size_help))
+                                        }
+                                    }
+                                },
+                        )
+                    },
+                ) {
+                    pickSplitSize()
                 }
 
                 Switchable(

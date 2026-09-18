@@ -26,6 +26,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.coroutines.coroutineContext
+import com.xayah.core.datastore.readCloudSplitSize
+import com.xayah.core.model.util.cloudSplitSuggestion
+import com.xayah.core.model.util.formatSize
+import com.xayah.core.model.util.shouldSuggestCloudSplit
+import com.xayah.core.model.util.CLOUD_SPLIT_HINT_MARK
 
 class MediumBackupUtil @Inject constructor(
     @ApplicationContext val context: Context,
@@ -136,6 +141,18 @@ class MediumBackupUtil @Inject constructor(
         val ct = m.indexInfo.compressionType
         val src = mediaRepository.getArchiveDst(dstDir = srcDir, ct = ct)
         t.updateInfo(state = OperationState.UPLOADING)
+
+        // 归档较大且未开分卷：提示用户开分卷（阈值见 CLOUD_SPLIT_SUGGEST_BYTES）。
+        // 同一次任务只提示一次 —— 日志里已含标记就不再追加，避免每个大文件刷一遍。
+        runCatching {
+            val archiveBytes = java.io.File(src).length()
+            if (shouldSuggestCloudSplit(cloudSplitSize = context.readCloudSplitSize().first(), archiveBytes = archiveBytes)) {
+                val hint = cloudSplitSuggestion(archiveBytes.toDouble().formatSize())
+                if (t.getLog().contains(CLOUD_SPLIT_HINT_MARK).not()) {
+                    t.updateInfo(log = (t.getLog() + "\n" + hint).trim())
+                }
+            }
+        }
 
         var flag = true
         var progress = 0f

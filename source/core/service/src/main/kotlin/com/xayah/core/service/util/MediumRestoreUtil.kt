@@ -142,7 +142,7 @@ class MediumRestoreUtil @Inject constructor(
         val src = mediaRepository.getArchiveDst(dstDir = srcDir, ct = ct)
 
         t.updateInfo(state = OperationState.DOWNLOADING)
-        if (client.exists(src)) {
+        if (cloudRepository.exists(client = client, src = src)) {
             var flag = true
             var progress = 0.0
             with(CoroutineScope(coroutineContext)) {

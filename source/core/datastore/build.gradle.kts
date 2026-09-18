@@ -11,6 +11,7 @@ dependencies {
     // Core
     implementation(project(":core:model"))
     implementation(project(":core:common"))
+    compileOnly(project(":core:hiddenapi"))
 
     // Preferences DataStore
     implementation(libs.androidx.datastore.preferences)

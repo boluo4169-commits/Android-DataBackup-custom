@@ -33,6 +33,11 @@ import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import javax.inject.Inject
 import kotlin.coroutines.coroutineContext
+import com.xayah.core.datastore.readCloudSplitSize
+import com.xayah.core.model.util.cloudSplitSuggestion
+import com.xayah.core.model.util.formatSize
+import com.xayah.core.model.util.shouldSuggestCloudSplit
+import com.xayah.core.model.util.CLOUD_SPLIT_HINT_MARK
 
 class PackagesBackupUtil @Inject constructor(
     @ApplicationContext val context: Context,
@@ -416,6 +421,18 @@ class PackagesBackupUtil @Inject constructor(
         val ct = p.indexInfo.compressionType
         val src = packageRepository.getArchiveDst(dstDir = srcDir, dataType = dataType, ct = ct)
         t.updateInfo(dataType = dataType, state = OperationState.UPLOADING)
+
+        // 归档较大且未开分卷：提示用户开分卷（阈值见 CLOUD_SPLIT_SUGGEST_BYTES）。
+        // 同一次任务只提示一次 —— 日志里已含标记就不再追加，避免每个大文件刷一遍。
+        runCatching {
+            val archiveBytes = java.io.File(src).length()
+            if (shouldSuggestCloudSplit(cloudSplitSize = context.readCloudSplitSize().first(), archiveBytes = archiveBytes)) {
+                val hint = cloudSplitSuggestion(archiveBytes.toDouble().formatSize())
+                if (t.getLog(dataType).contains(CLOUD_SPLIT_HINT_MARK).not()) {
+                    t.updateInfo(dataType = dataType, log = (t.getLog(dataType) + "\n" + hint).trim())
+                }
+            }
+        }
 
         var flag = true
         var progress = 0f

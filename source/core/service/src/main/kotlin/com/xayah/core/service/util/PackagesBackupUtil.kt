@@ -286,7 +286,7 @@ class PackagesBackupUtil @Inject constructor(
         // 所有数据类型统一跟随全局压缩设置（user 曾强制 TAR 不压缩，已撤回）。
         val ct = p.indexInfo.compressionType
         val dst = packageRepository.getArchiveDst(dstDir = dstDir, dataType = dataType, ct = ct)
-        var isSuccess: Boolean
+        var isSuccess = true
         val out = mutableListOf<String>()
         val srcDir = packageRepository.getDataSrcDir(dataType, userId)
 
@@ -355,15 +355,15 @@ class PackagesBackupUtil @Inject constructor(
                     if (result.code == 137) {
                         LogUtil.logKillEvidence(packageName = packageName, dataType = dataType.type)
                     }
-                    // GNU tar 退出码：0=快照一致；1=读取期间源有变动；2=致命错误。
-                    // 退出码 1 的告警有多种措辞（"file changed as we read it"、"File removed before we read it"、
-                    // "file shrank" 等），全是「打包窗口内源被 App 自身改动」的竞态，归档已完整写出。
-                    // 不逐条枚举文案（枚举必漏），一律保留归档，由紧随其后的 testArchive 结构校验裁定成败。
-                    if (result.code == 1) {
-                        isSuccess = true
-                        log { "Source changed during snapshot (tar exit 1); archive kept, verdict by testArchive." }
-                    } else {
-                        isSuccess = result.isSuccess
+                    // GNU tar 非 0 退出码有两类，归档本身都可能已完整写出，故不在此处判失败，
+                    // 统一交给紧随其后的 testArchive 裁定（能被 tar -tf 完整列出即算成功）：
+                    //  1 = 读取期间源有变动（告警措辞有多种："file changed as we read it"、
+                    //      "File removed before we read it"、"file shrank" 等，全是打包窗口内源被 App
+                    //      自身改动的竞态），不逐条枚举文案（枚举必漏）；
+                    //  2 = 个别条目无法读取（实测媒体备份 DCIM 时 .tmfs 这类目录连 root 都 Permission denied）。
+                    // 归档真损坏（如磁盘写满）时 testArchive 会失败、最终仍判失败，不存在放行坏归档的风险。
+                    if (result.isSuccess.not()) {
+                        log { "tar exited with code ${result.code}; archive kept, verdict by testArchive." }
                     }
                     out.addAll(result.out)
                 }

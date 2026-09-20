@@ -70,7 +70,9 @@ object WorkManagerInitializer {
     }
 
     fun loadFileBackups(context: Context, cloudName: String, backupDir: String) {
-        WorkManager.getInstance(context).enqueueUniqueWork(LOAD_FILE_BACKUPS_WORK_NAME, ExistingWorkPolicy.KEEP, FilesLoadWorker.buildRequest(null))
+        // 必须把 cloudName 传下去：FilesRepo.load() 靠它区分「扫云端」还是「扫本地」，
+        // 传 null 会让云端文件备份永远进不了数据库（恢复页的「文件」列表整片空白）。
+        WorkManager.getInstance(context).enqueueUniqueWork(LOAD_FILE_BACKUPS_WORK_NAME, ExistingWorkPolicy.KEEP, FilesLoadWorker.buildRequest(cloudName))
     }
 
     // -----------------------------------------定时备份-----------------------------------------

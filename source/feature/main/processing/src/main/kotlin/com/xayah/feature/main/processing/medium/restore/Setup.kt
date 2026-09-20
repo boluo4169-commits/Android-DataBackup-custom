@@ -52,8 +52,11 @@ fun PageMediumRestoreProcessingSetup(localNavController: NavHostController, view
 
     LaunchedEffect(null) {
         viewModel.launchOnIO {
-            viewModel.emitIntent(UpdateFiles)
+            // 顺序要紧：SetCloudEntity 先把来源（本地/云端）定下来，UpdateFiles 才能按它统计。
+            // 反过来写的话，UpdateFiles 执行时 cloudEntity 还是 null，会去查本地 —— 云端备份
+            // 明明已勾选，这一页却显示 0.00 Bytes（应用侧的 Setup 就是这个顺序）。
             viewModel.emitIntent(SetCloudEntity(""))
+            viewModel.emitIntent(UpdateFiles)
         }
     }
 

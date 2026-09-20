@@ -129,6 +129,36 @@ class SystemDataViewModel @Inject constructor(
         prepareRestore(item, staged)
     }
 
+    /**
+     * 逐个云账号确认该备份是否存在，结果写进 [SystemDataUiState.cloudAvailability]。
+     * 用在「恢复」的账号选择面板上：不存在的账号置灰，用户不用点下去才知道云端没有这份。
+     * 只在恢复场景调用 —— 备份是往远端写，本来就不需要它先存在。
+     */
+    fun checkCloudAvailability(item: SystemDataItem) {
+        val clouds = _uiState.value.clouds
+        _uiState.update { it.copy(cloudAvailability = emptyMap()) }
+        if (clouds.isEmpty()) return
+        viewModelScope.launch {
+            clouds.forEach { cloud ->
+                // withClient 的 block 返回 Unit，拿不到返回值，用外部变量承接
+                var exists = false
+                val queried = runCatching {
+                    withIOContext {
+                        cloudRepo.withClient(cloud.name) { client, entity ->
+                            exists = client.exists("${entity.remote}/${SystemDataUtil.CloudRelativeDir}/${item.suggestedName}")
+                        }
+                    }
+                }.onFailure { log("checkCloudAvailability failed: ${it.stackTraceToString()}") }.isSuccess
+                log("checkCloudAvailability: cloud=${cloud.name}, item=${item.name}, queried=$queried, exists=$exists")
+                // 只有真的问到了才写结果：连不上/超时属于"没问到"，不代表云端没有这份备份，
+                // 那种情况保持未知（不置灰），免得把网络问题说成"该账号下没有此备份"。
+                if (queried) {
+                    _uiState.update { it.copy(cloudAvailability = it.cloudAvailability + (cloud.name to exists)) }
+                }
+            }
+        }
+    }
+
     /** 从指定云账号下载备份并恢复。 */
     fun restoreFromCloud(item: SystemDataItem, cloudName: String) = runPending {
         // 这里刻意不走 cloudRepo.download：它内部会先用 root 删掉目标目录再 mkdirs 重建，
@@ -233,6 +263,11 @@ data class SystemDataUiState(
     /** 自增序号，用于在 UI 侧触发 Snackbar（同一个文案连续出现两次也要能弹）。 */
     val messageSeq: Long = 0L,
     val clouds: List<CloudEntity> = emptyList(),
+    /**
+     * 恢复时各云账号下是否存在该备份（key = 账号名）。
+     * 只放**已查完**的账号：不在 map 里表示还没查完 —— 网络慢时不至于把整片都置灰。
+     */
+    val cloudAvailability: Map<String, Boolean> = emptyMap(),
     /** 非 null 时表示有一次恢复正等用户确认（备份文件相对本机缺列） */
     val pendingRestore: PendingRestore? = null,
 )

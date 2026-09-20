@@ -229,6 +229,10 @@ internal fun SystemDataScreen(
 
     // 「本地 / 云端」二选一：本地走系统文件管理器，云端直接传到已配置的云账号
     pickerItem?.let { item ->
+        // 恢复时先问一遍每个账号有没有这份备份，不存在的在下面置灰（备份不需要，远端本来就没有）
+        LaunchedEffect(item, pickerForBackup) {
+            if (pickerForBackup.not()) viewModel.checkCloudAvailability(item)
+        }
         ModalBottomSheet(
             onDismissRequest = { pickerItem = null },
             sheetState = sheetState,
@@ -265,7 +269,13 @@ internal fun SystemDataScreen(
                 )
             } else {
                 uiState.clouds.forEach { cloud ->
-                    Surface(onClick = { startCloud(item, cloud.name) }) {
+                    // 只有明确查到「不存在」才置灰；还没查完（不在 map 里）保持可点，
+                    // 免得网络慢时整片账号都点不动
+                    val available = uiState.cloudAvailability[cloud.name] != false
+                    Surface(
+                        onClick = { startCloud(item, cloud.name) },
+                        enabled = available,
+                    ) {
                         Row(
                             modifier = Modifier
                                 .fillMaxWidth()
@@ -274,9 +284,10 @@ internal fun SystemDataScreen(
                             verticalAlignment = Alignment.CenterVertically,
                             horizontalArrangement = Arrangement.spacedBy(SizeTokens.Level12),
                         ) {
-                            TitleLargeText(text = cloud.name, maxLines = 1)
+                            TitleLargeText(text = cloud.name, maxLines = 1, enabled = available)
                             BodyMediumText(
-                                text = "${cloud.host} (${cloud.type.name})",
+                                text = if (available) "${cloud.host} (${cloud.type.name})"
+                                else stringResource(id = R.string.system_data_cloud_no_backup),
                                 color = ThemedColorSchemeKeyTokens.Outline.value,
                                 maxLines = 1,
                             )

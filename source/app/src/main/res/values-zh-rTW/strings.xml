@@ -254,6 +254,7 @@
     <string name="system_data_wifi_plain_text">注意：備份檔案裡的 WiFi 密碼是明文，請妥善保管。</string>
     <string name="system_data_local">本機</string>
     <string name="system_data_local_desc">用檔案管理器選擇位置</string>
+    <string name="system_data_cloud_no_backup">該帳號下沒有此備份</string>
     <string name="system_data_schema_warning">資料庫結構不一致</string>
     <string name="system_data_schema_warning_desc">本機有 %1$d 項內容不在這份備份裡（如 %2$s）。還原後相關功能可能異常，建議只還原同品牌裝置的備份。是否繼續？</string>
     <string name="sync_to_cloud">同步至雲端</string>

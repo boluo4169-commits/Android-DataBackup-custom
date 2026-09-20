@@ -108,14 +108,14 @@ class MediumBackupUtil @Inject constructor(
                 dst = dst,
                 extra = ct.getCompressPara(context.readCompressionLevel().first(), context.readCompressionThreads().first())
             ).also { result ->
-                // GNU tar 退出码 1 = 读取期间源有变动（措辞有多种：file changed / file removed before
-                // we read it / file shrank 等），归档已完整写出；由紧随其后的 testArchive 裁定成败，
-                // 不逐条枚举警告文案（枚举必漏，实测抖音 btm_scope_config "File removed before we read it" 翻车）。
-                if (result.code == 1) {
-                    isSuccess = true
-                    log { "Source changed during snapshot (tar exit 1); archive kept, verdict by testArchive." }
-                } else {
-                    isSuccess = result.isSuccess
+                // tar 的非 0 退出码有两类，归档本身都可能已完整写出，故不在此处判失败，
+                // 统一交给紧随其后的 testArchive 裁定（能被 tar -tf 完整列出即算成功）：
+                //  1 = 读取期间源有变动（措辞有多种：file changed / file removed before we read it /
+                //      file shrank 等），不逐条枚举警告文案（枚举必漏，实测抖音 btm_scope_config 翻车）；
+                //  2 = 个别条目无法读取（实测 DCIM/.tmfs 这类隐藏目录连 root 都 Permission denied）。
+                // 归档真损坏（如磁盘写满）时 testArchive 会失败、最终仍判失败，所以不存在放行坏归档的风险。
+                if (result.isSuccess.not()) {
+                    log { "tar exited with code ${result.code}; archive kept, verdict by testArchive." }
                 }
                 out.addAll(result.out)
             }

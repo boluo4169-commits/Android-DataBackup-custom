@@ -276,6 +276,7 @@
     <string name="system_data_wifi_plain_text">注意：备份文件里的 WiFi 密码是明文，请妥善保管。</string>
     <string name="system_data_local">本地</string>
     <string name="system_data_local_desc">用文件管理器选择位置</string>
+    <string name="system_data_cloud_no_backup">该账号下没有此备份</string>
     <string name="system_data_schema_warning">数据库结构不一致</string>
     <string name="system_data_schema_warning_desc">本机有 %1$d 项内容不在这份备份里（如 %2$s）。恢复后相关功能可能异常，建议只恢复同品牌设备的备份。是否继续？</string>
     <string name="sync_to_cloud">同步至云端</string>

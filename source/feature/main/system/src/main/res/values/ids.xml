@@ -14,6 +14,7 @@
     <item name="system_data_wifi_plain_text" type="string" />
     <item name="system_data_local" type="string" />
     <item name="system_data_local_desc" type="string" />
+    <item name="system_data_cloud_no_backup" type="string" />
     <item name="system_data_schema_warning" type="string" />
     <item name="system_data_schema_warning_desc" type="string" />
     <item name="confirm" type="string" />

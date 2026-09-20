@@ -342,6 +342,7 @@ Off by default. If your drive limits a single file to 4 GB, 2 GB is a safe choic
     <string name="restart_to_take_effect">Restart app to take effect</string>
     <string name="unknown">Unknown</string>
     <string name="reload_version_desc">Which version did you back up on?</string>
+    <string name="reload_version_current">Current</string>
     <string name="dump_apk">Dump apk</string>
     <string name="dump_apk_desc">Try to dump apk to get detailed information</string>
     <string name="_protected">Protected</string>
@@ -523,12 +524,12 @@ Off by default. If your drive limits a single file to 4 GB, 2 GB is a safe choic
     <string name="clear_device_fingerprint_help">This feature currently only applies to \u201CArena Breakout\u201D, no effect on other apps</string>
     <string name="compression_level">Compression level</string>
     <string name="compression_level_custom">Custom level</string>
-    <string name="compression_level_desc">Lower numbers provide faster compression, higher numbers yield better compression ratios</string>
+    <string name="compression_level_desc">Lower numbers provide faster compression, higher numbers yield better compression ratios; collapsing only hides this option, the level still applies, default 1</string>
     <string name="compression_level_tar_disabled">Compression type is TAR (no compression), so this level has no effect</string>
     <string name="args_current_level">Current level: %1$s</string>
     <string name="compression_threads">Compression threads</string>
     <string name="compression_threads_custom">Thread count</string>
-    <string name="compression_threads_desc">More threads compress faster but generate more heat. Use fewer threads (e.g. 2) for large apps like WeChat to avoid thermal throttling.</string>
+    <string name="compression_threads_desc">More threads compress faster but generate more heat. Use fewer threads for large apps like WeChat to avoid thermal throttling. Collapsing this option only hides it, compression still uses the current thread count, default 2</string>
     <string name="compression_threads_tar_disabled">Compression type is TAR (no compression), so this setting has no effect</string>
     <string name="args_current_threads">Current threads: %1$s</string>
     <string name="preserve_backups">Preserve backup history</string>

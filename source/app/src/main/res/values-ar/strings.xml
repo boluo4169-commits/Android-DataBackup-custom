@@ -381,7 +381,7 @@
     <string name="compression_level">مستوى الضغط</string>
     <string name="args_backed_up_at">تم النسخ الاحتياطي في %1$s</string>
     <string name="args_current_level">المستوى الحالي: %1$s</string>
-    <string name="compression_level_desc">الأرقام الأقل توفر ضغطًا أسرع، بينما الأرقام الأعلى توفر نسب ضغط أفضل</string>
+    <string name="compression_level_desc">الأرقام الأقل توفر ضغطًا أسرع، بينما الأرقام الأعلى توفر نسب ضغط أفضل؛طي هذا الخيار يخفيه فقط، ويبقى المستوى ساريًا، الافتراضي 1</string>
     <string name="args_restored_at">تم الاستعادة في %1$s</string>
     <string name="apps_which_have_backups">التطبيقات التي لديها نسخ احتياطية</string>
     <string name="apps_which_have_no_backups">التطبيقات التي ليست لها نسخ احتياطية</string>
@@ -498,7 +498,7 @@
     <string name="clear_device_fingerprint_help">تنطبق هذه الميزة حاليًا على «Arena Breakout» فقط، ولا تأثير لها على التطبيقات الأخرى</string>
     <string name="compression_level_tar_disabled">نوع الضغط TAR (بلا ضغط)، لذا هذا المستوى بلا تأثير</string>
     <string name="compression_threads">خيوط الضغط</string>
-    <string name="compression_threads_desc">المزيد من الخيوط يعني ضغطًا أسرع لكن حرارة أكبر. استخدم خيوطًا أقل (مثلًا 2) للتطبيقات الكبيرة مثل WeChat لتجنب الخنق الحراري.</string>
+    <string name="compression_threads_desc">المزيد من الخيوط يعني ضغطًا أسرع لكن حرارة أكبر. استخدم خيوطًا أقل للتطبيقات الكبيرة مثل WeChat لتجنب الخنق الحراري. إخفاء هذا الخيار يطويه فقط، ولا تزال عملية الضغط تستخدم عدد الخيوط الحالي، الافتراضي 2</string>
     <string name="compression_threads_tar_disabled">نوع الضغط TAR (بلا ضغط)، لذا هذا الإعداد بلا تأثير</string>
     <string name="args_current_threads">الخيوط الحالية: %1$s</string>
     <string name="preserve_backups">الاحتفاظ بسجل النسخ الاحتياطية</string>

@@ -392,7 +392,7 @@
     <string name="restore_permissions">Restaurar permissões</string>
     <string name="restore_ssaid">Restaurar ID do Android</string>
     <string name="args_current_level">Nível atual: %1$s</string>
-    <string name="compression_level_desc">Números mais baixos proporcionam compactação mais rápida, números mais altos geram melhores taxas de compactação.</string>
+    <string name="compression_level_desc">Números mais baixos proporcionam compactação mais rápida, números mais altos geram melhores taxas de compactação. Recolher esta opção apenas a oculta, o nível continua valendo, padrão 1</string>
     <string name="compression_level">Nível de compressão</string>
     <string name="last_update">Última atualização</string>
     <string name="insecure_server_connection">Permitir conexão de servidor insegura</string>
@@ -498,7 +498,7 @@
     <string name="clear_device_fingerprint_help">Este recurso atualmente se aplica apenas a «Arena Breakout», sem efeito em outros apps</string>
     <string name="compression_level_tar_disabled">O tipo de compressão é TAR (sem compressão), então este nível não tem efeito</string>
     <string name="compression_threads">Threads de compressão</string>
-    <string name="compression_threads_desc">Mais threads comprimem mais rápido, mas geram mais calor. Use menos threads (ex.: 2) para apps grandes como o WeChat para evitar limitação térmica.</string>
+    <string name="compression_threads_desc">Mais threads comprimem mais rápido, mas geram mais calor. Use menos threads para apps grandes como o WeChat para evitar limitação térmica. Recolher esta opção apenas a oculta, a compactação ainda usa o número atual de threads, padrão 2</string>
     <string name="compression_threads_tar_disabled">O tipo de compressão é TAR (sem compressão), então esta configuração não tem efeito</string>
     <string name="args_current_threads">Threads atuais: %1$s</string>
     <string name="preserve_backups">Preservar histórico de backups</string>

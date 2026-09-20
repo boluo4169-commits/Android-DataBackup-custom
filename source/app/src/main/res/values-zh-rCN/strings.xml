@@ -334,6 +334,7 @@
     <string name="restart_to_take_effect">重启应用以生效</string>
     <string name="unknown">未知</string>
     <string name="reload_version_desc">你的备份版本为？</string>
+    <string name="reload_version_current">当前版本</string>
     <string name="dump_apk">解析安装包</string>
     <string name="dump_apk_desc">尝试解析安装包以获取更详细的信息</string>
     <string name="_protected">受保护</string>
@@ -512,12 +513,12 @@
     <string name="clear_device_fingerprint_help">这个功能目前只对《暗区突围》这款应用生效，其余应用无效</string>
     <string name="compression_level">压缩等级</string>
     <string name="compression_level_custom">自定义等级</string>
-    <string name="compression_level_desc">数字越小，压缩速度越快，数字越大，压缩率越高</string>
+    <string name="compression_level_desc">数字越小，压缩速度越快，数字越大，压缩率越高；关闭只是折叠此项，仍按当前等级压缩，默认 1</string>
     <string name="compression_level_tar_disabled">当前压缩方式为 TAR（不压缩），此等级不生效</string>
     <string name="args_current_level">当前等级：%1$s</string>
     <string name="compression_threads">压缩线程数</string>
     <string name="compression_threads_custom">自定义线程数</string>
-    <string name="compression_threads_desc">线程越多压缩越快，但发热越高。备份微信等大应用建议用较少的线程（如 2）避免被系统温控打断。</string>
+    <string name="compression_threads_desc">线程越多压缩越快，但发热越高。备份微信等大应用建议用较少的线程避免被系统温控打断。关闭只是折叠此项，压缩仍按当前线程数进行，默认 2</string>
     <string name="compression_threads_tar_disabled">当前压缩方式为 TAR（不压缩），此设置不生效</string>
     <string name="args_current_threads">当前线程数：%1$s</string>
     <string name="preserve_backups">保留历史备份</string>

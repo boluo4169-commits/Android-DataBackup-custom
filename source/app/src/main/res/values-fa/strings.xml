@@ -21,7 +21,7 @@
     <string name="details">جزئیات</string>
     <string name="batch">گروهی</string>
     <string name="compression_level">سطح فشرده‌سازی</string>
-    <string name="compression_level_desc">اعداد پایین‌تر فشرده‌سازی سریع‌تری ارائه می‌دهند، اعداد بالاتر نسبت فشرده‌سازی بهتری دارند</string>
+    <string name="compression_level_desc">اعداد پایین‌تر فشرده‌سازی سریع‌تری ارائه می‌دهند، اعداد بالاتر نسبت فشرده‌سازی بهتری دارند؛جمع این گزینه فقط آن را پنهان می‌کند، سطح همچنان اعمال می‌شود، پیش‌فرض 1</string>
     <string name="args_current_level">سطح کنونی: %1$s</string>
     <string name="batch_select">انتخاب گروهی</string>
     <string name="no_item_selected">هیچ موردی انتخاب نشده</string>
@@ -498,7 +498,7 @@
     <string name="clear_device_fingerprint_help">این قابلیت در حال حاضر فقط در «Arena Breakout» اعمال می‌شود و بر برنامه‌های دیگر اثری ندارد</string>
     <string name="compression_level_tar_disabled">نوع فشرده‌سازی TAR (بدون فشرده‌سازی) است، بنابراین این سطح اثری ندارد</string>
     <string name="compression_threads">رشته‌های فشرده‌سازی</string>
-    <string name="compression_threads_desc">رشته‌های بیشتر فشرده‌سازی را سریع‌تر اما گرم‌تر می‌کنند. برای برنامه‌های بزرگ مانند WeChat از رشته‌های کمتر (مثلاً ۲) استفاده کنید تا از محدودسازی حرارتی جلوگیری شود.</string>
+    <string name="compression_threads_desc">رشته‌های بیشتر فشرده‌سازی را سریع‌تر اما گرم‌تر می‌کنند. برای برنامه‌های بزرگ مانند WeChat از رشته‌های کمتر استفاده کنید تا از محدودسازی حرارتی جلوگیری شود. پنهان کردن این گزینه فقط آن را جمع می‌کند، فشرده‌سازی همچنان از تعداد رشته فعلی استفاده می‌کند، پیش‌فرض 2</string>
     <string name="compression_threads_tar_disabled">نوع فشرده‌سازی TAR (بدون فشرده‌سازی) است، بنابراین این تنظیم اثری ندارد</string>
     <string name="args_current_threads">رشته‌های فعلی: %1$s</string>
     <string name="preserve_backups">حفظ تاریخچه پشتیبان‌ها</string>

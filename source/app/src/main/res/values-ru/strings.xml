@@ -393,7 +393,7 @@
     <string name="restore_ssaid_desc">Восстановить Android ID приложений. Для вступления изменений в силу требуется немедленная перезагрузка</string>
     <string name="compression_level">Уровень сжатия</string>
     <string name="args_current_level">Текущий уровень: %1$s</string>
-    <string name="compression_level_desc">Низкие значения дают быстрое сжатие, высокие значения повышают степень сжатия</string>
+    <string name="compression_level_desc">Низкие значения дают быстрое сжатие, высокие значения повышают степень сжатия; сворачивание этой опции лишь скрывает её, уровень продолжает применяться, по умолчанию 1</string>
     <string name="welcome_screen_app_desc">Беспроблемно используйте резервное копирование с DataBackup. Это приложение просто использовать и оно полностью свободное. Держите свои данные в безопасности и не волнуйтесь</string>
     <string name="get_started">Приступим</string>
     <string name="file">Файл</string>
@@ -498,7 +498,7 @@
     <string name="clear_device_fingerprint_help">Эта функция действует только в «Arena Breakout», на другие приложения не влияет</string>
     <string name="compression_level_tar_disabled">Тип сжатия — TAR (без сжатия), поэтому этот уровень не действует</string>
     <string name="compression_threads">Потоки сжатия</string>
-    <string name="compression_threads_desc">Больше потоков — быстрее сжатие, но больше нагрев. Для больших приложений вроде WeChat используйте меньше потоков (например, 2), чтобы избежать троттлинга.</string>
+    <string name="compression_threads_desc">Больше потоков — быстрее сжатие, но больше нагрев. Для больших приложений вроде WeChat используйте меньше потоков, чтобы избежать троттлинга. Сворачивание этой опции лишь скрывает её, сжатие по-прежнему использует текущее число потоков, по умолчанию 2</string>
     <string name="compression_threads_tar_disabled">Тип сжатия — TAR (без сжатия), поэтому эта настройка не действует</string>
     <string name="args_current_threads">Текущие потоки: %1$s</string>
     <string name="preserve_backups">Сохранять историю резервных копий</string>

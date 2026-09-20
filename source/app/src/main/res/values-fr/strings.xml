@@ -300,7 +300,7 @@
     <string name="block">Bloquer</string>
     <string name="labels">Étiquettes</string>
     <string name="add_label">Ajouter une étiquette</string>
-    <string name="compression_level_desc">Les petits nombres permettent une compression rapide, les grands nombres donnent de meilleurs ratios de compression</string>
+    <string name="compression_level_desc">Les petits nombres permettent une compression rapide, les grands nombres donnent de meilleurs ratios de compression; replier cette option ne fait que la masquer, le niveau reste appliqué, par défaut 1</string>
     <string name="args_current_level">Niveau actuel : %1$s</string>
     <string name="compression_level">Niveau de compression</string>
     <string name="get_started">Démarrer</string>
@@ -498,7 +498,7 @@
     <string name="clear_device_fingerprint_help">Cette fonction ne s\'applique actuellement qu\'à « Arena Breakout », sans effet sur les autres apps</string>
     <string name="compression_level_tar_disabled">Le type de compression est TAR (sans compression), ce niveau est donc sans effet</string>
     <string name="compression_threads">Threads de compression</string>
-    <string name="compression_threads_desc">Plus de threads compriment plus vite mais génèrent plus de chaleur. Utilisez moins de threads (ex. 2) pour les grosses apps comme WeChat afin d\'éviter la limitation thermique.</string>
+    <string name="compression_threads_desc">Plus de threads compriment plus vite mais génèrent plus de chaleur. Utilisez moins de threads pour les grosses apps comme WeChat afin d\'éviter la limitation thermique. Replier cette option ne fait que la masquer, la compression utilise toujours le nombre de threads actuel, par défaut 2</string>
     <string name="compression_threads_tar_disabled">Le type de compression est TAR (sans compression), ce réglage est donc sans effet</string>
     <string name="args_current_threads">Threads actuels : %1$s</string>
     <string name="preserve_backups">Conserver l\'historique des sauvegardes</string>

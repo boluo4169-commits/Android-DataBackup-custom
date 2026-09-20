@@ -41,7 +41,7 @@ class IndexViewModel @Inject constructor(
         cloudRemote = args.get<String>(MainRoutes.ARG_ACCOUNT_REMOTE)?.decodeURL()?.trim() ?: "",
         versionList = listOf(
             DialogRadioItem(
-                title = "current",
+                title = context.getString(R.string.reload_version_current),
             ),
             DialogRadioItem(
                 title = "1.1.x",
@@ -59,68 +59,72 @@ class IndexViewModel @Inject constructor(
         when (intent) {
             is IndexUiIntent.Reload -> {
                 emitState(uiState.value.copy(isLoading = true))
-                when (uiState.value.versionIndex) {
-                    1 -> {
-                        // 1.1.x
-                        if (state.cloudName.isEmpty()) {
-                            // Local
-                            packageRepo.modifyAppsStructureFromLocal11x {
-                                emitState(uiState.value.copy(text = it))
+                try {
+                    when (uiState.value.versionIndex) {
+                        1 -> {
+                            // 1.1.x
+                            if (state.cloudName.isEmpty()) {
+                                // Local
+                                packageRepo.modifyAppsStructureFromLocal11x {
+                                    emitState(uiState.value.copy(text = it))
+                                }
+                                packageRepo.modifyFilesStructureFromLocal11x {
+                                    emitState(uiState.value.copy(text = it))
+                                }
+                            } else {
+                                // Cloud
+                                packageRepo.modifyAppsStructureFromCloud11x(state.cloudName) {
+                                    emitState(uiState.value.copy(text = it))
+                                }
+                                packageRepo.modifyFilesStructureFromCloud11x(state.cloudName) {
+                                    emitState(uiState.value.copy(text = it))
+                                }
                             }
-                            packageRepo.modifyFilesStructureFromLocal11x {
-                                emitState(uiState.value.copy(text = it))
-                            }
-                        } else {
-                            // Cloud
-                            packageRepo.modifyAppsStructureFromCloud11x(state.cloudName) {
-                                emitState(uiState.value.copy(text = it))
-                            }
-                            packageRepo.modifyFilesStructureFromCloud11x(state.cloudName) {
-                                emitState(uiState.value.copy(text = it))
+                        }
+
+                        2 -> {
+                            // 1.0.x
+                            if (state.cloudName.isEmpty()) {
+                                // Local
+                                packageRepo.modifyAppsStructureFromLocal10x {
+                                    emitState(uiState.value.copy(text = it))
+                                }
+                                packageRepo.modifyFilesStructureFromLocal10x {
+                                    emitState(uiState.value.copy(text = it))
+                                }
+                            } else {
+                                // Cloud
+                                packageRepo.modifyAppsStructureFromCloud10x(state.cloudName) {
+                                    emitState(uiState.value.copy(text = it))
+                                }
+                                packageRepo.modifyFilesStructureFromCloud10x(state.cloudName) {
+                                    emitState(uiState.value.copy(text = it))
+                                }
                             }
                         }
                     }
 
-                    2 -> {
-                        // 1.0.x
-                        if (state.cloudName.isEmpty()) {
-                            // Local
-                            packageRepo.modifyAppsStructureFromLocal10x {
-                                emitState(uiState.value.copy(text = it))
-                            }
-                            packageRepo.modifyFilesStructureFromLocal10x {
-                                emitState(uiState.value.copy(text = it))
-                            }
-                        } else {
-                            // Cloud
-                            packageRepo.modifyAppsStructureFromCloud10x(state.cloudName) {
-                                emitState(uiState.value.copy(text = it))
-                            }
-                            packageRepo.modifyFilesStructureFromCloud10x(state.cloudName) {
-                                emitState(uiState.value.copy(text = it))
-                            }
+                    if (state.cloudName.isEmpty()) {
+                        // Local
+                        packageRepo.reloadAppsFromLocal12x {
+                            emitState(uiState.value.copy(text = it))
+                        }
+                        packageRepo.reloadFilesFromLocal12x {
+                            emitState(uiState.value.copy(text = it))
+                        }
+                    } else {
+                        // Cloud
+                        packageRepo.reloadAppsFromCloud12x(state.cloudName) {
+                            emitState(uiState.value.copy(text = it))
+                        }
+                        packageRepo.reloadFilesFromCloud12x(state.cloudName) {
+                            emitState(uiState.value.copy(text = it))
                         }
                     }
+                } finally {
+                    // 成功或异常都必须复位，否则异常时界面会永久停在加载中
+                    emitState(uiState.value.copy(isLoading = false, text = context.getString(R.string.finished)))
                 }
-
-                if (state.cloudName.isEmpty()) {
-                    // Local
-                    packageRepo.reloadAppsFromLocal12x {
-                        emitState(uiState.value.copy(text = it))
-                    }
-                    packageRepo.reloadFilesFromLocal12x {
-                        emitState(uiState.value.copy(text = it))
-                    }
-                } else {
-                    // Cloud
-                    packageRepo.reloadAppsFromCloud12x(state.cloudName) {
-                        emitState(uiState.value.copy(text = it))
-                    }
-                    packageRepo.reloadFilesFromCloud12x(state.cloudName) {
-                        emitState(uiState.value.copy(text = it))
-                    }
-                }
-                emitState(uiState.value.copy(isLoading = false, text = context.getString(R.string.finished)))
             }
         }
     }

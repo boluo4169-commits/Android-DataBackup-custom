@@ -390,7 +390,7 @@
     <string name="args_apps_backed_up_and_failed">Sigurnosno kopirane aplikacije: %1$s, neuspjelo: %2$s</string>
     <string name="unselect_all">Odznači sve</string>
     <string name="restore_permissions">Obnovi dozvole</string>
-    <string name="compression_level_desc">Manji broj omogućuje brže komprimiranje, veći broj omogućuje efikasnije komprimiranje</string>
+    <string name="compression_level_desc">Manji broj omogućuje brže komprimiranje, veći broj omogućuje efikasnije komprimiranje; skupljanje ove opcije samo je skriva, razina se i dalje primjenjuje, zadano 1</string>
     <string name="restore_permissions_desc">Obnovi dozvole aplikacija</string>
     <string name="restore_ssaid_desc">Obnovi Android ID aplikacija, zahtijeva ponovno pokretanje nakon obnavljanja</string>
     <string name="restore_ssaid">Obnovi Android ID</string>
@@ -485,7 +485,7 @@
     <string name="clear_device_fingerprint_help">Ova se značajka trenutno odnosi samo na „Arena Breakout”, nema učinka na druge aplikacije</string>
     <string name="compression_level_tar_disabled">Vrsta kompresije je TAR (bez kompresije), pa ova razina nema učinka</string>
     <string name="compression_threads">Niti kompresije</string>
-    <string name="compression_threads_desc">Više niti komprimira brže, ali stvara više topline. Koristite manje niti (npr. 2) za velike aplikacije poput WeChat-a da biste izbjegli toplinsko prigušivanje.</string>
+    <string name="compression_threads_desc">Više niti komprimira brže, ali stvara više topline. Koristite manje niti za velike aplikacije poput WeChat-a da biste izbjegli toplinsko prigušivanje. Skupljanje ove opcije samo je skriva, kompresija i dalje koristi trenutni broj dretvi, zadano 2</string>
     <string name="compression_threads_tar_disabled">Vrsta kompresije je TAR (bez kompresije), pa ova postavka nema učinka</string>
     <string name="args_current_threads">Trenutne niti: %1$s</string>
     <string name="preserve_backups">Čuvaj povijest sigurnosnih kopija</string>

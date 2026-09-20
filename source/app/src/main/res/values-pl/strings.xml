@@ -393,7 +393,7 @@
     <string name="args_files_backed_up_and_failed">Utworzono kopię zapasową dla %1$s plików, %2$s plikom nie udało się wykonać kopii zapasowej</string>
     <string name="compression_level">Poziom kompresji</string>
     <string name="args_current_level">Aktualny poziom:%1$s</string>
-    <string name="compression_level_desc">Niższe liczby zapewniają szybszą kompresację, a wyższe lepsze ratio kompresacji</string>
+    <string name="compression_level_desc">Niższe liczby zapewniają szybszą kompresację, a wyższe lepsze ratio kompresacji; zwinięcie tej opcji tylko ją ukrywa, poziom nadal obowiązuje, domyślnie 1</string>
     <string name="last_update">Ostatnia aktualizacja</string>
     <string name="insecure_server_connection_desc">Włącz tę opcję, jeśli używasz certyfikatu podpisanego samodzielnie</string>
     <string name="insecure_server_connection">Zezwalaj na niezabezpieczone połączenie z serwerem</string>
@@ -498,7 +498,7 @@
     <string name="clear_device_fingerprint_help">Ta funkcja dotyczy obecnie tylko „Arena Breakout”, brak wpływu na inne aplikacje</string>
     <string name="compression_level_tar_disabled">Typem kompresji jest TAR (bez kompresji), więc ten poziom nie ma wpływu</string>
     <string name="compression_threads">Wątki kompresji</string>
-    <string name="compression_threads_desc">Więcej wątków = szybsza kompresja, ale większe nagrzewanie. W przypadku dużych aplikacji, takich jak WeChat, użyj mniejszej liczby wątków (np. 2), aby uniknąć dławienia termicznego.</string>
+    <string name="compression_threads_desc">Więcej wątków = szybsza kompresja, ale większe nagrzewanie. W przypadku dużych aplikacji, takich jak WeChat, użyj mniejszej liczby wątków, aby uniknąć dławienia termicznego. Zwinięcie tej opcji tylko ją ukrywa, kompresja nadal używa bieżącej liczby wątków, domyślnie 2</string>
     <string name="compression_threads_tar_disabled">Typem kompresji jest TAR (bez kompresji), więc to ustawienie nie ma wpływu</string>
     <string name="args_current_threads">Bieżące wątki: %1$s</string>
     <string name="preserve_backups">Zachowuj historię kopii zapasowych</string>

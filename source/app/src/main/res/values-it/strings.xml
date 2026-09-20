@@ -367,7 +367,7 @@
     <string name="updating_file_list">Aggiornamento dell\'elenco dei file</string>
     <string name="args_backed_up_at">Backup a %1$s</string>
     <string name="updating_app_list">Aggiornamento dell\'elenco delle applicazioni</string>
-    <string name="compression_level_desc">Numeri più bassi forniscono una compressione più veloce, i numeri più alti producono rapporti di compressione migliori</string>
+    <string name="compression_level_desc">Numeri più bassi forniscono una compressione più veloce, i numeri più alti producono rapporti di compressione migliori; comprimere questa opzione la nasconde soltanto, il livello resta valido, predefinito 1</string>
     <string name="compression_level">Livello di compressione</string>
     <string name="detailed_data_items">Voci di dati dettagliate</string>
     <string name="task_details">Dettagli della task</string>
@@ -490,7 +490,7 @@
     <string name="clear_device_fingerprint_help">Questa funzione si applica attualmente solo ad «Arena Breakout», nessun effetto sulle altre app</string>
     <string name="compression_level_tar_disabled">Il tipo di compressione è TAR (senza compressione), quindi questo livello non ha effetto</string>
     <string name="compression_threads">Thread di compressione</string>
-    <string name="compression_threads_desc">Più thread comprimono più velocemente ma generano più calore. Usa meno thread (es. 2) per app grandi come WeChat per evitare il throttling termico.</string>
+    <string name="compression_threads_desc">Più thread comprimono più velocemente ma generano più calore. Usa meno thread per app grandi come WeChat per evitare il throttling termico. Comprimere questa opzione la nasconde soltanto, la compressione usa ancora il numero di thread attuale, predefinito 2</string>
     <string name="compression_threads_tar_disabled">Il tipo di compressione è TAR (senza compressione), quindi questa impostazione non ha effetto</string>
     <string name="args_current_threads">Thread attuali: %1$s</string>
     <string name="preserve_backups">Conserva cronologia dei backup</string>

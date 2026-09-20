@@ -393,7 +393,7 @@
     <string name="restore_ssaid">Restaurar identificación de Android</string>
     <string name="args_current_level">Nivel actual: %1$s</string>
     <string name="compression_level">Nivel de compresión</string>
-    <string name="compression_level_desc">Los números más bajos dan como resultado una compresión más rápida, los números más altos dan como resultado mejores tasas de compresión</string>
+    <string name="compression_level_desc">Los números más bajos dan como resultado una compresión más rápida, los números más altos dan como resultado mejores tasas de compresión; contraer esta opción solo la oculta, el nivel sigue aplicándose, predeterminado 1</string>
     <string name="insecure_server_connection">Permitir la conexión a servidor inseguro</string>
     <string name="insecure_server_connection_desc">Activar esta opción cuando se use certificado autofirmado</string>
     <string name="last_update">Última actualización</string>
@@ -498,7 +498,7 @@
     <string name="clear_device_fingerprint_help">Esta función solo se aplica actualmente a «Arena Breakout», sin efecto en otras apps</string>
     <string name="compression_level_tar_disabled">El tipo de compresión es TAR (sin compresión), así que este nivel no tiene efecto</string>
     <string name="compression_threads">Hilos de compresión</string>
-    <string name="compression_threads_desc">Más hilos comprimen más rápido pero generan más calor. Usa menos hilos (p. ej., 2) para apps grandes como WeChat a fin de evitar la limitación térmica.</string>
+    <string name="compression_threads_desc">Más hilos comprimen más rápido pero generan más calor. Usa menos hilos para apps grandes como WeChat a fin de evitar la limitación térmica. Contraer esta opción solo la oculta, la compresión sigue usando el número de hilos actual, predeterminado 2</string>
     <string name="compression_threads_tar_disabled">El tipo de compresión es TAR (sin compresión), así que este ajuste no tiene efecto</string>
     <string name="args_current_threads">Hilos actuales: %1$s</string>
     <string name="preserve_backups">Conservar historial de copias</string>

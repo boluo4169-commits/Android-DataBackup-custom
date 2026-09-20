@@ -387,7 +387,7 @@
     <string name="no_labels_here">Henüz bir etiket yok.</string>
     <string name="backup_configs">Yedekleme yapılandırmaları</string>
     <string name="backup_configs_desc">Yedekleme dizinine yapılandırmaları dışa aktar</string>
-    <string name="compression_level_desc">Daha düşük sayılar daha hızlı sıkıştırma sağlar, daha yüksek sayılar daha iyi sıkıştırma oranları verir</string>
+    <string name="compression_level_desc">Daha düşük sayılar daha hızlı sıkıştırma sağlar, daha yüksek sayılar daha iyi sıkıştırma oranları verir; bu seçeneği daraltmak yalnızca gizler, düzey geçerli olmaya devam eder, varsayılan 1</string>
     <string name="compression_level">Sıkıştırma düzeyi</string>
     <string name="args_current_level">Mevcut seviye: %1$s</string>
     <string name="restore_permissions">İzinleri geri yükle</string>
@@ -498,7 +498,7 @@
     <string name="clear_device_fingerprint_help">Bu özellik şu anda yalnızca 「Arena Breakout」için geçerlidir, diğer uygulamalarda etkisi yoktur</string>
     <string name="compression_level_tar_disabled">Sıkıştırma türü TAR (sıkıştırmasız) olduğundan bu düzeyin etkisi yoktur</string>
     <string name="compression_threads">Sıkıştırma iş parçacıkları</string>
-    <string name="compression_threads_desc">Daha fazla iş parçacığı daha hızlı sıkıştırır ancak daha çok ısı üretir. WeChat gibi büyük uygulamalarda ısıl kısalmayı önlemek için daha az iş parçacığı (ör. 2) kullanın.</string>
+    <string name="compression_threads_desc">Daha fazla iş parçacığı daha hızlı sıkıştırır ancak daha çok ısı üretir. WeChat gibi büyük uygulamalarda ısıl kısalmayı önlemek için daha az iş parçacığı kullanın. Bu seçeneği daraltmak yalnızca gizler, sıkıştırma yine de geçerli iş parçacığı sayısını kullanır, varsayılan 2</string>
     <string name="compression_threads_tar_disabled">Sıkıştırma türü TAR (sıkıştırmasız) olduğundan bu ayarın etkisi yoktur</string>
     <string name="args_current_threads">Mevcut iş parçacıkları: %1$s</string>
     <string name="preserve_backups">Yedekleme geçmişini koru</string>

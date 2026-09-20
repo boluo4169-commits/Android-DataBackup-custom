@@ -310,6 +310,7 @@
     <string name="restart_to_take_effect">重啓應用以生效</string>
     <string name="unknown">未知</string>
     <string name="reload_version_desc">你的備份版本為？</string>
+    <string name="reload_version_current">目前版本</string>
     <string name="dump_apk">解析安裝包</string>
     <string name="dump_apk_desc">嘗試解析安裝包以獲取更詳細的信息</string>
     <string name="_protected">受保護</string>
@@ -408,7 +409,7 @@
     <string name="restore_ssaid">恢復Android id</string>
     <string name="restore_ssaid_desc">恢復應用Android id，需要在恢復后立即重啓以生效</string>
     <string name="compression_level">壓縮等級</string>
-    <string name="compression_level_desc">數字越小，壓縮速度越快，數字越大，壓縮率越高</string>
+    <string name="compression_level_desc">數字越小，壓縮速度越快，數字越大，壓縮率越高；關閉只是摺疊此項，仍按目前等級壓縮，預設 1</string>
     <string name="args_current_level">目前等級：%1$s</string>
     <string name="last_update">最近更新</string>
     <string name="welcome_screen_app_desc">享受無憂備份，使用簡單，完全免費，輕鬆保護您的資料安全</string>
@@ -515,7 +516,7 @@
     <string name="clear_device_fingerprint_help">這個功能目前只對《暗區突圍》這款應用生效，其餘應用無效</string>
     <string name="compression_level_tar_disabled">目前壓縮方式為 TAR（不壓縮），此等級不生效</string>
     <string name="compression_threads">壓縮執行緒數</string>
-    <string name="compression_threads_desc">執行緒越多壓縮越快，但發熱越高。備份微信等大應用建議用較少的執行緒（如 2）避免被系統溫控中斷。</string>
+    <string name="compression_threads_desc">執行緒越多壓縮越快，但發熱越高。備份微信等大應用建議用較少的執行緒避免被系統溫控中斷。關閉只是摺疊此項，壓縮仍按目前執行緒數進行，預設 2</string>
     <string name="compression_threads_tar_disabled">目前壓縮方式為 TAR（不壓縮），此設定不生效</string>
     <string name="args_current_threads">目前執行緒數：%1$s</string>
     <string name="preserve_backups">保留歷史備份</string>

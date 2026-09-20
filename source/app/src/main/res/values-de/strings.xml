@@ -380,7 +380,7 @@
     <string name="args_files_backed_up_and_failed">%1$s Dateien gesichert, %2$s fehlgeschlagen</string>
     <string name="args_files_restored_and_failed">%1$s Dateien wiederhergestellt, %2$s fehlgeschlagen</string>
     <string name="args_current_level">Aktuelle Stufe: %1$s</string>
-    <string name="compression_level_desc">Niedrigere Zahlen sorgen für eine schnellere Komprimierung, höhere Zahlen ergeben bessere Komprimierungsraten</string>
+    <string name="compression_level_desc">Niedrigere Zahlen sorgen für eine schnellere Komprimierung, höhere Zahlen ergeben bessere Komprimierungsraten; das Einklappen blendet diese Option nur aus, die Stufe gilt weiterhin, Standard 1</string>
     <string name="compression_level">Komprimierungsstufe</string>
     <string name="restore_permissions">Berechtigungen wiederherstellen</string>
     <string name="args_restored_at">zurückgesetzt um %1$s</string>
@@ -490,7 +490,7 @@
     <string name="clear_device_fingerprint_help">Diese Funktion gilt derzeit nur für „Arena Breakout" und hat keine Wirkung auf andere Apps</string>
     <string name="compression_level_tar_disabled">Die Komprimierungsart ist TAR (keine Komprimierung), diese Stufe hat daher keine Wirkung</string>
     <string name="compression_threads">Komprimierungs-Threads</string>
-    <string name="compression_threads_desc">Mehr Threads komprimieren schneller, erzeugen aber mehr Hitze. Verwende bei großen Apps wie WeChat weniger Threads (z. B. 2), um thermische Drosselung zu vermeiden.</string>
+    <string name="compression_threads_desc">Mehr Threads komprimieren schneller, erzeugen aber mehr Hitze. Verwende bei großen Apps wie WeChat weniger Threads, um thermische Drosselung zu vermeiden. Das Einklappen blendet diese Option nur aus, die Komprimierung verwendet weiterhin die aktuelle Thread-Anzahl, Standard 2</string>
     <string name="compression_threads_tar_disabled">Die Komprimierungsart ist TAR (keine Komprimierung), diese Einstellung hat daher keine Wirkung</string>
     <string name="args_current_threads">Aktuelle Threads: %1$s</string>
     <string name="preserve_backups">Sicherungsverlauf behalten</string>

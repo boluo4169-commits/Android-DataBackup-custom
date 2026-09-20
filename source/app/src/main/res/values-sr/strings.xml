@@ -391,7 +391,7 @@
     <string name="args_current_level">Тренутни ниво: %1$s</string>
     <string name="restore_ssaid">Врати Андроид ид</string>
     <string name="restore_ssaid_desc">Вратите апликацијама Андроид ид, ово захтева поновно покретање система да би имало ефекта</string>
-    <string name="compression_level_desc">Мањи број омогућује брже компресовање, већи број даје бољи однос компресије</string>
+    <string name="compression_level_desc">Мањи број омогућује брже компресовање, већи број даје бољи однос компресије; сажимање ове опције само је скрива, ниво се и даље примењује, подразумевано 1</string>
     <string name="restore_permissions_desc">Вратите дозволе апликацијама</string>
     <string name="restore_permissions">Вратите дозволе</string>
     <string name="last_update">Poslednje ažuriranje</string>
@@ -487,7 +487,7 @@
     <string name="clear_device_fingerprint_help">Ова функција се тренутно односи само на „Arena Breakout”, нема дејства на друге апликације</string>
     <string name="compression_level_tar_disabled">Тип компресије је TAR (без компресије), па овај ниво нема дејства</string>
     <string name="compression_threads">Нити компресије</string>
-    <string name="compression_threads_desc">Више нити компресује брже, али ствара више топлоте. Користите мање нити (нпр. 2) за велике апликације попут WeChat-а да бисте избегли топлотно пригушивање.</string>
+    <string name="compression_threads_desc">Више нити компресује брже, али ствара више топлоте. Користите мање нити за велике апликације попут WeChat-а да бисте избегли топлотно пригушивање. Сажимање ове опције само је скрива, компресија и даље користи тренутни број нити, подразумевано 2</string>
     <string name="compression_threads_tar_disabled">Тип компресије је TAR (без компресије), па ова поставка нема дејства</string>
     <string name="args_current_threads">Тренутне нити: %1$s</string>
     <string name="preserve_backups">Чувај историју резервних копија</string>

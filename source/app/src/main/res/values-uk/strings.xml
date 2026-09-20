@@ -392,7 +392,7 @@
     <string name="restore_permissions">Відновити дозволи</string>
     <string name="restore_ssaid_desc">Відновлення ідентифікатора Android програм, потрібно негайно перезавантажити його після відновлення, щоб набуло чинності</string>
     <string name="args_current_level">Поточний ступінь: %1$s</string>
-    <string name="compression_level_desc">Менші числа забезпечують швидше стиснення, вищі числа дають кращі коефіцієнти стиснення</string>
+    <string name="compression_level_desc">Менші числа забезпечують швидше стиснення, вищі числа дають кращі коефіцієнти стиснення; згортання цієї опції лише приховує її, рівень продовжує застосовуватися, за замовчуванням 1</string>
     <string name="compression_level">Ступінь стиснення</string>
     <string name="last_update">Останнє оновлення</string>
     <string name="insecure_server_connection">Дозволити небезпечне підключення до сервера</string>
@@ -498,7 +498,7 @@
     <string name="clear_device_fingerprint_help">Ця функція наразі діє лише в «Arena Breakout», на інші застосунки не впливає</string>
     <string name="compression_level_tar_disabled">Тип стиснення — TAR (без стиснення), тому цей рівень не діє</string>
     <string name="compression_threads">Потоки стиснення</string>
-    <string name="compression_threads_desc">Більше потоків — швидше стиснення, але більше нагрів. Для великих застосунків, як-от WeChat, використовуйте менше потоків (наприклад, 2), щоб уникнути тротлінгу.</string>
+    <string name="compression_threads_desc">Більше потоків — швидше стиснення, але більше нагрів. Для великих застосунків, як-от WeChat, використовуйте менше потоків, щоб уникнути тротлінгу. Згортання цієї опції лише приховує її, стиснення й далі використовує поточну кількість потоків, за замовчуванням 2</string>
     <string name="compression_threads_tar_disabled">Тип стиснення — TAR (без стиснення), тому це налаштування не діє</string>
     <string name="args_current_threads">Поточні потоки: %1$s</string>
     <string name="preserve_backups">Зберігати історію резервних копій</string>

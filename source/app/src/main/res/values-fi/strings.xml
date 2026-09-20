@@ -159,7 +159,7 @@
     <string name="original_data_size">Tietojen koko (alkuperäinen)</string>
     <string name="available_space">Saatavilla oleva tila</string>
     <string name="compression_level">Pakkaamistaso</string>
-    <string name="compression_level_desc">Pienemmät numerot mahdollistavat nopeamman pakkaamisen, suuremmat luvut paremmat pakkaamissuhteet</string>
+    <string name="compression_level_desc">Pienemmät numerot mahdollistavat nopeamman pakkaamisen, suuremmat luvut paremmat pakkaamissuhteet; tämän asetuksen kutistaminen vain piilottaa sen, taso on edelleen käytössä, oletus 1</string>
     <string name="args_current_level">Nykyinen taso: %1$s</string>
     <string name="last_update">Viimeinen päivitys</string>
     <string name="shared_dir">Jaettu hakemisto</string>
@@ -498,7 +498,7 @@
     <string name="clear_device_fingerprint_help">Tämä toiminto koskee tällä hetkellä vain «Arena Breakout»ia, ei vaikutusta muihin sovelluksiin</string>
     <string name="compression_level_tar_disabled">Pakkaustyyppi on TAR (ei pakkausta), joten tällä tasolla ei ole vaikutusta</string>
     <string name="compression_threads">Pakkaussäikeet</string>
-    <string name="compression_threads_desc">Lisäsäikeet pakkaavat nopeammin mutta tuottavat enemmän lämpöä. Käytä vähemmän säikeitä (esim. 2) suurissa sovelluksissa, kuten WeChatissa, välttääksesi lämpörajoituksen.</string>
+    <string name="compression_threads_desc">Lisäsäikeet pakkaavat nopeammin mutta tuottavat enemmän lämpöä. Käytä vähemmän säikeitä suurissa sovelluksissa, kuten WeChatissa, välttääksesi lämpörajoituksen. Tämän asetuksen kutistaminen vain piilottaa sen, pakkaus käyttää edelleen nykyistä säiemäärää, oletus 2</string>
     <string name="compression_threads_tar_disabled">Pakkaustyyppi on TAR (ei pakkausta), joten tällä asetuksella ei ole vaikutusta</string>
     <string name="args_current_threads">Nykyiset säikeet: %1$s</string>
     <string name="preserve_backups">Säilytä varmuuskopiohistoria</string>

@@ -2,6 +2,18 @@
 
 本文件记录定制版相对原版 [XayahSuSuSu/Android-DataBackup](https://github.com/XayahSuSuSu/Android-DataBackup) 的改动。
 
+## v3.13.1（2026-09-20）
+
+### 修复
+
+- **重载会把 `.md5` 校验文件当成归档遍历**：`walkFileTree` 返回的每个文件都会进一次分支判断，`xxx.tar.zst.md5` 的扩展名被解析成 `tar.zst.md5`、取不到压缩类型，于是每种类型白打一行 `Dumping xxx...` 和一行 `Failed to parse compression type`；分类阶段同样逐文件打印一行。现在统一在遍历前过滤掉 `.md5`。实测（9 个应用 / 13.96 GB）日志从 **445 行降到 274 行**，`Failed to parse` 由 **36 行归零**，`Total paths count` 也从 83（含水印文件）变成 46（只算真实归档）。
+- **重载异常时界面永久停在加载中**：`isLoading = true` 之后没有兜底，执行体一旦抛出就回不到可用状态。现以 `try/finally` 收口，异常也会复位。
+- **重载页「版本」显示硬编码英文 `current`**：中文界面里唯一的英文孤例。改为资源字符串 `reload_version_current`（当前版本 / 目前版本 / Current），随多语言一起生效。
+
+### 优化
+
+- **压缩等级 / 压缩线程数的说明补充**：两处各加一句"关闭只是折叠此项，仍按当前值执行，默认 1 / 默认 2"，避免被读成"关闭 = 不使用该设置"；同时去掉「压缩线程数」描述里的示例括号「（如 2）」。19 个语言同步。
+
 ## v3.13.0（2026-09-18）
 
 ### 新增

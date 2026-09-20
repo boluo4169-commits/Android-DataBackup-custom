@@ -532,7 +532,8 @@ class PackageRepository @Inject constructor(
         onMsgUpdate(log { "Reloading..." })
         val packageManager = context.packageManager
         val appsDir = pathUtil.getLocalBackupAppsDir()
-        val pathList = rootService.walkFileTree(appsDir)
+        // .md5 校验文件不是归档，跳过：避免逐文件打印无意义的 Classifying 日志
+        val pathList = rootService.walkFileTree(appsDir).filterNot { it.pathString.endsWith(".md5") }
         val typedPathSet = mutableSetOf<String>()
         BaseUtil.mkdirs(context.iconDir())
         log { "Total paths count: ${pathList.size}" }
@@ -656,7 +657,8 @@ class PackageRepository @Inject constructor(
                     displayStats = PackageDataStats()
                 )
 
-                val archives = rootService.walkFileTree(dir)
+                // .md5 校验文件不是归档，跳过：否则每种类型都会白打 "Dumping xxx" 与 "Failed to parse" 两行日志
+                val archives = rootService.walkFileTree(dir).filterNot { it.pathString.endsWith(".md5") }
 
                 archives.forEach { archivePath ->
                     // For each archive
@@ -766,7 +768,8 @@ class PackageRepository @Inject constructor(
     suspend fun reloadFilesFromLocal12x(onMsgUpdate: suspend (String) -> Unit) {
         onMsgUpdate(log { "Reloading..." })
         val filesDir = pathUtil.getLocalBackupFilesDir()
-        val pathList = rootService.walkFileTree(filesDir)
+        // .md5 校验文件不是归档，跳过：避免逐文件打印无意义的 Classifying 日志
+        val pathList = rootService.walkFileTree(filesDir).filterNot { it.pathString.endsWith(".md5") }
         val typedPathSet = mutableSetOf<String>()
         log { "Total paths count: ${pathList.size}" }
 
@@ -847,7 +850,8 @@ class PackageRepository @Inject constructor(
                     ),
                 )
 
-                val archives = rootService.walkFileTree(dir)
+                // .md5 校验文件不是归档，跳过：否则每种类型都会白打 "Dumping xxx" 与 "Failed to parse" 两行日志
+                val archives = rootService.walkFileTree(dir).filterNot { it.pathString.endsWith(".md5") }
 
                 archives.forEach { archivePath ->
                     // For each archive
@@ -887,7 +891,8 @@ class PackageRepository @Inject constructor(
                 onMsgUpdate(log { "Reloading..." })
                 val packageManager = context.packageManager
                 val appsDir = pathUtil.getCloudRemoteAppsDir(cloudEntity.remote)
-                val pathList = client.walkFileTree(appsDir)
+                // .md5 校验文件不是归档，跳过：避免逐文件打印无意义的 Classifying 日志
+                val pathList = client.walkFileTree(appsDir).filterNot { it.pathString.endsWith(".md5") }
                 val typedPathSet = mutableSetOf<String>()
                 BaseUtil.mkdirs(context.iconDir())
                 log { "Total paths count: ${pathList.size}" }
@@ -1013,7 +1018,8 @@ class PackageRepository @Inject constructor(
                             displayStats = PackageDataStats()
                         )
 
-                        val archives = client.walkFileTree(dir)
+                        // .md5 校验文件不是归档，跳过：否则每种类型都会白打 "Dumping xxx" 与 "Failed to parse" 两行日志
+                        val archives = client.walkFileTree(dir).filterNot { it.pathString.endsWith(".md5") }
 
                         archives.forEach { archivePath ->
                             // For each archive
@@ -1135,7 +1141,8 @@ class PackageRepository @Inject constructor(
             cloudRepository.withClient(cloud) { client, cloudEntity ->
                 onMsgUpdate(log { "Reloading..." })
                 val filesDir = pathUtil.getCloudRemoteFilesDir(cloudEntity.remote)
-                val pathList = client.walkFileTree(filesDir)
+                // .md5 校验文件不是归档，跳过：避免逐文件打印无意义的 Classifying 日志
+                val pathList = client.walkFileTree(filesDir).filterNot { it.pathString.endsWith(".md5") }
                 val typedPathSet = mutableSetOf<String>()
                 log { "Total paths count: ${pathList.size}" }
 
@@ -1220,7 +1227,8 @@ class PackageRepository @Inject constructor(
                             ),
                         )
 
-                        val archives = client.walkFileTree(dir)
+                        // .md5 校验文件不是归档，跳过：否则每种类型都会白打 "Dumping xxx" 与 "Failed to parse" 两行日志
+                        val archives = client.walkFileTree(dir).filterNot { it.pathString.endsWith(".md5") }
 
                         archives.forEach { archivePath ->
                             // For each archive

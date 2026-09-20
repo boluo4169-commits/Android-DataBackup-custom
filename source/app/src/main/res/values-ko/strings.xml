@@ -206,7 +206,7 @@
     <string name="backed_up_files">백업된 파일</string>
     <string name="specify_a_path">경로를 지정하십시오</string>
     <string name="compression_level">압축 레벨</string>
-    <string name="compression_level_desc">숫자가 낮으면 압축이 빠르고, 숫자가 높으면 압축률이 높아집니다</string>
+    <string name="compression_level_desc">숫자가 낮으면 압축이 빠르고, 숫자가 높으면 압축률이 높아집니다; 이 옵션을 접어도 등급은 그대로 적용되며 기본값은 1입니다</string>
     <string name="args_current_level">현재 레벨: %1$s</string>
     <string name="last_update">마지막 업데이트</string>
     <string name="batch_select">일괄 선택</string>
@@ -498,7 +498,7 @@
     <string name="clear_device_fingerprint_help">이 기능은 현재 「Arena Breakout」에만 적용되며 다른 앱에는 영향이 없습니다</string>
     <string name="compression_level_tar_disabled">압축 유형이 TAR(무압축)이므로 이 단계는 효과가 없습니다</string>
     <string name="compression_threads">압축 스레드</string>
-    <string name="compression_threads_desc">스레드가 많을수록 압축이 빠르지만 발열이 커집니다. WeChat 같은 대형 앱은 스레드를 줄여(예: 2) 발열 제한을 피하세요.</string>
+    <string name="compression_threads_desc">스레드가 많을수록 압축이 빠르지만 발열이 커집니다. WeChat 같은 대형 앱은 스레드를 줄여 발열 제한을 피하세요. 이 옵션을 접어도 압축은 현재 스레드 수로 계속 진행되며 기본값은 2입니다</string>
     <string name="compression_threads_tar_disabled">압축 유형이 TAR(무압축)이므로 이 설정은 효과가 없습니다</string>
     <string name="args_current_threads">현재 스레드: %1$s</string>
     <string name="preserve_backups">백업 기록 보존</string>

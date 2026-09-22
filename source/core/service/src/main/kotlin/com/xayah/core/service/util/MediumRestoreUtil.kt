@@ -91,7 +91,10 @@ class MediumRestoreUtil @Inject constructor(
 
             // Decompress the archive.
             Tar.decompress(
-                exclusionList = listOf(),
+                // 旧归档里可能混着 .trashed-*（备份时它们还在回收站里）。恢复时一并跳过：
+                // 放出来也只会被 MediaScanner 标成「已删除」——相册看不到、30 天后被清掉，
+                // 反而让用户以为照片丢了。与备份侧的排除规则保持一致。
+                exclusionList = listOf(".trashed-*"),
                 clear = if (context.readCleanRestoring().first()) "--recursive-unlink" else "",
                 m = false,
                 src = src,

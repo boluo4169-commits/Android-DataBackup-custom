@@ -101,7 +101,11 @@ class MediumBackupUtil @Inject constructor(
         } else {
             // Compress and test.
             Tar.compress(
-                exclusionList = listOf(),
+                // 跳过系统回收站里的文件：Android/ColorOS 删除照片是「原地改名」——
+                // 变成 .trashed-<到期时间戳>-原名，文件仍在目录里躺着。以前会把它们一起
+                // 打进归档，恢复出来后 MediaScanner 按名字判定为「已删除」：相册看不见，
+                // 30 天后连文件一起被清掉（实测一加 15，external.db 里半数记录是 trashed）。
+                exclusionList = listOf(".trashed-*"),
                 h = if (context.readFollowSymlinks().first()) "-h" else "",
                 srcDir = srcDir,
                 src = PathUtil.getFileName(src),// the name is not always the actual file name of the source,but the src does contain

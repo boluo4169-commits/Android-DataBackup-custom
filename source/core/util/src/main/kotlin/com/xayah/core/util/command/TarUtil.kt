@@ -8,6 +8,9 @@ import com.xayah.core.util.model.ShellResult
 object Tar {
     private suspend fun execute(vararg args: String): ShellResult = BaseUtil.execute("tar", *args)
 
+    /** 列出归档内的路径清单（只读，不解压）。用于恢复前报告哪些文件会被跳过。 */
+    suspend fun list(src: String): ShellResult = execute("-tf", SymbolUtil.shellQuote(src))
+
     suspend fun compressInCur(cur: String, src: String, dst: String, extra: String): ShellResult {
         // Move to $cur path.
         BaseUtil.execute("cd", SymbolUtil.shellQuote(cur))

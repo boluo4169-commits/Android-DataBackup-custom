@@ -19,6 +19,7 @@ import com.xayah.core.util.LogUtil
 import com.xayah.core.util.PathUtil
 import com.xayah.core.util.TrashedFilePatterns
 import com.xayah.core.util.command.Tar
+import com.xayah.core.util.command.TrashedUtil
 import com.xayah.core.util.model.ShellResult
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -102,6 +103,8 @@ class MediumBackupUtil @Inject constructor(
         } else {
             // Compress and test.
             log { "ExclusionList: $TrashedFilePatterns." }
+            // 光报模式用户看不出跳了哪些文件（一个相册目录实测几百个），顺手把命中项捞出来报一下
+            TrashedUtil.logExcluded(scene = " from backup", paths = TrashedUtil.scanDir(src))
             Tar.compress(
                 // 跳过媒体库回收站/写入中的文件（.trashed-* / .pending-*）。
                 // 判据见 TrashedFilePatterns —— 这类文件还在目录里，但 MediaStore 标了

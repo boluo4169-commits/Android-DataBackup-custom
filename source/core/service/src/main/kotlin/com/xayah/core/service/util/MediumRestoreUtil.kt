@@ -18,6 +18,7 @@ import com.xayah.core.util.LogUtil
 import com.xayah.core.util.PathUtil
 import com.xayah.core.util.TrashedFilePatterns
 import com.xayah.core.util.command.Tar
+import com.xayah.core.util.command.TrashedUtil
 import com.xayah.core.util.model.ShellResult
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.CoroutineScope
@@ -92,6 +93,8 @@ class MediumRestoreUtil @Inject constructor(
 
             // Decompress the archive.
             log { "ExclusionList: $TrashedFilePatterns." }
+            // 被跳过的文件不会落到目标目录，只能从归档清单里找
+            TrashedUtil.logExcluded(scene = " from archive", paths = TrashedUtil.scanArchive(src))
             Tar.decompress(
                 // 旧归档里可能混着回收站/写入中的文件（备份时它们还在那个状态）。恢复时
                 // 一并跳过：放出来照样被 MediaScanner 标成已删除，相册看不到、到期被清掉，

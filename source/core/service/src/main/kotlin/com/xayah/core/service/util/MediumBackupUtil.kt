@@ -17,6 +17,7 @@ import com.xayah.core.network.client.CloudClient
 import com.xayah.core.rootservice.service.RemoteRootService
 import com.xayah.core.util.LogUtil
 import com.xayah.core.util.PathUtil
+import com.xayah.core.util.TrashedFilePatterns
 import com.xayah.core.util.command.Tar
 import com.xayah.core.util.model.ShellResult
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -100,12 +101,13 @@ class MediumBackupUtil @Inject constructor(
             out.add(log { "Data has not changed." })
         } else {
             // Compress and test.
+            log { "ExclusionList: $TrashedFilePatterns." }
             Tar.compress(
-                // 跳过系统回收站里的文件：Android/ColorOS 删除照片是「原地改名」——
-                // 变成 .trashed-<到期时间戳>-原名，文件仍在目录里躺着。以前会把它们一起
-                // 打进归档，恢复出来后 MediaScanner 按名字判定为「已删除」：相册看不见，
-                // 30 天后连文件一起被清掉（实测一加 15，external.db 里半数记录是 trashed）。
-                exclusionList = listOf(".trashed-*"),
+                // 跳过媒体库回收站/写入中的文件（.trashed-* / .pending-*）。
+                // 判据见 TrashedFilePatterns —— 这类文件还在目录里，但 MediaStore 标了
+                // is_trashed/is_pending：相册看不见、到期被真删，打进归档只会变成一批
+                // 「存在却不可见」的死文件。
+                exclusionList = TrashedFilePatterns,
                 h = if (context.readFollowSymlinks().first()) "-h" else "",
                 srcDir = srcDir,
                 src = PathUtil.getFileName(src),// the name is not always the actual file name of the source,but the src does contain

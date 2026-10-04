@@ -23,6 +23,21 @@ const val ConfigsConfigurationsName = "configurations.json"
 const val BinArchiveName = "bin.zip"
 const val CloudTmpRelativeDir = "DataBackupTmpDir"
 
+/**
+ * 系统媒体库的「回收站 / 写入中」文件名模式，备份与恢复一律跳过。
+ *
+ * 依据 AOSP MediaProvider `FileUtils.PATTERN_EXPIRES_FILE`（`(?i)^\.(pending|trashed)-(\d+)-([^/]+)$`）：
+ * Android 11+ 删除媒体是**原地改名**成 `.trashed-<到期秒>-原名`（30 天），写入中的文件同理叫
+ * `.pending-<到期秒>-原名`（7 天）。它们仍躺在 DCIM/Pictures 里，但 MediaStore 会标成
+ * `is_trashed`/`is_pending` —— 相册不显示，到期后被系统真删。
+ *
+ * 所以备份不该收（收了就是归档里一批"看得见文件、看不见内容"的死文件），恢复也不该放
+ * （放出来照样被判成已删除，用户会以为照片丢了）。AOSP 读取时大小写不敏感，这里两种写法都列上。
+ *
+ * 注意这是 basename 匹配（不含路径），任意层级都命中，与 `Backup_*` 等既有模式一致。
+ */
+val TrashedFilePatterns = listOf(".trashed-*", ".pending-*", ".Trashed-*", ".Pending-*")
+
 fun Context.filesDir(): String = filesDir.path
 fun Context.logDir(): String = "${filesDir()}/$LogRelativeDir"
 fun Context.binDir(): String = "${filesDir()}/$BinRelativeDir"

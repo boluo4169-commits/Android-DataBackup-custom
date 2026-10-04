@@ -28,6 +28,7 @@ import com.xayah.core.rootservice.service.RemoteRootService
 import com.xayah.core.util.LogUtil
 import com.xayah.core.util.PathUtil
 import com.xayah.core.util.SymbolUtil
+import com.xayah.core.util.TrashedFilePatterns
 import com.xayah.core.util.command.Appops
 import com.xayah.core.util.command.Pm
 import com.xayah.core.util.command.SELinux
@@ -346,6 +347,8 @@ class PackagesRestoreUtil @Inject constructor(
                             if (dataType == DataType.PACKAGE_DATA || dataType == DataType.PACKAGE_OBB || dataType == DataType.PACKAGE_MEDIA) {
                                 // Exclude Backup_*
                                 exclusionList.add("Backup_*")
+                                // 媒体库回收站/写入中的文件（与备份侧同源）
+                                exclusionList.addAll(TrashedFilePatterns)
                                 // 清除设备指纹：仅对暗区突围（com.tencent.mf.uam）生效，
                                 // 剔除其设备指纹文件，让游戏重新生成全新标识（用于换号防偏框）�?
                                 if (dataType == DataType.PACKAGE_DATA && packageName == CLEAR_FINGERPRINT_TARGET_PACKAGE && context.readClearDeviceFingerprint().first()) {

@@ -2,6 +2,13 @@
 
 本文件记录定制版相对原版 [XayahSuSuSu/Android-DataBackup](https://github.com/XayahSuSuSu/Android-DataBackup) 的改动。
 
+## v3.13.4（2026-10-04）
+
+### 修复
+
+- **补齐 v3.13.3 漏掉的 `pending`，并把判据换成权威定义**：系统回收站的文件名判定在 AOSP 里只有一条正则 —— `MediaProvider/FileUtils.PATTERN_EXPIRES_FILE`（`(?i)^\.(pending|trashed)-(\d+)-([^/]+)$`），它同时覆盖「已删除」的 `.trashed-` 和「写入中」的 `.pending-`（7 天），且**大小写不敏感**。v3.13.3 只挡了 `.trashed-*`，`.pending-*` 会照旧进归档、恢复后同样被判成不可见 —— 表现出来和上一版修的是同一个症状。现在**四处（应用媒体 / 文件媒体 × 备份 / 恢复）统一引用同一个常量 `TrashedFilePatterns`**，不再各处自写规则（自写规则必然会漏，上一版就漏在这）。
+- **补上文件媒体侧的排除日志**：应用数据侧本来就会打 `ExclusionList: [...]`，文件媒体侧没有 —— 备份/恢复被静默跳过了什么，用户查不到。现已对齐。
+
 ## v3.13.3（2026-09-22）
 
 ### 修复

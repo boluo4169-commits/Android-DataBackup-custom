@@ -16,6 +16,7 @@ import com.xayah.core.network.client.CloudClient
 import com.xayah.core.rootservice.service.RemoteRootService
 import com.xayah.core.util.LogUtil
 import com.xayah.core.util.PathUtil
+import com.xayah.core.util.TrashedFilePatterns
 import com.xayah.core.util.command.Tar
 import com.xayah.core.util.model.ShellResult
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -90,11 +91,12 @@ class MediumRestoreUtil @Inject constructor(
             }
 
             // Decompress the archive.
+            log { "ExclusionList: $TrashedFilePatterns." }
             Tar.decompress(
-                // 旧归档里可能混着 .trashed-*（备份时它们还在回收站里）。恢复时一并跳过：
-                // 放出来也只会被 MediaScanner 标成「已删除」——相册看不到、30 天后被清掉，
-                // 反而让用户以为照片丢了。与备份侧的排除规则保持一致。
-                exclusionList = listOf(".trashed-*"),
+                // 旧归档里可能混着回收站/写入中的文件（备份时它们还在那个状态）。恢复时
+                // 一并跳过：放出来照样被 MediaScanner 标成已删除，相册看不到、到期被清掉，
+                // 反而让用户以为照片丢了。判据与备份侧同源（TrashedFilePatterns）。
+                exclusionList = TrashedFilePatterns,
                 clear = if (context.readCleanRestoring().first()) "--recursive-unlink" else "",
                 m = false,
                 src = src,

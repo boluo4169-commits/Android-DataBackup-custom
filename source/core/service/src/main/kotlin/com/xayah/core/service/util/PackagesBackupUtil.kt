@@ -23,6 +23,7 @@ import com.xayah.core.util.IconRelativeDir
 import com.xayah.core.util.LogUtil
 import com.xayah.core.util.PathUtil
 import com.xayah.core.util.SymbolUtil
+import com.xayah.core.util.TrashedFilePatterns
 import com.xayah.core.util.command.Tar
 import com.xayah.core.util.filesDir
 import com.xayah.core.util.model.ShellResult
@@ -326,6 +327,8 @@ class PackagesBackupUtil @Inject constructor(
                     exclusionList.addAll(folders.map { "$packageName/$it" })
                     // Exclude Backup_*
                     exclusionList.add("Backup_*")
+                    // 媒体库回收站/写入中的文件（仅 media 会碰到，但 data/obb 一并加上无害）
+                    exclusionList.addAll(TrashedFilePatterns)
                 }
 
                 else -> {}

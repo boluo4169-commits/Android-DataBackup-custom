@@ -41,4 +41,8 @@
     <string name="unfreeze">解冻</string>
     <string name="user">用户</string>
     <string name="version">版本</string>
+    <!-- 应用备注：自由文本说明，用于分辨「这个应用是干嘛的」 -->
+    <string name="note">备注</string>
+    <string name="add_note">添加备注</string>
+    <string name="note_desc">写一句说明，方便以后分辨这个应用</string>
 </resources>

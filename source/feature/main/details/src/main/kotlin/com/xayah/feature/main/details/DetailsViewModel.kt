@@ -9,6 +9,7 @@ import androidx.lifecycle.viewModelScope
 import com.xayah.core.data.repository.AppsRepo
 import com.xayah.core.data.repository.FilesRepo
 import com.xayah.core.data.repository.LabelsRepo
+import com.xayah.core.data.repository.NotesRepo
 import com.xayah.core.hiddenapi.castTo
 import com.xayah.core.model.OpType
 import com.xayah.core.model.Target
@@ -18,6 +19,7 @@ import com.xayah.core.model.database.LabelFileCrossRefEntity
 import com.xayah.core.model.database.MediaEntity
 import com.xayah.core.model.database.PackageDataStates
 import com.xayah.core.model.database.PackageEntity
+import com.xayah.core.model.database.noteKey
 import com.xayah.core.rootservice.service.RemoteRootService
 import com.xayah.core.ui.route.MainRoutes
 import com.xayah.core.util.decodeURL
@@ -45,6 +47,7 @@ class DetailsViewModel @Inject constructor(
     private val appsRepo: AppsRepo,
     private val filesRepo: FilesRepo,
     private val labelsRepo: LabelsRepo,
+    private val notesRepo: NotesRepo,
 ) : ViewModel() {
     private val id: Long = savedStateHandle.get<String>(MainRoutes.ARG_ID)?.toLongOrNull() ?: 0L
     private val target: Target = Target.valueOf(savedStateHandle.get<String>(MainRoutes.ARG_TARGET)!!.decodeURL().trim())
@@ -56,11 +59,19 @@ class DetailsViewModel @Inject constructor(
 
     val uiState: StateFlow<DetailsUiState> = when (target) {
         Target.Apps -> {
-            combine(appsRepo.getApp(id), isRefreshing, labelsRepo.getLabelsFlow(), labelsRepo.getAppRefsFlow()) { app, isRefreshing, labels, refs ->
+            combine(
+                appsRepo.getApp(id), isRefreshing, labelsRepo.getLabelsFlow(), labelsRepo.getAppRefsFlow(),
+                // 备注按「记录」匹配：同一个应用的每个备份版本各写各的，互不影响
+                notesRepo.getNotesFlow(),
+            ) { app, isRefreshing, labels, refs, notes ->
                 if (app != null) {
-                    Success.App(uuid = UUID.randomUUID(), isRefreshing = isRefreshing, labels = labels, app = app, refs = refs.filter { ref ->
-                        labels.find { it.label == ref.label } != null && ref.packageName == app.packageName && ref.userId == app.userId && ref.preserveId == app.preserveId
-                    })
+                    Success.App(
+                        uuid = UUID.randomUUID(), isRefreshing = isRefreshing, labels = labels, app = app,
+                        refs = refs.filter { ref ->
+                            labels.find { it.label == ref.label } != null && ref.packageName == app.packageName && ref.userId == app.userId && ref.preserveId == app.preserveId
+                        },
+                        note = notes.find { it.noteKey == app.noteKey }?.note.orEmpty(),
+                    )
                 } else {
                     Error
                 }
@@ -132,6 +143,20 @@ class DetailsViewModel @Inject constructor(
     fun setDataStates(id: Long, dataStates: PackageDataStates) {
         viewModelScope.launchOnDefault {
             appsRepo.setDataItems(listOf(id), dataStates)
+        }
+    }
+
+    /**
+     * 保存**当前这条备份记录**的备注。
+     *
+     * 备注按记录存（包名 + 用户 + preserveId + 存储位置），所以同一个应用的每个版本
+     * 各写各的、互不影响 —— 用户要区分的是「这份备份是什么」，而不是「这应用是什么」。
+     */
+    fun setNote(note: String) {
+        val state = uiState.value as? Success.App ?: return
+        val app = state.app
+        viewModelScope.launchOnDefault {
+            notesRepo.setNote(app = app, note = note)
         }
     }
 
@@ -304,6 +329,8 @@ sealed interface DetailsUiState {
             override val labels: List<LabelEntity>,
             val app: PackageEntity,
             val refs: List<LabelAppCrossRefEntity>,
+            /** 该条备份记录的备注（每个版本各一条） */
+            val note: String = "",
         ) : Success(uuid, isRefreshing, labels)
 
         data class File(

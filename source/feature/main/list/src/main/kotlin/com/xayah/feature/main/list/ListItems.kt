@@ -96,6 +96,7 @@ fun LazyListScope.listItems(
                         id = item.id,
                         packageName = item.packageName,
                         label = item.label,
+                        note = item.note,
                         preserveId = item.preserveId,
                         preserveIndex = item.preserveIndex,
                         lastBackupTime = item.lastBackupTime,
@@ -141,6 +142,7 @@ fun AppItem(
     id: Long,
     packageName: String,
     label: String,
+    note: String = "",
     preserveId: Long,
     preserveIndex: Int,
     lastBackupTime: Long,
@@ -163,6 +165,10 @@ fun AppItem(
             Column(modifier = Modifier.weight(1f)) {
                 TitleLargeText(text = label.ifEmpty { stringResource(id = R.string.unknown) }, maxLines = 1)
                 BodyMediumText(text = packageName, color = ThemedColorSchemeKeyTokens.Outline.value, maxLines = 1)
+                // 备注：该备份版本专属的说明，用来分辨「这份备份是什么」。
+                if (note.isNotEmpty()) {
+                    BodyMediumText(text = note, color = ThemedColorSchemeKeyTokens.BluePrimary.value, maxLines = 1)
+                }
                 if (preserveId != 0L && opType == OpType.RESTORE) {
                     BodyMediumText(
                         text = DateUtil.formatTimestamp(lastBackupTime, DateUtil.PATTERN_YMD_HMS),

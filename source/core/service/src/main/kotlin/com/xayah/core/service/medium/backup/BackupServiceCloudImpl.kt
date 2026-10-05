@@ -82,7 +82,9 @@ internal class BackupServiceCloudImpl @Inject constructor() : AbstractBackupServ
     override suspend fun backup(m: MediaEntity, r: MediaEntity?, t: TaskDetailMediaEntity, dstDir: String) {
         val remoteFileDir = getRemoteFileDir(m.archivesRelativeDir)
 
-        val result = mMediumBackupUtil.backupMedia(m = m, t = t, r = r, dstDir = dstDir)
+        // allowIncremental=false：云端不参与增量。云端若命中「未变化跳过」，紧随其后的上传会被跳过
+        // （见下方 state != SKIP 判定），而远端此时没有该归档 → 远端缺件。
+        val result = mMediumBackupUtil.backupMedia(m = m, t = t, r = r, dstDir = dstDir, allowIncremental = false)
         if (result.isSuccess && t.mediaInfo.state != OperationState.SKIP) {
             mMediumBackupUtil.upload(client = mClient, m = m, t = t, srcDir = dstDir, dstDir = remoteFileDir)
         }

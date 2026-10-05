@@ -74,7 +74,12 @@ class MediumBackupUtil @Inject constructor(
         taskDao.upsert(this)
     }
 
-    suspend fun backupMedia(m: MediaEntity, t: TaskDetailMediaEntity, r: MediaEntity?, dstDir: String): ShellResult = run {
+    /**
+     * @param allowIncremental false = 不参与增量（云端）：既不判「未变化」也不写清单。
+     *   云端是「先写本地暂存目录 → 再上传」，暂存若因上次任务中断而残留旧归档，
+     *   跳过判定会命中并连带跳过上传 → 远端主备份缺该类型。
+     */
+    suspend fun backupMedia(m: MediaEntity, t: TaskDetailMediaEntity, r: MediaEntity?, dstDir: String, allowIncremental: Boolean = true): ShellResult = run {
         log { "Backing up ${DataType.MEDIA_MEDIA.type}..." }
 
         val name = m.name
@@ -95,9 +100,24 @@ class MediumBackupUtil @Inject constructor(
             }
         }
 
+        val level = context.readCompressionLevel().first()
+        val threads = context.readCompressionThreads().first()
+        val followSymlinks = context.readFollowSymlinks().first()
+        val params = IncrementalBackupUtil.ArchiveParams(
+            compressionType = ct.name,
+            level = level,
+            threads = threads,
+            followSymlinks = followSymlinks,
+            // glob 排除项只进指纹、不进 walk：walk 是 tar 打包集合的超集，
+            // 回收站文件被系统真删之类只会让本次跳过失效，绝不会漏掉真实变化。
+            exclusionList = TrashedFilePatterns,
+        )
+        // 云端（allowIncremental=false）不求哈希：省掉整个目录的 walk
+        val srcHash = if (allowIncremental) IncrementalBackupUtil.computeSourceHash(srcAbs = src, pruneDirs = listOf(), followSymlinks = followSymlinks) else null
+
         val sizeBytes = rootService.calculateSize(src)
         t.updateInfo(state = OperationState.PROCESSING, bytes = sizeBytes)
-        if (rootService.exists(dst) && sizeBytes == r?.getDataBytes()) {
+        if (allowIncremental && srcHash != null && rootService.exists(dst) && IncrementalBackupUtil.isUnchanged(rootService, dst, params, srcHash)) {
             t.updateInfo(state = OperationState.SKIP)
             out.add(log { "Data has not changed." })
         } else {
@@ -111,11 +131,11 @@ class MediumBackupUtil @Inject constructor(
                 // is_trashed/is_pending：相册看不见、到期被真删，打进归档只会变成一批
                 // 「存在却不可见」的死文件。
                 exclusionList = TrashedFilePatterns,
-                h = if (context.readFollowSymlinks().first()) "-h" else "",
+                h = if (followSymlinks) "-h" else "",
                 srcDir = srcDir,
                 src = PathUtil.getFileName(src),// the name is not always the actual file name of the source,but the src does contain
                 dst = dst,
-                extra = ct.getCompressPara(context.readCompressionLevel().first(), context.readCompressionThreads().first())
+                extra = ct.getCompressPara(level, threads)
             ).also { result ->
                 // tar 的非 0 退出码有两类，归档本身都可能已完整写出，故不在此处判失败，
                 // 统一交给紧随其后的 testArchive 裁定（能被 tar -tf 完整列出即算成功）：
@@ -137,6 +157,8 @@ class MediumBackupUtil @Inject constructor(
                     ChecksumUtil.write(rootService = rootService, src = dst)?.let { md5 ->
                         out.add(log { "Checksum: $md5" })
                     }
+                    // 增量清单随归档落盘：下次备份据此判定「未变化」跳过 tar。
+                    if (allowIncremental && srcHash != null) IncrementalBackupUtil.write(rootService, dst, srcHash, params)
                 }
             }
         }

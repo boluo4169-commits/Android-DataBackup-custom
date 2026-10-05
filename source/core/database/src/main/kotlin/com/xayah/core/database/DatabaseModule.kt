@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.room.Room
 import com.xayah.core.database.dao.CloudDao
 import com.xayah.core.database.dao.DirectoryDao
+import com.xayah.core.database.dao.AppNoteDao
 import com.xayah.core.database.dao.LabelDao
 import com.xayah.core.database.dao.MediaDao
 import com.xayah.core.database.dao.PackageDao
@@ -23,6 +24,8 @@ object DatabaseModule {
     @Singleton
     fun provideDatabase(@ApplicationContext context: Context): AppDatabase =
         Room.databaseBuilder(context, AppDatabase::class.java, "database-databackup")
+            // 主键变更这类自动迁移覆盖不了的，走手写迁移（见 ManualMigrations）
+            .addMigrations(ManualMigrations.MIGRATION_9_10)
             .enableMultiInstanceInvalidation()
             .build()
 
@@ -53,4 +56,8 @@ object DatabaseModule {
     @Provides
     @Singleton
     fun provideScheduleDao(database: AppDatabase): ScheduleDao = database.scheduleDao()
+
+    @Provides
+    @Singleton
+    fun provideAppNoteDao(database: AppDatabase): AppNoteDao = database.appNoteDao()
 }

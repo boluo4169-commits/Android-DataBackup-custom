@@ -25,6 +25,7 @@ import com.xayah.core.model.util.set
 import com.xayah.core.service.R
 import com.xayah.core.service.model.NecessaryInfo
 import com.xayah.core.service.packages.AbstractPackagesService
+import com.xayah.core.service.util.IncrementalContext
 import com.xayah.core.service.util.PackagesBackupUtil
 import com.xayah.core.util.DateUtil
 import com.xayah.core.util.NotificationUtil
@@ -108,7 +109,15 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
      */
     protected open suspend fun resolveArchiveRelativeDir(p: PackageEntity): String = p.archivesRelativeDir
     protected open suspend fun onAppDirCreated(archivesRelativeDir: String): Boolean = true
-    abstract suspend fun backup(type: DataType, p: PackageEntity, r: PackageEntity?, t: TaskDetailPackageEntity, dstDir: String)
+
+    /**
+     * 本次任务是否参与增量（跳过重打 / 借用保护版本）。
+     * 云端必须为 false：云端备份「先写本地暂存目录 → 再上传」，一旦暂存目录残留旧归档，
+     * 跳过判定会命中并连带跳过上传 → 远端主备份缺该类型（本地不会，因为本地 SKIP 时文件本就在原位）。
+     */
+    protected open val mIncrementalEnabled: Boolean = true
+
+    abstract suspend fun backup(type: DataType, p: PackageEntity, r: PackageEntity?, t: TaskDetailPackageEntity, dstDir: String, ctx: IncrementalContext)
     protected open suspend fun onConfigSaved(path: String, archivesRelativeDir: String) {}
     protected open suspend fun onItselfSaved(path: String, entity: ProcessingInfoEntity) {}
     protected open suspend fun onConfigsSaved(path: String, entity: ProcessingInfoEntity) {}
@@ -116,22 +125,33 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
     protected open suspend fun clear() {}
 
     /**
+     * 现存主备份目录的真实路径：先按新（应用名_包名）路径找，再回退旧（纯包名）路径，
+     * 这样无论云端仅用包名开关处于哪种状态都能命中现有目录。不存在返回 null。
+     */
+    protected open suspend fun resolveMainBackupDir(existingMain: PackageEntity): String? {
+        val srcNew = "${mAppsDir}/${existingMain.archivesRelativeDir}"
+        val srcLegacy = "${mAppsDir}/${existingMain.legacyArchivesRelativeDir}"
+        return if (mRootService.exists(srcNew)) srcNew
+        else if (mRootService.exists(srcLegacy)) srcLegacy
+        else null
+    }
+
+    /**
      * 归档旧主备份为保护版本（preserveId 从 0 改为时间戳，目录加 @时间戳 后缀）。
      * 本地默认实现操作本地目录；云子类 override 用远程客户端操作，否则远程旧备份会被新备份覆盖。
+     *
+     * @return 归档后的目录绝对路径（本地可作增量「借用来源」）；未归档或不适用返回 null。
      *
      * 注意：**归档到的路径必须与源路径同一父目录**（即在源目录后追加 @preserveId），
      * 不能跳到"以 archivesRelativeDir 算出的新父目录"——云端目录仅用包名开关可能在两次
      * 备份间翻转（旧的走 legacy 父目录，新的走 archivesRelativeDir 父目录），跨父目录
      * rename 在 FTP 等不支持自动建父目录的服务上会 IOException 崩溃。
      */
-    protected open suspend fun archiveMainBackup(existingMain: PackageEntity) {
-        // 定位现存主备份的真实路径：先按新（应用名_包名）路径找，再回退到旧（纯包名）路径，
-        // 这样无论云端仅用包名开关处于哪种状态都能命中现有目录。
+    protected open suspend fun archiveMainBackup(existingMain: PackageEntity): String? {
+        // 定位现存主备份的真实路径（新路径优先，回退旧路径）
         val srcNew = "${mAppsDir}/${existingMain.archivesRelativeDir}"
-        val srcLegacy = "${mAppsDir}/${existingMain.legacyArchivesRelativeDir}"
-        val isLegacy = !mRootService.exists(srcNew) && mRootService.exists(srcLegacy)
-        val src = if (isLegacy) srcLegacy else srcNew
-        if (!mRootService.exists(src)) return
+        val src = resolveMainBackupDir(existingMain) ?: return null
+        val isLegacy = src != srcNew
 
         // 在源目录的父目录下追加 @preserveId（preserveId 形如 /user_X@ts），
         // 保证归档与源同父目录、rename 安全；entity 自身仍用 archivesRelativeDir（恢复侧双探测兼容）。
@@ -146,8 +166,13 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
         }
 
         mRootService.writeJson(data = archived, dst = PathUtil.getPackageRestoreConfigDst(src))
-        mRootService.renameTo(src, dst)
+        if (mRootService.renameTo(src, dst).not()) {
+            // 归档失败：旧主备份仍在原位，逐类型仍走「主目录 manifest」判定，安全
+            log { "Failed to archive main backup: $src -> $dst" }
+            return null
+        }
         mPackageDao.upsert(archived)
+        return dst
     }
 
     /**
@@ -233,23 +258,37 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
                 }.getOrDefault(cleanP)
                 val dstDir = "${mAppsDir}/${p.archivesRelativeDir}"
 
-                // 保留历史备份：备份前，把已有的主备份（RESTORE preserveId=0）归档成保护版本（带盾牌序号）
+                // 保留历史备份 + 增量协同：
+                //  - 全部选中类型都没变 → 连归档都不做，逐类型直接命中主目录 manifest 走 SKIP
+                //  - 有变化 → 归档旧主备份，并把归档目录作为「借用来源」：未变化的类型从保护版本继承归档，只有变化的类型重打
+                //  - 云端（mIncrementalEnabled=false）完全不参与：云端是「先写本地暂存再上传」，
+                //    暂存目录若因上次任务中断而残留，跳过判定会命中 → 上传被跳过 → 远端主备份缺该类型
+                val decisions = if (mIncrementalEnabled) mPackagesBackupUtil.evaluateIncremental(p) else emptyMap()
+                var refDir: String? = null
                 if (preserveBackups) {
                     val existingMain = mPackageDao.query(p.packageName, OpType.RESTORE, p.userId, 0L, p.indexInfo.compressionType, mTaskEntity.cloud, mTaskEntity.backupDir)
                     if (existingMain != null) {
-                        archiveMainBackup(existingMain)
+                        val mainDir = resolveMainBackupDir(existingMain)
+                        val unchanged = mainDir != null && runCatching { mPackagesBackupUtil.allTypesUnchanged(p, decisions, mainDir) }.getOrDefault(false)
+                        if (unchanged.not()) refDir = archiveMainBackup(existingMain)
+                        log { "Preserve: allTypesUnchanged=$unchanged, reuse source=$refDir" }
                     }
+                }
+                val ctx = if (mIncrementalEnabled) {
+                    IncrementalContext(enabled = true, refDir = refDir, decisions = decisions)
+                } else {
+                    IncrementalContext.DISABLED
                 }
 
                 var restoreEntity = mPackageDao.query(p.packageName, OpType.RESTORE, p.userId, p.preserveId, p.indexInfo.compressionType, mTaskEntity.cloud, mTaskEntity.backupDir)
                 mRootService.mkdirs(dstDir)
                 if (onAppDirCreated(archivesRelativeDir = resolveArchiveRelativeDir(p))) {
-                    backup(type = DataType.PACKAGE_APK, p = p, r = restoreEntity, t = pkg, dstDir = dstDir)
-                    backup(type = DataType.PACKAGE_USER, p = p, r = restoreEntity, t = pkg, dstDir = dstDir)
-                    backup(type = DataType.PACKAGE_USER_DE, p = p, r = restoreEntity, t = pkg, dstDir = dstDir)
-                    backup(type = DataType.PACKAGE_DATA, p = p, r = restoreEntity, t = pkg, dstDir = dstDir)
-                    backup(type = DataType.PACKAGE_OBB, p = p, r = restoreEntity, t = pkg, dstDir = dstDir)
-                    backup(type = DataType.PACKAGE_MEDIA, p = p, r = restoreEntity, t = pkg, dstDir = dstDir)
+                    backup(type = DataType.PACKAGE_APK, p = p, r = restoreEntity, t = pkg, dstDir = dstDir, ctx = ctx)
+                    backup(type = DataType.PACKAGE_USER, p = p, r = restoreEntity, t = pkg, dstDir = dstDir, ctx = ctx)
+                    backup(type = DataType.PACKAGE_USER_DE, p = p, r = restoreEntity, t = pkg, dstDir = dstDir, ctx = ctx)
+                    backup(type = DataType.PACKAGE_DATA, p = p, r = restoreEntity, t = pkg, dstDir = dstDir, ctx = ctx)
+                    backup(type = DataType.PACKAGE_OBB, p = p, r = restoreEntity, t = pkg, dstDir = dstDir, ctx = ctx)
+                    backup(type = DataType.PACKAGE_MEDIA, p = p, r = restoreEntity, t = pkg, dstDir = dstDir, ctx = ctx)
                     mPackagesBackupUtil.backupPermissions(p = p)
                     mPackagesBackupUtil.backupSsaid(p = p)
 

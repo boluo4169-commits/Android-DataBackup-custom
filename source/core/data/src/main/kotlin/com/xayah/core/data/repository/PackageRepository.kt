@@ -731,19 +731,19 @@ class PackageRepository @Inject constructor(
                                 onMsgUpdate(log { "Dumping ${archivePath.nameWithoutExtension}..." })
                                 when (archivePath.nameWithoutExtension) {
                                     DataType.PACKAGE_USER_DE.type -> {
-                                        dataStates.userDeState = DataState.Selected
+                                        packageEntity.dataStates.userDeState = DataState.Selected
                                     }
 
                                     DataType.PACKAGE_DATA.type -> {
-                                        dataStates.dataState = DataState.Selected
+                                        packageEntity.dataStates.dataState = DataState.Selected
                                     }
 
                                     DataType.PACKAGE_OBB.type -> {
-                                        dataStates.obbState = DataState.Selected
+                                        packageEntity.dataStates.obbState = DataState.Selected
                                     }
 
                                     DataType.PACKAGE_MEDIA.type -> {
-                                        dataStates.mediaState = DataState.Selected
+                                        packageEntity.dataStates.mediaState = DataState.Selected
                                     }
 
                                     else -> {}
@@ -1096,19 +1096,19 @@ class PackageRepository @Inject constructor(
 
                                         when (archivePath.nameWithoutExtension) {
                                             DataType.PACKAGE_USER_DE.type -> {
-                                                dataStates.userDeState = DataState.Selected
+                                                packageEntity.dataStates.userDeState = DataState.Selected
                                             }
 
                                             DataType.PACKAGE_DATA.type -> {
-                                                dataStates.dataState = DataState.Selected
+                                                packageEntity.dataStates.dataState = DataState.Selected
                                             }
 
                                             DataType.PACKAGE_OBB.type -> {
-                                                dataStates.obbState = DataState.Selected
+                                                packageEntity.dataStates.obbState = DataState.Selected
                                             }
 
                                             DataType.PACKAGE_MEDIA.type -> {
-                                                dataStates.mediaState = DataState.Selected
+                                                packageEntity.dataStates.mediaState = DataState.Selected
                                             }
 
                                             else -> {}
@@ -1126,6 +1126,17 @@ class PackageRepository @Inject constructor(
                         rootService.writeJson(data = packageEntity, dst = tmpJsonPath)
                         cloudRepository.upload(client = client, src = tmpJsonPath, dstDir = PathUtil.getParentPath(jsonPath))
                         rootService.deleteRecursively(tmpDir)
+
+                        // 重建数据库记录：本函数上面已按目录名删掉「被污染」的旧实体，若不在此补写，
+                        // 恢复列表就只能等后台 Worker 重新扫云端才恢复 —— 而该 Worker 走
+                        // ExistingWorkPolicy.KEEP，同名任务在跑/排队时新请求会被忽略，
+                        // 实测「重载后云端列表长期为空，必须再备份一次才有记录」。
+                        // 手上这份实体已经过 recoverPackageNameFromDirName 修正，直接入库即可。
+                        if (packageEntity.indexInfo.packageName.isNotEmpty()) {
+                            packageDao.upsert(packageEntity)
+                        } else {
+                            log { "Skip upsert for dir without packageName: $packageName" }
+                        }
                     }.withLog()
                 }
             }

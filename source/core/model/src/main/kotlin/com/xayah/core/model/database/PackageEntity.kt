@@ -314,7 +314,7 @@ data class PackageEntity(
 }
 
 
-fun PackageEntity.asExternalModel(preserveIndex: Int = 0) = App(
+fun PackageEntity.asExternalModel(preserveIndex: Int = 0, note: String = "") = App(
     id = id,
     packageName = packageName,
     label = packageInfo.label,
@@ -323,7 +323,8 @@ fun PackageEntity.asExternalModel(preserveIndex: Int = 0) = App(
     lastBackupTime = extraInfo.lastBackupTime,
     isSystemApp = isSystemApp,
     selectionFlag = selectionFlag,
-    selected = extraInfo.activated
+    selected = extraInfo.activated,
+    note = note,
 )
 
 // Part update entity

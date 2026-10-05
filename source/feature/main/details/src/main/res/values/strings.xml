@@ -3,4 +3,8 @@
     <!-- 取消保护：把受保护版本（user_X@时间戳）恢复成普通版本（user_X） -->
     <string name="unprotect">Unprotect</string>
     <string name="unprotect_desc">Turn this protected version back into a normal backup. If a normal version already exists, this is refused to avoid overwriting it.</string>
+    <!-- App note: free-form text to tell what this app is for -->
+    <string name="note">Note</string>
+    <string name="add_note">Add a note</string>
+    <string name="note_desc">A short note to tell this app apart later</string>
 </resources>

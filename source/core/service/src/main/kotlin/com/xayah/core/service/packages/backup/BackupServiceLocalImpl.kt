@@ -12,6 +12,7 @@ import com.xayah.core.model.database.TaskDetailPackageEntity
 import com.xayah.core.model.database.TaskEntity
 import com.xayah.core.rootservice.service.RemoteRootService
 import com.xayah.core.service.util.CommonBackupUtil
+import com.xayah.core.service.util.IncrementalContext
 import com.xayah.core.service.util.PackagesBackupUtil
 import com.xayah.core.util.PathUtil
 import com.xayah.core.util.localBackupSaveDir
@@ -49,11 +50,11 @@ internal class BackupServiceLocalImpl @Inject constructor() : AbstractBackupServ
         )
     }
 
-    override suspend fun backup(type: DataType, p: PackageEntity, r: PackageEntity?, t: TaskDetailPackageEntity, dstDir: String) {
+    override suspend fun backup(type: DataType, p: PackageEntity, r: PackageEntity?, t: TaskDetailPackageEntity, dstDir: String, ctx: IncrementalContext) {
         if (type == DataType.PACKAGE_APK) {
-            mPackagesBackupUtil.backupApk(p = p, t = t, r = r, dstDir = dstDir)
+            mPackagesBackupUtil.backupApk(p = p, t = t, r = r, dstDir = dstDir, ctx = ctx)
         } else {
-            mPackagesBackupUtil.backupData(p = p, t = t, r = r, dataType = type, dstDir = dstDir)
+            mPackagesBackupUtil.backupData(p = p, t = t, r = r, dataType = type, dstDir = dstDir, ctx = ctx)
         }
         t.update(dataType = type, progress = 1f)
         t.update(processingIndex = t.processingIndex + 1)

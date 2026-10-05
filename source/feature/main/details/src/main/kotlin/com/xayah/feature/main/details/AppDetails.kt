@@ -13,6 +13,7 @@ import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.IntrinsicSize
+import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -39,8 +40,10 @@ import androidx.compose.material3.FilterChipDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.LocalContentColor
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.SheetState
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
+import androidx.compose.material3.Surface
 import androidx.compose.material3.SingleChoiceSegmentedButtonRowScope
 import androidx.compose.material3.Text
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -69,12 +72,14 @@ import com.xayah.core.model.database.PackageEntity
 import com.xayah.core.model.database.PackagePermission
 import com.xayah.core.ui.component.ActionSegmentedButton
 import com.xayah.core.ui.component.AnimatedModalDropdownMenu
+import com.xayah.core.ui.component.BodyMediumText
 import com.xayah.core.ui.component.BodyLargeText
 import com.xayah.core.ui.component.BottomButton
 import com.xayah.core.ui.component.Clickable
 import com.xayah.core.ui.component.DataChips
 import com.xayah.core.ui.component.DropdownMenuItem
 import com.xayah.core.ui.component.HeadlineMediumText
+import com.xayah.core.ui.component.DismissState
 import com.xayah.core.ui.component.LocalSlotScope
 import com.xayah.core.ui.component.ModalBottomSheet
 import com.xayah.core.ui.component.PackageIconImage
@@ -110,6 +115,8 @@ internal fun AppDetails(
     onLaunch: () -> Unit,
     onProtect: () -> Unit,
     onUnprotect: () -> Unit = {},
+    // 应用级备注（同一应用的所有备份版本共用一条）
+    onSetNote: (String) -> Unit = {},
     onDelete: () -> Unit
 ) {
     var isShow by remember { mutableStateOf(false) }
@@ -137,6 +144,8 @@ internal fun AppDetails(
         BodyLargeText(text = app.packageName, color = ThemedColorSchemeKeyTokens.OnSurfaceVariant.value)
         LabelsFlow(opType = opType, app = app, refs = uiState.refs) { isShow = true }
 
+        NoteRow(note = uiState.note, onSetNote = onSetNote)
+
         Spacer(Modifier.height(SizeTokens.Level12))
 
         ActionsRow(opType = opType, blocked = app.extraInfo.blocked, frozen = app.extraInfo.enabled.not(), protected = app.preserveId != 0L, onBlock = onBlock, onFreeze = onFreeze, onLaunch = onLaunch, onProtect = onProtect, onUnprotect = onUnprotect, onDelete = onDelete)
@@ -148,6 +157,51 @@ internal fun AppDetails(
         Info(app = app, archiveDir = archiveDir)
 
         Permissions(permissions = app.extraInfo.permissions)
+    }
+}
+
+/**
+ * 备注行：显示该应用的备注（没有则显示「添加备注」），点击弹出编辑框。
+ *
+ * 备注按应用存、不分版本 —— 在保护版本的详情页写的说明，切回主版本也能看到同一条。
+ */
+@Composable
+private fun NoteRow(note: String, onSetNote: (String) -> Unit) {
+    val context = LocalContext.current
+    val dialogState = LocalSlotScope.current!!.dialogSlot
+    val scope = rememberCoroutineScope()
+    val isEmpty = note.isEmpty()
+    Surface(
+        onClick = {
+            scope.launch {
+                val (state, value) = dialogState.open(
+                    initialState = note,
+                    title = context.getString(R.string.note),
+                ) { textState ->
+                    OutlinedTextField(
+                        modifier = Modifier.fillMaxWidth(),
+                        value = textState.value,
+                        onValueChange = { textState.value = it },
+                        label = { Text(text = context.getString(R.string.note)) },
+                        supportingText = { Text(text = context.getString(R.string.note_desc)) },
+                    )
+                }
+                if (state == DismissState.CONFIRM) onSetNote(value)
+            }
+        }
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .paddingHorizontal(SizeTokens.Level24),
+            verticalAlignment = Alignment.CenterVertically,
+        ) {
+            BodyMediumText(
+                text = note.ifEmpty { context.getString(R.string.add_note) },
+                color = if (isEmpty) ThemedColorSchemeKeyTokens.Outline.value else ThemedColorSchemeKeyTokens.BluePrimary.value,
+                maxLines = 2,
+            )
+        }
     }
 }
 

@@ -20,6 +20,7 @@ import com.xayah.core.model.util.get
 import com.xayah.core.network.client.CloudClient
 import com.xayah.core.rootservice.service.RemoteRootService
 import com.xayah.core.service.util.CommonBackupUtil
+import com.xayah.core.service.util.IncrementalContext
 import com.xayah.core.service.util.PackagesBackupUtil
 import com.xayah.core.util.DateUtil
 import com.xayah.core.util.PathUtil
@@ -92,12 +93,18 @@ internal class BackupServiceCloudImpl @Inject constructor() : AbstractBackupServ
         mClient.mkdirRecursively(getRemoteAppDir(archivesRelativeDir))
     }
 
-    override suspend fun backup(type: DataType, p: PackageEntity, r: PackageEntity?, t: TaskDetailPackageEntity, dstDir: String) {
+    /**
+     * 云端不参与增量：见 [mIncrementalEnabled] 说明。云端若命中「未变化跳过」，上传会被连带跳过，
+     * 而远端新主备份目录此时是空的 → 远端缺件。
+     */
+    override val mIncrementalEnabled: Boolean = false
+
+    override suspend fun backup(type: DataType, p: PackageEntity, r: PackageEntity?, t: TaskDetailPackageEntity, dstDir: String, ctx: IncrementalContext) {
         val remoteAppDir = getRemoteAppDir(resolveArchiveRelativeDir(p))
         val result = if (type == DataType.PACKAGE_APK) {
-            mPackagesBackupUtil.backupApk(p = p, t = t, r = r, dstDir = dstDir)
+            mPackagesBackupUtil.backupApk(p = p, t = t, r = r, dstDir = dstDir, ctx = ctx)
         } else {
-            mPackagesBackupUtil.backupData(p = p, t = t, r = r, dataType = type, dstDir = dstDir)
+            mPackagesBackupUtil.backupData(p = p, t = t, r = r, dataType = type, dstDir = dstDir, ctx = ctx)
         }
         if (result.isSuccess && t.get(type).state != OperationState.SKIP) {
             mPackagesBackupUtil.upload(client = mClient, p = p, t = t, dataType = type, srcDir = dstDir, dstDir = remoteAppDir)
@@ -170,14 +177,15 @@ internal class BackupServiceCloudImpl @Inject constructor() : AbstractBackupServ
     }
 
     // 修复：保留历史备份在云场景失效。归档旧主备份需在远程执行 rename，否则旧备份被新备份上传覆盖。
-    override suspend fun archiveMainBackup(existingMain: PackageEntity) {
+    // 返回 null：云端无本地可借用的归档（增量「继承」只对本地生效）
+    override suspend fun archiveMainBackup(existingMain: PackageEntity): String? {
         // 定位现存主备份的真实路径：先按新（应用名_包名）找，再回退旧（纯包名），
         // 这样无论「云端目录仅用包名」开关处于哪种状态都能命中现有目录。
         val srcNew = "${mRemoteAppsDir}/${existingMain.archivesRelativeDir}"
         val srcLegacy = "${mRemoteAppsDir}/${existingMain.legacyArchivesRelativeDir}"
         val isLegacy = !mClient.exists(srcNew) && mClient.exists(srcLegacy)
         val src = if (isLegacy) srcLegacy else srcNew
-        if (!mClient.exists(src)) return
+        if (!mClient.exists(src)) return null
 
         // 归档必须落在**源目录自身的父目录**下（即 src 后追加 @preserveId）。
         // 若按 archivesRelativeDir 算目标，开关在两次备份间翻转时会变成跨父目录 rename，
@@ -200,6 +208,7 @@ internal class BackupServiceCloudImpl @Inject constructor() : AbstractBackupServ
         mRootService.deleteRecursively(tmpDir)
         mClient.renameTo(src, dst)
         mPackageDao.upsert(archived)
+        return null
     }
 
     // 修复：清理超量旧归档需在远程执行删除，否则远程旧版本不会被真正删除

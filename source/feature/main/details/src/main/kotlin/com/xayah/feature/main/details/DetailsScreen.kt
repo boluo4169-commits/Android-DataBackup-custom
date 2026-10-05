@@ -71,6 +71,7 @@ internal fun AppDetailsScreen(uiState: DetailsUiState, viewModel: DetailsViewMod
                                 onLaunch = viewModel::launchApp,
                                 onProtect = viewModel::protect,
                                 onUnprotect = viewModel::unprotect,
+                                onSetNote = viewModel::setNote,
                                 onDelete = viewModel::delete,
                             )
                         }

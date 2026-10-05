@@ -14,6 +14,7 @@ import android.widget.Toast
 import androidx.appcompat.content.res.AppCompatResources
 import com.xayah.core.data.R
 import com.xayah.core.data.util.srcDir
+import com.xayah.core.database.dao.AppNoteDao
 import com.xayah.core.database.dao.PackageDao
 import com.xayah.core.datastore.di.DbDispatchers.Default
 import com.xayah.core.datastore.di.Dispatcher
@@ -38,6 +39,7 @@ import com.xayah.core.model.database.PackageDataStates
 import com.xayah.core.model.database.PackageDataStatesEntity
 import com.xayah.core.model.database.PackageDataStats
 import com.xayah.core.model.database.PackageEntity
+import com.xayah.core.model.database.noteKey
 import com.xayah.core.model.database.PackageExtraInfo
 import com.xayah.core.model.database.PackageIndexInfo
 import com.xayah.core.model.database.PackageInfo
@@ -77,6 +79,7 @@ class AppsRepo @Inject constructor(
     @ApplicationContext private val context: Context,
     @Dispatcher(Default) private val defaultDispatcher: CoroutineDispatcher,
     private val appsDao: PackageDao,
+    private val appNoteDao: AppNoteDao,
     private val packageRepo: PackageRepository,
     private val rootService: RemoteRootService,
     private val settingsDataRepo: SettingsDataRepo,
@@ -116,11 +119,19 @@ class AppsRepo @Inject constructor(
         when (opType) {
             OpType.BACKUP -> appsDao.queryPackagesFlow(opType = opType, blocked = false)
             OpType.RESTORE -> appsDao.queryPackagesFlow(opType = opType, cloud = cloudName, backupDir = backupDir)
-        }
-    ) { lData, pSet, lRefs, lLabels, apps ->
+            // 备注并入应用流：Kotlin 的 combine 最多接受 5 个流，这里不能直接再加一个参数
+        }.combine(appNoteDao.queryAllFlow()) { apps, notes -> apps to notes },
+    ) { lData, pSet, lRefs, lLabels, appsWithNotes ->
         val data = lData.castTo<ListData.Apps>()
+        val apps = appsWithNotes.first
+        // 备注按「记录」匹配（含 preserveId 与存储位置）：每个备份版本各写各的
+        val noteMap = appsWithNotes.second.associateBy({ it.noteKey }, { it.note })
         apps.asSequence()
-            .filter(packageRepo.getKeyPredicateNew(key = data.searchQuery))
+            // 搜索同时匹配备注：用户「分不清应用」时，记得的往往是自己写过的那句说明
+            .filter { p ->
+                packageRepo.getKeyPredicateNew(key = data.searchQuery)(p) ||
+                    (data.searchQuery.isNotBlank() && noteMap[p.noteKey]?.contains(data.searchQuery, ignoreCase = true) == true)
+            }
             .filter(packageRepo.getShowSystemAppsPredicate(value = data.filters.showSystemApps))
             .filter(packageRepo.getHasBackupsPredicate(value = data.filters.hasBackups, pkgUserSet = pSet))
             .filter(packageRepo.getHasNoBackupsPredicate(value = data.filters.hasNoBackups, pkgUserSet = pSet))
@@ -140,7 +151,7 @@ class AppsRepo @Inject constructor(
                             .mapIndexed { index, entity -> entity.id to (index + 1) }
                     }
                     .toMap()
-                list.map { it.asExternalModel(preserveIndex = indexMap[it.id] ?: 0) }
+                list.map { it.asExternalModel(preserveIndex = indexMap[it.id] ?: 0, note = noteMap[it.noteKey].orEmpty()) }
             }
     }.flowOn(defaultDispatcher)
 

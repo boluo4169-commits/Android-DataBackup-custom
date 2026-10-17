@@ -29,6 +29,20 @@ object PreparationUtil {
         )
     }
 
+    /**
+     * 备份目录所在分区的文件系统类型（vfat / exfat / f2fs …），判不了返回空串。
+     *
+     * `/storage/<VOL>/…` 是 FUSE 挂载点，直接查只会得到 `fuse`，必须映射回
+     * `/mnt/media_rw/<VOL>` 才能从 mount 表读到真实类型。内部存储（emulated）没有单文件上限，
+     * 直接返回空串交给调用方忽略。
+     */
+    suspend fun getStorageFileSystemType(path: String): String {
+        val volume = Regex("^/storage/([^/]+)").find(path)?.groupValues?.getOrNull(1).orEmpty()
+        if (volume.isEmpty() || volume == "emulated" || volume == "self") return ""
+        val mount = listExternalStorage().out.firstOrNull { it.endsWith("/$volume") } ?: return ""
+        return getExternalStorageType(mount).out.firstOrNull()?.trim().orEmpty()
+    }
+
     suspend fun getInputMethods(): ShellResult = run {
         // settings get secure default_input_method
         execute(

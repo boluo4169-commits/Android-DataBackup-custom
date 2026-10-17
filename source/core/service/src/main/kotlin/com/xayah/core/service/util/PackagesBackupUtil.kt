@@ -24,6 +24,7 @@ import com.xayah.core.util.LogUtil
 import com.xayah.core.util.PathUtil
 import com.xayah.core.util.SymbolUtil
 import com.xayah.core.util.TrashedFilePatterns
+import com.xayah.core.util.command.StorageLimit
 import com.xayah.core.util.command.Tar
 import com.xayah.core.util.filesDir
 import com.xayah.core.util.model.ShellResult
@@ -138,6 +139,16 @@ class PackagesBackupUtil @Inject constructor(
         DataType.PACKAGE_OBB -> displayStats.obbBytes = sizeBytes
         DataType.PACKAGE_MEDIA -> displayStats.mediaBytes = sizeBytes
         else -> Unit
+    }
+
+    private fun PackageEntity.getDisplayBytes(dataType: DataType): Long = when (dataType) {
+        DataType.PACKAGE_APK -> displayStats.apkBytes
+        DataType.PACKAGE_USER -> displayStats.userBytes
+        DataType.PACKAGE_USER_DE -> displayStats.userDeBytes
+        DataType.PACKAGE_DATA -> displayStats.dataBytes
+        DataType.PACKAGE_OBB -> displayStats.obbBytes
+        DataType.PACKAGE_MEDIA -> displayStats.mediaBytes
+        else -> 0L
     }
 
     private suspend fun TaskDetailPackageEntity.updateInfo(
@@ -496,6 +507,15 @@ class PackagesBackupUtil @Inject constructor(
             // 反把设备烤热导致后续 tar 打包被温控杀。跳过，大小由归档实际字节回填。
             // 「是否变化」不用总大小比对（掩盖同尺寸内容变化、且对 USER 恒失效），改由上方清单哈希判定。
             val sizeBytes = if (dataType == DataType.PACKAGE_USER) -1L else rootService.calculateSize(src)
+            // FAT32 目标分区上，超过 4 GiB 的归档必然写不完：zstd 会报 File too large（退出码 70），
+            // 校验再判归档损坏并删除，白等几分钟且这一类数据这次没备份上（真实案例：微信 user 8 GB）。
+            // USER 类型刻意跳过了 calculateSize，用列表扫描时的 displayStats 兜底。
+            val estimatedBytes = if (sizeBytes > 0) sizeBytes else p.getDisplayBytes(dataType)
+            StorageLimit.fat32BlockReason(dst, estimatedBytes)?.let { reason ->
+                out.add(log { "Skipped: $reason" })
+                t.updateInfo(dataType = dataType, state = OperationState.ERROR, log = out.toLineString())
+                return@run ShellResult(code = -1, input = listOf(), out = out)
+            }
             t.updateInfo(dataType = dataType, state = OperationState.PROCESSING, bytes = if (sizeBytes < 0) 0 else sizeBytes)
             // 路径 1：主目录自身的归档 + manifest 未变化 → 跳过（preserve 关闭时的常规路径）
             val unchangedInPlace = srcHash != null && rootService.exists(dst) && IncrementalBackupUtil.isUnchanged(rootService, dst, params, srcHash)
@@ -522,6 +542,10 @@ class PackagesBackupUtil @Inject constructor(
                     // 区分凶手用（dmesg 的 OOM 记录 / thermal 温度 / Athena 等日志）
                     if (result.code == 137) {
                         LogUtil.logKillEvidence(packageName = packageName, dataType = dataType.type)
+                    }
+                    // 预检漏网时（预估不准）也要给出可读原因，别让用户只看到一连串 tar/zstd 报错
+                    if (StorageLimit.isTooLargeError(result.code, result.out)) {
+                        out.add(log { StorageLimit.TOO_LARGE_HINT })
                     }
                     // GNU tar 非 0 退出码有两类，归档本身都可能已完整写出，故不在此处判失败，
                     // 统一交给紧随其后的 testArchive 裁定（能被 tar -tf 完整列出即算成功）：

@@ -18,6 +18,7 @@ import com.xayah.core.rootservice.service.RemoteRootService
 import com.xayah.core.util.LogUtil
 import com.xayah.core.util.PathUtil
 import com.xayah.core.util.TrashedFilePatterns
+import com.xayah.core.util.command.StorageLimit
 import com.xayah.core.util.command.Tar
 import com.xayah.core.util.command.TrashedUtil
 import com.xayah.core.util.model.ShellResult
@@ -116,6 +117,12 @@ class MediumBackupUtil @Inject constructor(
         val srcHash = if (allowIncremental) IncrementalBackupUtil.computeSourceHash(srcAbs = src, pruneDirs = listOf(), followSymlinks = followSymlinks) else null
 
         val sizeBytes = rootService.calculateSize(src)
+        // 同 packages 侧：FAT32 目标分区装不下 4 GiB 以上的单文件，提前拦下并说明原因
+        StorageLimit.fat32BlockReason(dst, sizeBytes)?.let { reason ->
+            out.add(log { "Skipped: $reason" })
+            t.updateInfo(state = OperationState.ERROR, log = out.toLineString())
+            return@run ShellResult(code = -1, input = listOf(), out = out)
+        }
         t.updateInfo(state = OperationState.PROCESSING, bytes = sizeBytes)
         if (allowIncremental && srcHash != null && rootService.exists(dst) && IncrementalBackupUtil.isUnchanged(rootService, dst, params, srcHash)) {
             t.updateInfo(state = OperationState.SKIP)
@@ -145,6 +152,9 @@ class MediumBackupUtil @Inject constructor(
                 // 归档真损坏（如磁盘写满）时 testArchive 会失败、最终仍判失败，所以不存在放行坏归档的风险。
                 if (result.isSuccess.not()) {
                     log { "tar exited with code ${result.code}; archive kept, verdict by testArchive." }
+                }
+                if (StorageLimit.isTooLargeError(result.code, result.out)) {
+                    out.add(log { StorageLimit.TOO_LARGE_HINT })
                 }
                 out.addAll(result.out)
             }

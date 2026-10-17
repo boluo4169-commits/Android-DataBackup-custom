@@ -39,7 +39,9 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.xayah.core.datastore.readListShowVersion
 import com.xayah.core.model.OpType
 import com.xayah.core.model.Target
 import com.xayah.core.model.database.PackageEntity
@@ -64,6 +66,8 @@ fun ListItems(
     scrollState: LazyListState
 ) {
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
+    // 列表副标题是否附带版本号：作为显示偏好直接订阅，改完即时生效，不必重进页面
+    val showVersion by LocalContext.current.readListShowVersion().collectAsStateWithLifecycle(initialValue = false)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -73,7 +77,7 @@ fun ListItems(
             Spacer(modifier = Modifier.size(SizeTokens.Level1))
         }
 
-        listItems(uiState = uiState, viewModel = viewModel)
+        listItems(uiState = uiState, viewModel = viewModel, showVersion = showVersion)
 
         item(key = "-2") {
             Spacer(modifier = Modifier.size(SizeTokens.Level128))
@@ -85,6 +89,7 @@ fun ListItems(
 fun LazyListScope.listItems(
     uiState: ListItemsUiState,
     viewModel: ListItemsViewModel,
+    showVersion: Boolean = false,
 ) {
     when (uiState) {
         is ListItemsUiState.Success.Apps -> {
@@ -96,6 +101,9 @@ fun LazyListScope.listItems(
                         id = item.id,
                         packageName = item.packageName,
                         label = item.label,
+                        versionName = item.versionName,
+                        versionCode = item.versionCode,
+                        showVersion = showVersion,
                         note = item.note,
                         preserveId = item.preserveId,
                         preserveIndex = item.preserveIndex,
@@ -142,6 +150,9 @@ fun AppItem(
     id: Long,
     packageName: String,
     label: String,
+    versionName: String = "",
+    versionCode: Long = 0L,
+    showVersion: Boolean = false,
     note: String = "",
     preserveId: Long,
     preserveIndex: Int,
@@ -164,7 +175,22 @@ fun AppItem(
 
             Column(modifier = Modifier.weight(1f)) {
                 TitleLargeText(text = label.ifEmpty { stringResource(id = R.string.unknown) }, maxLines = 1)
-                BodyMediumText(text = packageName, color = ThemedColorSchemeKeyTokens.Outline.value, maxLines = 1)
+                BodyMediumText(
+                    text = if (showVersion) {
+                        // 版本名与版本码一起给：前者是用户认知的「大版本」（4.0.7），后者用来区分同名的不同构建
+                        val version = buildString {
+                            append(versionName)
+                            if (versionCode != 0L) {
+                                if (isNotEmpty()) append(" (") else append("(")
+                                append(versionCode)
+                                append(")")
+                            }
+                        }
+                        if (version.isEmpty()) packageName else "$packageName  ·  $version"
+                    } else packageName,
+                    color = ThemedColorSchemeKeyTokens.Outline.value,
+                    maxLines = 1,
+                )
                 // 备注：该备份版本专属的说明，用来分辨「这份备份是什么」。
                 if (note.isNotEmpty()) {
                     BodyMediumText(text = note, color = ThemedColorSchemeKeyTokens.BluePrimary.value, maxLines = 1)

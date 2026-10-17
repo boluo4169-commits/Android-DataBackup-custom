@@ -42,6 +42,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xayah.core.data.repository.Filters
 import com.xayah.core.datastore.saveLoadSystemApps
 import com.xayah.core.hiddenapi.castTo
+import com.xayah.core.datastore.readListShowVersion
+import com.xayah.core.datastore.saveListShowVersion
 import com.xayah.core.model.OpType
 import com.xayah.core.model.SortType
 import com.xayah.core.model.database.CloudEntity
@@ -308,6 +310,14 @@ internal fun AppsFilterSheet(
                     Title(text = stringResource(id = R.string.labels))
                     LabelsFlow(labelEntities = labelEntities, labels = labels, onClick = onClickLabel)
                 }
+
+                // 显示偏好：只影响列表副标题，不参与筛选，所以不放进 filters
+                val showVersion by context.readListShowVersion().collectAsStateWithLifecycle(initialValue = false)
+                CheckBox(
+                    checked = showVersion,
+                    text = stringResource(id = R.string.show_version_in_list),
+                    onValueChange = { checked -> scope.launch { context.saveListShowVersion(checked) } },
+                )
 
                 SortDirectionRow(text = stringResource(id = R.string.sort), sortType = sortType, onClick = onSortByType)
                 RadioButtons(selected = sortIndex, items = stringArrayResource(id = R.array.backup_sort_type_items_apps).toList(), onSelect = onSortByIndex)

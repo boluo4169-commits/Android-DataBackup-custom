@@ -17,6 +17,7 @@ val KeyCheckKeystore = booleanPreferencesKey("check_keystore")
 val KeyReloadDumpApk = booleanPreferencesKey("reload_dump_apk")
 val KeyAutoScreenOff = booleanPreferencesKey("auto_screen_off")
 val KeyLoadSystemApps = booleanPreferencesKey("load_system_apps")
+val KeyListShowVersion = booleanPreferencesKey("list_show_version")
 val KeyBackupConfigs = booleanPreferencesKey("backup_configs")
 val KeyRestorePermissions = booleanPreferencesKey("restore_permissions")
 val KeyRestoreSsaid = booleanPreferencesKey("restore_ssaid")
@@ -40,6 +41,8 @@ fun Context.readCleanRestoring() = readStoreBoolean(key = KeyCleanRestoring, def
 fun Context.readResetRestoreList() = readStoreBoolean(key = KeyResetRestoreList, defValue = false)
 fun Context.readCheckKeystore() = readStoreBoolean(key = KeyCheckKeystore, defValue = true)
 fun Context.readLoadSystemApps() = readStoreBoolean(key = KeyLoadSystemApps, defValue = false)
+/** 列表副标题是否附带版本号（默认关，保持「名称 + 包名」的现有观感） */
+fun Context.readListShowVersion() = readStoreBoolean(key = KeyListShowVersion, defValue = false)
 fun Context.readReloadDumpApk() = readStoreBoolean(key = KeyReloadDumpApk, defValue = true)
 fun Context.readAutoScreenOff() = readStoreBoolean(key = KeyAutoScreenOff, defValue = false)
 fun Context.readBackupConfigs() = readStoreBoolean(key = KeyBackupConfigs, defValue = true)
@@ -90,3 +93,5 @@ suspend fun Context.saveClearDeviceFingerprint(value: Boolean) = saveStoreBoolea
 suspend fun Context.savePreserveBackups(value: Boolean) = saveStoreBoolean(key = KeyPreserveBackups, value = value)
 suspend fun Context.saveFixDataOwnership(value: Boolean) = saveStoreBoolean(key = KeyFixDataOwnership, value = value)
 suspend fun Context.saveDefaultBackupAll(value: Boolean) = saveStoreBoolean(key = KeyDefaultBackupAll, value = value)
+
+suspend fun Context.saveListShowVersion(value: Boolean) = saveStoreBoolean(key = KeyListShowVersion, value = value)

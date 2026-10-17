@@ -318,6 +318,8 @@ fun PackageEntity.asExternalModel(preserveIndex: Int = 0, note: String = "") = A
     id = id,
     packageName = packageName,
     label = packageInfo.label,
+    versionName = packageInfo.versionName,
+    versionCode = packageInfo.versionCode,
     userId = userId,
     preserveId = preserveId,
     preserveIndex = preserveIndex,

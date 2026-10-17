@@ -573,7 +573,7 @@ private fun Info(app: PackageEntity, archiveDir: String? = null) {
         Clickable(
             icon = Icons.Rounded.Apps,
             title = stringResource(id = R.string.version),
-            value = app.packageInfo.versionName
+            value = app.packageInfo.versionName + if (app.packageInfo.versionCode != 0L) " (${app.packageInfo.versionCode})" else ""
         )
         if (app.packageInfo.firstInstallTime != 0L) {
             Clickable(

@@ -14,4 +14,7 @@ data class App(
     val selected: Boolean,
     // 应用级备注（列表里用于分辨应用，详见 AppNoteEntity）
     val note: String = "",
+    // 版本信息：列表可选择性展示，用于区分同名不同版本的应用
+    val versionName: String = "",
+    val versionCode: Long = 0L,
 )

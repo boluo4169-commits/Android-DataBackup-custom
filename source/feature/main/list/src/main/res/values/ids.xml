@@ -26,6 +26,7 @@
     <item name="add" type="string" />
     <item name="select_target_directory" type="string" />
     <item name="labels" type="string" />
+    <item name="show_version_in_list" type="string" />
     <item name="label" type="string" />
     <item name="add_label" type="string" />
     <item name="new_label" type="string" />

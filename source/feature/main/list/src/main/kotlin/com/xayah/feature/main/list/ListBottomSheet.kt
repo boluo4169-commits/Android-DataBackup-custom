@@ -42,7 +42,9 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xayah.core.data.repository.Filters
 import com.xayah.core.datastore.saveLoadSystemApps
 import com.xayah.core.hiddenapi.castTo
+import com.xayah.core.datastore.readListShowPackage
 import com.xayah.core.datastore.readListShowVersion
+import com.xayah.core.datastore.saveListShowPackage
 import com.xayah.core.datastore.saveListShowVersion
 import com.xayah.core.model.OpType
 import com.xayah.core.model.SortType
@@ -312,7 +314,13 @@ internal fun AppsFilterSheet(
                 }
 
                 // 显示偏好：只影响列表副标题，不参与筛选，所以不放进 filters
+                val showPackage by context.readListShowPackage().collectAsStateWithLifecycle(initialValue = true)
                 val showVersion by context.readListShowVersion().collectAsStateWithLifecycle(initialValue = false)
+                CheckBox(
+                    checked = showPackage,
+                    text = stringResource(id = R.string.show_package_in_list),
+                    onValueChange = { checked -> scope.launch { context.saveListShowPackage(checked) } },
+                )
                 CheckBox(
                     checked = showVersion,
                     text = stringResource(id = R.string.show_version_in_list),

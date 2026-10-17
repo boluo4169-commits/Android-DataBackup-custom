@@ -41,6 +41,7 @@ import androidx.compose.ui.res.vectorResource
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
+import com.xayah.core.datastore.readListShowPackage
 import com.xayah.core.datastore.readListShowVersion
 import com.xayah.core.model.OpType
 import com.xayah.core.model.Target
@@ -68,6 +69,7 @@ fun ListItems(
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     // 列表副标题是否附带版本号：作为显示偏好直接订阅，改完即时生效，不必重进页面
     val showVersion by LocalContext.current.readListShowVersion().collectAsStateWithLifecycle(initialValue = false)
+    val showPackage by LocalContext.current.readListShowPackage().collectAsStateWithLifecycle(initialValue = true)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -77,7 +79,7 @@ fun ListItems(
             Spacer(modifier = Modifier.size(SizeTokens.Level1))
         }
 
-        listItems(uiState = uiState, viewModel = viewModel, showVersion = showVersion)
+        listItems(uiState = uiState, viewModel = viewModel, showVersion = showVersion, showPackage = showPackage)
 
         item(key = "-2") {
             Spacer(modifier = Modifier.size(SizeTokens.Level128))
@@ -90,6 +92,7 @@ fun LazyListScope.listItems(
     uiState: ListItemsUiState,
     viewModel: ListItemsViewModel,
     showVersion: Boolean = false,
+    showPackage: Boolean = true,
 ) {
     when (uiState) {
         is ListItemsUiState.Success.Apps -> {
@@ -104,6 +107,7 @@ fun LazyListScope.listItems(
                         versionName = item.versionName,
                         versionCode = item.versionCode,
                         showVersion = showVersion,
+                        showPackage = showPackage,
                         note = item.note,
                         preserveId = item.preserveId,
                         preserveIndex = item.preserveIndex,
@@ -153,6 +157,7 @@ fun AppItem(
     versionName: String = "",
     versionCode: Long = 0L,
     showVersion: Boolean = false,
+    showPackage: Boolean = true,
     note: String = "",
     preserveId: Long,
     preserveIndex: Int,
@@ -175,22 +180,25 @@ fun AppItem(
 
             Column(modifier = Modifier.weight(1f)) {
                 TitleLargeText(text = label.ifEmpty { stringResource(id = R.string.unknown) }, maxLines = 1)
-                BodyMediumText(
-                    text = if (showVersion) {
-                        // 版本名与版本码一起给：前者是用户认知的「大版本」（4.0.7），后者用来区分同名的不同构建
-                        val version = buildString {
-                            append(versionName)
-                            if (versionCode != 0L) {
-                                if (isNotEmpty()) append(" (") else append("(")
-                                append(versionCode)
-                                append(")")
-                            }
-                        }
-                        if (version.isEmpty()) packageName else "$packageName  ·  $version"
-                    } else packageName,
-                    color = ThemedColorSchemeKeyTokens.Outline.value,
-                    maxLines = 1,
-                )
+                // 副标题按两个开关组合：包名 / 版本 / 两者；都关掉则整行不占位
+                val version = if (showVersion) buildString {
+                    append(versionName)
+                    if (versionCode != 0L) {
+                        if (isNotEmpty()) append(" (") else append("(")
+                        append(versionCode)
+                        append(")")
+                    }
+                } else ""
+                val subtitle = listOf(if (showPackage) packageName else "", version)
+                    .filter { it.isNotEmpty() }
+                    .joinToString("  ·  ")
+                if (subtitle.isNotEmpty()) {
+                    BodyMediumText(
+                        text = subtitle,
+                        color = ThemedColorSchemeKeyTokens.Outline.value,
+                        maxLines = 1,
+                    )
+                }
                 // 备注：该备份版本专属的说明，用来分辨「这份备份是什么」。
                 if (note.isNotEmpty()) {
                     BodyMediumText(text = note, color = ThemedColorSchemeKeyTokens.BluePrimary.value, maxLines = 1)

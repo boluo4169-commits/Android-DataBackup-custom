@@ -25,6 +25,7 @@ import androidx.compose.material.icons.outlined.DeleteForever
 import androidx.compose.material.icons.outlined.Shield
 import androidx.compose.material.icons.rounded.AcUnit
 import androidx.compose.material.icons.rounded.Add
+import androidx.compose.material.icons.rounded.Numbers
 import androidx.compose.material.icons.rounded.Apps
 import androidx.compose.material.icons.rounded.Block
 import androidx.compose.material.icons.rounded.DeleteForever
@@ -570,10 +571,16 @@ private fun Info(app: PackageEntity, archiveDir: String? = null) {
             title = stringResource(id = R.string.uid),
             value = app.extraInfo.uid.toString()
         )
+        // 版本名（用户认知的 5.5）与版本码（内部递增的 55）分开列，混在一行分不清哪个是哪个
         Clickable(
             icon = Icons.Rounded.Apps,
-            title = stringResource(id = R.string.version),
-            value = app.packageInfo.versionName + if (app.packageInfo.versionCode != 0L) " (${app.packageInfo.versionCode})" else ""
+            title = stringResource(id = R.string.version_name),
+            value = app.packageInfo.versionName.ifEmpty { "-" }
+        )
+        Clickable(
+            icon = Icons.Rounded.Numbers,
+            title = stringResource(id = R.string.version_code),
+            value = app.packageInfo.versionCode.toString()
         )
         if (app.packageInfo.firstInstallTime != 0L) {
             Clickable(

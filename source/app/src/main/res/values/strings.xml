@@ -85,6 +85,8 @@
     <string name="restart_failed">Could not restart the app. Please restart it manually.</string>
     <string name="confirm_reload">Reload\?</string>
     <string name="version">Version</string>
+    <string name="version_name">Version name</string>
+    <string name="version_code">Version code</string>
     <string name="feature">Feature</string>
     <string name="abi" translatable="false">ABI</string>
     <string name="architecture">Architecture</string>
@@ -294,6 +296,7 @@ Off by default. If your drive limits a single file to 4 GB, 2 GB is a safe choic
     <string name="select_all">Select all</string>
     <string name="filters">Filters</string>
     <string name="show_version_in_list">Show version in list</string>
+    <string name="show_package_in_list">Show package name in list</string>
     <string name="sort">Sort</string>
     <string name="args_loading_from_user">Loading from user %1$s</string>
     <string name="backup_parts">Backup parts</string>

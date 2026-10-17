@@ -171,6 +171,10 @@ internal abstract class AbstractProcessingService : Service() {
             if (mContext.readAutoScreenOff().first()) {
                 mContext.saveScreenOffTimeout(mRootService.getScreenOffTimeout())
                 mContext.saveScreenOffCountDown(3)
+            } else {
+                // 上一次任务可能在倒计时中途被取消而留下非 0 值，不清掉会让这次（未开启自动息屏）
+                // 任务在 UI 层误判为需要倒计时而直接息屏
+                mContext.saveScreenOffCountDown(0)
             }
 
             mPreprocessingEntities.forEach {

@@ -176,6 +176,8 @@ fun PageProcessing(
         viewModel.launchOnIO {
             if (screenOffCountDown != 0) {
                 if (uiState.state != OperationState.PROCESSING) {
+                    // 备份在倒计时结束前就完成了：这条提示是 Indefinite 的，不清掉会一直挂在完成页上
+                    viewModel.emitEffectOnIO(IndexUiEffect.DismissSnackbar)
                     context.saveScreenOffCountDown(0)
                 } else {
                     viewModel.launchOnIO {

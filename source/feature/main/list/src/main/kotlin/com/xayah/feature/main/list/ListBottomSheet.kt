@@ -3,6 +3,7 @@ package com.xayah.feature.main.list
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.horizontalScroll
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.ExperimentalLayoutApi
 import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
@@ -10,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Done
 import androidx.compose.material.icons.outlined.Cloud
@@ -84,7 +86,8 @@ internal fun ListBottomSheet(
     uiState: ListBottomSheetUiState.Success,
     viewModel: ListBottomSheetViewModel,
 ) {
-    val sheetState = rememberModalBottomSheetState()
+    // 内容通常超过半屏：跳过半展开态，直接全高，否则内层滚动会抢走上滑手势、面板展不开
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     // 关闭时必须无条件复位 showFilterSheet：原来这里带 `if (!sheetState.isVisible)` 判断，
     // 而 invokeOnCompletion 在「动画被取消」时同样会回调，此时 isVisible 仍是 true，
     // 复位被跳过 → 状态卡在 true。之后点筛选按钮 emit(true) 被 StateFlow 去重，
@@ -272,40 +275,43 @@ internal fun AppsFilterSheet(
     val scope = rememberCoroutineScope()
     if (isShow) {
         ModalBottomSheet(onDismissRequest = onDismissRequest, sheetState = sheetState) {
-            Title(text = stringResource(id = R.string.filters))
-            if (opType == OpType.BACKUP) {
-                SourceChips(clouds) { cloud, backupDir ->
-                    setFilters(filters.copy(cloud = cloud, backupDir = backupDir))
-                }
-            }
-            CheckBox(checked = filters.showSystemApps, text = stringResource(id = R.string.load_system_apps), onValueChange = {
-                scope.launch {
-                    if (filters.showSystemApps.not()) {
-                        WorkManagerInitializer.fastInitializeAndUpdateApps(context)
+            // 标签多时内容会超过一屏：整块可滚动，否则排序与单选项会掉出屏幕且无法触达
+            Column(modifier = Modifier.verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+                Title(text = stringResource(id = R.string.filters))
+                if (opType == OpType.BACKUP) {
+                    SourceChips(clouds) { cloud, backupDir ->
+                        setFilters(filters.copy(cloud = cloud, backupDir = backupDir))
                     }
-                    context.saveLoadSystemApps(filters.showSystemApps.not())
-                    setFilters(filters.copy(showSystemApps = filters.showSystemApps.not()))
                 }
-            })
-            when (opType) {
-                OpType.BACKUP -> {
-                    CheckBox(checked = filters.hasBackups, text = stringResource(R.string.apps_which_have_backups), onValueChange = { setFilters(filters.copy(hasBackups = filters.hasBackups.not())) })
-                    CheckBox(checked = filters.hasNoBackups, text = stringResource(R.string.apps_which_have_no_backups), onValueChange = { setFilters(filters.copy(hasNoBackups = filters.hasNoBackups.not())) })
+                CheckBox(checked = filters.showSystemApps, text = stringResource(id = R.string.load_system_apps), onValueChange = {
+                    scope.launch {
+                        if (filters.showSystemApps.not()) {
+                            WorkManagerInitializer.fastInitializeAndUpdateApps(context)
+                        }
+                        context.saveLoadSystemApps(filters.showSystemApps.not())
+                        setFilters(filters.copy(showSystemApps = filters.showSystemApps.not()))
+                    }
+                })
+                when (opType) {
+                    OpType.BACKUP -> {
+                        CheckBox(checked = filters.hasBackups, text = stringResource(R.string.apps_which_have_backups), onValueChange = { setFilters(filters.copy(hasBackups = filters.hasBackups.not())) })
+                        CheckBox(checked = filters.hasNoBackups, text = stringResource(R.string.apps_which_have_no_backups), onValueChange = { setFilters(filters.copy(hasNoBackups = filters.hasNoBackups.not())) })
+                    }
+
+                    OpType.RESTORE -> {
+                        CheckBox(checked = filters.installedApps, text = stringResource(R.string.installed), onValueChange = { setFilters(filters.copy(installedApps = filters.installedApps.not())) })
+                        CheckBox(checked = filters.notInstalledApps, text = stringResource(R.string.not_installed), onValueChange = { setFilters(filters.copy(notInstalledApps = filters.notInstalledApps.not())) })
+                    }
                 }
 
-                OpType.RESTORE -> {
-                    CheckBox(checked = filters.installedApps, text = stringResource(R.string.installed), onValueChange = { setFilters(filters.copy(installedApps = filters.installedApps.not())) })
-                    CheckBox(checked = filters.notInstalledApps, text = stringResource(R.string.not_installed), onValueChange = { setFilters(filters.copy(notInstalledApps = filters.notInstalledApps.not())) })
+                if (labelEntities.isNotEmpty()) {
+                    Title(text = stringResource(id = R.string.labels))
+                    LabelsFlow(labelEntities = labelEntities, labels = labels, onClick = onClickLabel)
                 }
+
+                SortDirectionRow(text = stringResource(id = R.string.sort), sortType = sortType, onClick = onSortByType)
+                RadioButtons(selected = sortIndex, items = stringArrayResource(id = R.array.backup_sort_type_items_apps).toList(), onSelect = onSortByIndex)
             }
-
-            if (labelEntities.isNotEmpty()) {
-                Title(text = stringResource(id = R.string.labels))
-                LabelsFlow(labelEntities = labelEntities, labels = labels, onClick = onClickLabel)
-            }
-
-            SortDirectionRow(text = stringResource(id = R.string.sort), sortType = sortType, onClick = onSortByType)
-            RadioButtons(selected = sortIndex, items = stringArrayResource(id = R.array.backup_sort_type_items_apps).toList(), onSelect = onSortByIndex)
         }
     }
 }
@@ -328,17 +334,19 @@ internal fun FilesFilterSheet(
 ) {
     if (isShow) {
         ModalBottomSheet(onDismissRequest = onDismissRequest, sheetState = sheetState) {
-            if (labelEntities.isNotEmpty()) {
-                Title(text = stringResource(id = R.string.labels))
-                LabelsFlow(labelEntities = labelEntities, labels = labels, onClick = onClickLabel)
-            }
+            Column(modifier = Modifier.verticalScroll(rememberScrollState()).padding(bottom = 24.dp)) {
+                if (labelEntities.isNotEmpty()) {
+                    Title(text = stringResource(id = R.string.labels))
+                    LabelsFlow(labelEntities = labelEntities, labels = labels, onClick = onClickLabel)
+                }
 
-            SortDirectionRow(text = stringResource(id = R.string.sort), sortType = sortType, onClick = onSortByType)
-            RadioButtons(
-                selected = sortIndex,
-                items = stringArrayResource(id = R.array.backup_sort_type_items_files).toList(),
-                onSelect = onSortByIndex
-            )
+                SortDirectionRow(text = stringResource(id = R.string.sort), sortType = sortType, onClick = onSortByType)
+                RadioButtons(
+                    selected = sortIndex,
+                    items = stringArrayResource(id = R.array.backup_sort_type_items_files).toList(),
+                    onSelect = onSortByIndex
+                )
+            }
         }
     }
 }

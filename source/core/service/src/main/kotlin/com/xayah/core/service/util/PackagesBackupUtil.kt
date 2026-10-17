@@ -10,6 +10,7 @@ import com.xayah.core.datastore.readCompressionLevel
 import com.xayah.core.datastore.readCompressionThreads
 import com.xayah.core.datastore.readFollowSymlinks
 import com.xayah.core.datastore.readSelectionType
+import com.xayah.core.service.R
 import com.xayah.core.model.CompressionType
 import com.xayah.core.model.DataType
 import com.xayah.core.model.OperationState
@@ -511,8 +512,18 @@ class PackagesBackupUtil @Inject constructor(
             // 校验再判归档损坏并删除，白等几分钟且这一类数据这次没备份上（真实案例：微信 user 8 GB）。
             // USER 类型刻意跳过了 calculateSize，用列表扫描时的 displayStats 兜底。
             val estimatedBytes = if (sizeBytes > 0) sizeBytes else p.getDisplayBytes(dataType)
-            StorageLimit.fat32BlockReason(dst, estimatedBytes)?.let { reason ->
-                out.add(log { "Skipped: $reason" })
+            if (estimatedBytes <= 0) {
+                // 预估缺失（列表未扫描过）时不拦，但要留痕：下次再出「写三分钟才失败」有据可查
+                out.add(log { "Size unknown, FAT32 pre-check skipped." })
+            } else if (StorageLimit.isBlockedByFat32(dst, estimatedBytes)) {
+                out.add(
+                    log {
+                        context.getString(
+                            R.string.fat32_archive_skipped,
+                            StorageLimit.formatGb(estimatedBytes)
+                        )
+                    }
+                )
                 t.updateInfo(dataType = dataType, state = OperationState.ERROR, log = out.toLineString())
                 return@run ShellResult(code = -1, input = listOf(), out = out)
             }
@@ -545,7 +556,7 @@ class PackagesBackupUtil @Inject constructor(
                     }
                     // 预检漏网时（预估不准）也要给出可读原因，别让用户只看到一连串 tar/zstd 报错
                     if (StorageLimit.isTooLargeError(result.code, result.out)) {
-                        out.add(log { StorageLimit.TOO_LARGE_HINT })
+                        out.add(log { context.getString(R.string.fat32_archive_aborted) })
                     }
                     // GNU tar 非 0 退出码有两类，归档本身都可能已完整写出，故不在此处判失败，
                     // 统一交给紧随其后的 testArchive 裁定（能被 tar -tf 完整列出即算成功）：

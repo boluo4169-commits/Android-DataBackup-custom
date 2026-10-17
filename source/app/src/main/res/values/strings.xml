@@ -295,6 +295,8 @@ Off by default. If your drive limits a single file to 4 GB, 2 GB is a safe choic
     <string name="pull_down_to_refresh">Pull down to refresh</string>
     <string name="select_all">Select all</string>
     <string name="filters">Filters</string>
+    <string name="fat32_archive_skipped">Skipped: the target partition is FAT32, which cannot hold a single file over 4 GiB. This item is about %1$s GB. Use an exFAT card, internal storage, or cloud backup.</string>
+    <string name="fat32_archive_aborted">Archive was cut off: the target partition cannot hold a single file over 4 GiB (FAT32). Switch to an exFAT card, internal storage, or cloud backup.</string>
     <string name="show_version_in_list">Show version in list</string>
     <string name="show_package_in_list">Show package name in list</string>
     <string name="sort">Sort</string>

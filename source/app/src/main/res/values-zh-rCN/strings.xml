@@ -287,6 +287,8 @@
     <string name="pull_down_to_refresh">下拉刷新</string>
     <string name="select_all">选择全部</string>
     <string name="filters">过滤</string>
+    <string name="fat32_archive_skipped">已跳过：目标分区是 FAT32，单文件不能超过 4 GiB。此项约 %1$s GB，请改用 exFAT 格式的存储卡、内部存储或云端备份。</string>
+    <string name="fat32_archive_aborted">归档被截断：目标分区（FAT32）单文件不能超过 4 GiB。请改用 exFAT 格式的存储卡、内部存储或云端备份。</string>
     <string name="show_version_in_list">列表显示版本号</string>
     <string name="show_package_in_list">列表显示包名</string>
     <string name="sort">排序</string>

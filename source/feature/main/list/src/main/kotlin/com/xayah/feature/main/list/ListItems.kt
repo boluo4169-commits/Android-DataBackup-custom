@@ -182,11 +182,12 @@ fun AppItem(
                 TitleLargeText(text = label.ifEmpty { stringResource(id = R.string.unknown) }, maxLines = 1)
                 // 副标题按两个开关组合：包名 / 版本 / 两者；都关掉则整行不占位
                 val version = if (showVersion) buildString {
-                    append(versionName)
+                    // 恢复页扫描不到 apk 时 versionName 为空，此时只给版本码，不留一对空括号
+                    if (versionName.isNotEmpty()) append(versionName)
                     if (versionCode != 0L) {
-                        if (isNotEmpty()) append(" (") else append("(")
+                        if (isNotEmpty()) append(" (") else append("")
                         append(versionCode)
-                        append(")")
+                        if (versionName.isNotEmpty()) append(")")
                     }
                 } else ""
                 val subtitle = listOf(if (showPackage) packageName else "", version)

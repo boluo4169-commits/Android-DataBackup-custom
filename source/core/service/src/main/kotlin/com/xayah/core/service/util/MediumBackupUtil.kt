@@ -8,6 +8,7 @@ import com.xayah.core.database.dao.TaskDao
 import com.xayah.core.datastore.readCompressionLevel
 import com.xayah.core.datastore.readCompressionThreads
 import com.xayah.core.datastore.readFollowSymlinks
+import com.xayah.core.service.R
 import com.xayah.core.model.DataType
 import com.xayah.core.model.OperationState
 import com.xayah.core.model.database.MediaEntity
@@ -118,8 +119,8 @@ class MediumBackupUtil @Inject constructor(
 
         val sizeBytes = rootService.calculateSize(src)
         // 同 packages 侧：FAT32 目标分区装不下 4 GiB 以上的单文件，提前拦下并说明原因
-        StorageLimit.fat32BlockReason(dst, sizeBytes)?.let { reason ->
-            out.add(log { "Skipped: $reason" })
+        if (StorageLimit.isBlockedByFat32(dst, sizeBytes)) {
+            out.add(log { context.getString(R.string.fat32_archive_skipped, StorageLimit.formatGb(sizeBytes)) })
             t.updateInfo(state = OperationState.ERROR, log = out.toLineString())
             return@run ShellResult(code = -1, input = listOf(), out = out)
         }
@@ -154,7 +155,7 @@ class MediumBackupUtil @Inject constructor(
                     log { "tar exited with code ${result.code}; archive kept, verdict by testArchive." }
                 }
                 if (StorageLimit.isTooLargeError(result.code, result.out)) {
-                    out.add(log { StorageLimit.TOO_LARGE_HINT })
+                    out.add(log { context.getString(R.string.fat32_archive_aborted) })
                 }
                 out.addAll(result.out)
             }

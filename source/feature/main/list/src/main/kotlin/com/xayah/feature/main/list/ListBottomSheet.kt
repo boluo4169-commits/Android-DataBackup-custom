@@ -90,8 +90,10 @@ internal fun ListBottomSheet(
     uiState: ListBottomSheetUiState.Success,
     viewModel: ListBottomSheetViewModel,
 ) {
-    // 内容通常超过半屏：跳过半展开态，直接全高，否则内层滚动会抢走上滑手势、面板展不开
+    // 应用页标签可能很多，内容超过半屏：跳过半展开态直接全高，否则内层滚动会抢走上滑手势、面板展不开。
+    // 文件页只有两个排序项，用默认的半展开态，别把短面板拉成整屏。
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val filesSheetState = rememberModalBottomSheetState()
     // 关闭时必须无条件复位 showFilterSheet：原来这里带 `if (!sheetState.isVisible)` 判断，
     // 而 invokeOnCompletion 在「动画被取消」时同样会回调，此时 isVisible 仍是 true，
     // 复位被跳过 → 状态卡在 true。之后点筛选按钮 emit(true) 被 StateFlow 去重，
@@ -143,7 +145,7 @@ internal fun ListBottomSheet(
         is ListBottomSheetUiState.Success.Files -> {
             FilesFilterSheet(
                 isShow = uiState.showFilterSheet,
-                sheetState = sheetState,
+                sheetState = filesSheetState,
                 sortIndex = uiState.sortIndex,
                 sortType = uiState.sortType,
                 labelEntities = uiState.labelEntities,

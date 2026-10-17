@@ -129,8 +129,9 @@ class ListDataRepo @Inject constructor(
         if (::showFilterSheet.isInitialized) showFilterSheet.tryEmit(false)
         if (::labels.isInitialized) labels.tryEmit(setOf())
         // 排序是用户偏好而非瞬时状态：重置时恢复上次的选择，否则每次进页面都要重设
-        if (::sortIndex.isInitialized) sortIndex.tryEmit(readSortIndex(target))
-        if (::sortType.isInitialized) sortType.tryEmit(readSortType(target))
+        val (savedIndex, savedType) = readSortPrefs(target)
+        if (::sortIndex.isInitialized) sortIndex.tryEmit(savedIndex)
+        if (::sortType.isInitialized) sortType.tryEmit(savedType)
         if (target == Target.Apps) {
             if (::showDataItemsSheet.isInitialized) showDataItemsSheet.tryEmit(false)
             if (::filters.isInitialized) {
@@ -165,8 +166,9 @@ class ListDataRepo @Inject constructor(
                 total = appsRepo.countApps(opType)
                 searchQuery = MutableStateFlow("")
                 showFilterSheet = MutableStateFlow(false)
-                sortIndex = MutableStateFlow(readSortIndex(target))
-                sortType = MutableStateFlow(readSortType(target))
+                val (savedIndex, savedType) = readSortPrefs(target)
+                sortIndex = MutableStateFlow(savedIndex)
+                sortType = MutableStateFlow(savedType)
                 isUpdating = when (opType) {
                     OpType.BACKUP -> combine(workRepo.isFullInitRunning(), workRepo.isFullInitAndUpdateAppsRunning(), workRepo.isFastInitAndUpdateAppsRunning()) { fInit, full, fast -> fInit || full || fast }
                     OpType.RESTORE -> combine(workRepo.isFullInitRunning(), workRepo.isLoadAppBackupsRunning()) { fInit, lAppBackups -> fInit || lAppBackups }
@@ -212,8 +214,9 @@ class ListDataRepo @Inject constructor(
                 total = filesRepo.countFiles(opType)
                 searchQuery = MutableStateFlow("")
                 showFilterSheet = MutableStateFlow(false)
-                sortIndex = MutableStateFlow(readSortIndex(target))
-                sortType = MutableStateFlow(readSortType(target))
+                val (savedIndex, savedType) = readSortPrefs(target)
+                sortIndex = MutableStateFlow(savedIndex)
+                sortType = MutableStateFlow(savedType)
                 isUpdating = when (opType) {
                     OpType.BACKUP -> combine(workRepo.isFullInitRunning(), workRepo.isFastInitAndUpdateFilesRunning()) { fInit, fast -> fInit || fast }
                     OpType.RESTORE -> combine(workRepo.isFullInitRunning(), workRepo.isLoadFileBackupsRunning()) { fInit, lFileBackups -> fInit || lFileBackups }
@@ -286,20 +289,15 @@ class ListDataRepo @Inject constructor(
         persistSortType(value)
     }
 
-    /** 排序方式按列表类型各存一份（应用 / 文件），备份页与恢复页共用同一习惯 */
-    private fun readSortIndex(target: Target?): Int = runBlocking {
-        when (target) {
-            Target.Files -> context.readSortIndexFiles()
-            else -> context.readSortIndexApps()
-        }.first()
-    }
-
-    private fun readSortType(target: Target?): SortType = runBlocking {
-        val raw = when (target) {
-            Target.Files -> context.readSortTypeFiles()
-            else -> context.readSortTypeApps()
-        }.first()
-        runCatching { SortType.valueOf(raw) }.getOrDefault(SortType.ASCENDING)
+    /**
+     * 排序方式按列表类型各存一份（应用 / 文件），备份页与恢复页共用同一习惯。
+     * 索引与方向合并成一次阻塞读取：这里在 ViewModel 构造路径上，少一次往返少一份卡顿风险。
+     */
+    private fun readSortPrefs(target: Target?): Pair<Int, SortType> = runBlocking {
+        val isFiles = target == Target.Files
+        val index = (if (isFiles) context.readSortIndexFiles() else context.readSortIndexApps()).first()
+        val raw = (if (isFiles) context.readSortTypeFiles() else context.readSortTypeApps()).first()
+        index to runCatching { SortType.valueOf(raw) }.getOrDefault(SortType.ASCENDING)
     }
 
     private suspend fun persistSortIndex(value: Int) = when (currentTarget) {

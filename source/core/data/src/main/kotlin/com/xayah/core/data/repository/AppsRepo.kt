@@ -93,6 +93,14 @@ class AppsRepo @Inject constructor(
         p.filter { it.indexInfo.cloud == f.cloud && it.indexInfo.backupDir == f.backupDir }.map { it.pkgUserKey }.toSet()
     }
 
+    /** 全库已选（与顶部计数同口径），供批量操作使用，不随列表筛选变化。 */
+    fun getActivatedAppsFlow(opType: OpType): Flow<List<PackageEntity>> =
+        appsDao.queryActivatedFlow(opType).flowOn(defaultDispatcher)
+
+    /** 恢复页专用：已选限定在当前备份源内。 */
+    fun getActivatedAppsFlow(opType: OpType, cloud: String, backupDir: String): Flow<List<PackageEntity>> =
+        appsDao.queryActivatedFlow(opType, cloud, backupDir).flowOn(defaultDispatcher)
+
     fun getInstalledApps(users: Flow<List<UserInfo>>): Flow<Set<String>> = users.map { u ->
         val set = mutableSetOf<String>()
         u.forEach {

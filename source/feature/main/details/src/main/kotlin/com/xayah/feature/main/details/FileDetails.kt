@@ -250,7 +250,13 @@ private fun LabelsBottomSheet(
                                 DropdownMenuItem(
                                     text = stringResource(id = R.string.delete),
                                     leadingIcon = Icons.Rounded.DeleteForever,
-                                    onClick = { onDeleteLabel(item.label) },
+                                    onClick = {
+                                        // 标签是应用与文件共用的全局对象，删一次两边都没了，必须先说清楚
+                                        dialogState.confirm(
+                                            title = context.getString(R.string.delete),
+                                            text = context.getString(R.string.confirm_delete_label, item.label),
+                                        ) { onDeleteLabel(item.label) }
+                                    },
                                 )
                             }
                         }

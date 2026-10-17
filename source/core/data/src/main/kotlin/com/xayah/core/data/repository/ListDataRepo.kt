@@ -163,8 +163,10 @@ class ListDataRepo @Inject constructor(
                     OpType.RESTORE -> combine(workRepo.isFullInitRunning(), workRepo.isLoadAppBackupsRunning()) { fInit, lAppBackups -> fInit || lAppBackups }
                 }
                 labels = MutableStateFlow(setOf())
-                labelAppRefs = labels.map {
-                    labelsRepo.getAppRefs(it)
+                // 同时订阅关联表：只 map 筛选条件的话，打完标签/移除标签后筛选结果不会刷新，
+                // 用户得手动切一次筛选才看得到更新（实测表现为「打了 5 个，列表还只显示 3 个」）。
+                labelAppRefs = combine(labels, labelsRepo.getAppRefsFlow()) { selected, all ->
+                    all.filter { it.label in selected }
                 }
 
                 showDataItemsSheet = MutableStateFlow(false)

@@ -46,8 +46,32 @@ class LabelsRepo @Inject constructor(
     suspend fun addLabelFileCrossRefs(items: List<LabelFileCrossRefEntity>) = labelDao.upsertFileRefs(items)
 
 
+    /**
+     * 批量打标：建标签 + 写应用关联，一个事务完成。
+     *
+     * 同批重复打标是幂等的（关联表主键 upsert），不需要调用方先去重；
+     * 标签名去重、去空白在这里做，避免空标签落库。
+     */
+    suspend fun attachLabels(labels: List<String>, refs: List<LabelAppCrossRefEntity>) {
+        val names = labels.map { it.trim() }.filter { it.isNotEmpty() }.distinct()
+        if (names.isEmpty() || refs.isEmpty()) return
+        // 关联里的标签名必须与落库的标签名同源，否则会写出指向不存在标签的孤儿记录
+        // （表现为「标签存在但筛选不出任何应用」）。调用方传不传 trim 过的不做假设。
+        val normalized = refs.map { it.copy(label = it.label.trim()) }.filter { it.label.isNotEmpty() }
+        if (normalized.isEmpty()) return
+        labelDao.attachLabels(labels = names.map { LabelEntity(label = it) }, refs = normalized)
+    }
+
     suspend fun deleteLabel(label: String) {
-        labelDao.delete(label)
+        labelDao.deleteLabelCascade(label)
+    }
+
+    /**
+     * 批量移除标签：只解除这批关联，标签本身保留（其他应用可能还在用）。
+     */
+    suspend fun detachLabels(refs: List<LabelAppCrossRefEntity>) {
+        if (refs.isEmpty()) return
+        labelDao.detachLabels(refs = refs)
     }
 
     suspend fun deleteLabelAppCrossRef(item: LabelAppCrossRefEntity) {

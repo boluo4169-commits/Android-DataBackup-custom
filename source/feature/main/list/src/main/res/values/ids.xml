@@ -26,6 +26,14 @@
     <item name="add" type="string" />
     <item name="select_target_directory" type="string" />
     <item name="labels" type="string" />
+    <item name="label" type="string" />
+    <item name="add_label" type="string" />
+    <item name="new_label" type="string" />
+    <item name="remove_label" type="string" />
+    <item name="label_applied" type="string" />
+    <item name="label_removed" type="string" />
+    <item name="no_labels_on_selected" type="string" />
+    <item name="no_labels_available" type="string" />
     <item name="local" type="string" />
     <item name="apps_which_have_backups" type="string" />
     <item name="apps_which_have_no_backups" type="string" />

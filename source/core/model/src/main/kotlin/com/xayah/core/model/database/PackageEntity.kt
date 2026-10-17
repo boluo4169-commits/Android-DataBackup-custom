@@ -318,6 +318,7 @@ fun PackageEntity.asExternalModel(preserveIndex: Int = 0, note: String = "") = A
     id = id,
     packageName = packageName,
     label = packageInfo.label,
+    userId = userId,
     preserveId = preserveId,
     preserveIndex = preserveIndex,
     lastBackupTime = extraInfo.lastBackupTime,

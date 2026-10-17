@@ -1,11 +1,13 @@
 package com.xayah.feature.main.list
 
 import android.content.Context
+import android.widget.Toast
 import androidx.lifecycle.SavedStateHandle
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.xayah.core.data.repository.AppsRepo
 import com.xayah.core.data.repository.FilesRepo
+import com.xayah.core.data.repository.LabelsRepo
 import com.xayah.core.data.repository.ListData
 import com.xayah.core.data.repository.ListDataRepo
 import com.xayah.core.hiddenapi.castTo
@@ -13,10 +15,13 @@ import com.xayah.core.model.App
 import com.xayah.core.model.File
 import com.xayah.core.model.OpType
 import com.xayah.core.model.Target
+import com.xayah.core.model.database.LabelAppCrossRefEntity
+import com.xayah.core.model.database.LabelEntity
 import com.xayah.core.model.util.of
 import com.xayah.core.ui.route.MainRoutes
 import com.xayah.core.util.decodeURL
 import com.xayah.core.util.launchOnDefault
+import com.xayah.core.util.withMainContext
 import com.xayah.core.work.WorkManagerInitializer
 import com.xayah.feature.main.list.ListActionsUiState.Loading
 import com.xayah.feature.main.list.ListActionsUiState.Success
@@ -35,6 +40,7 @@ class ListActionsViewModel @Inject constructor(
     private val listDataRepo: ListDataRepo,
     private val appsRepo: AppsRepo,
     private val filesRepo: FilesRepo,
+    private val labelsRepo: LabelsRepo,
 ) : ViewModel() {
     private val target: Target = Target.valueOf(savedStateHandle.get<String>(MainRoutes.ARG_TARGET)!!.decodeURL().trim())
     private val opType: OpType = OpType.of(savedStateHandle.get<String>(MainRoutes.ARG_OP_TYPE)?.decodeURL()?.trim())
@@ -46,8 +52,19 @@ class ListActionsViewModel @Inject constructor(
             listDataRepo.getListData(),
             listDataRepo.getAppList(),
             listDataRepo.defaultBackupAll,
-        ) { lData, aList, defaultBackupAll ->
+            // 标签与关联合成一个流：combine 上限 5 个，这里还要留位置给「已选集合」
+            combine(labelsRepo.getLabelsFlow(), labelsRepo.getAppRefsFlow()) { labels, refs -> labels to refs },
+            // 已选集合取全库（恢复页取当前备份源），与顶部计数同口径。
+            // 不能用 appList：那是筛选后的可见集合，会漏掉被搜索/筛选隐藏的已选应用。
+            when (opType) {
+                OpType.RESTORE -> appsRepo.getActivatedAppsFlow(opType, cloudName, backupDir)
+                else -> appsRepo.getActivatedAppsFlow(opType)
+            },
+        ) { lData, aList, defaultBackupAll, labelsAndRefs, selectedApps ->
             val listData = lData.castTo<ListData.Apps>()
+            val (labels, refs) = labelsAndRefs
+            val selectedKeys = selectedApps.map { AppKey(it.packageName, it.userId, it.preserveId) }
+            val selectedKeySet = selectedKeys.toSet()
             Success.Apps(
                 opType = opType,
                 selected = listData.selected,
@@ -55,6 +72,12 @@ class ListActionsViewModel @Inject constructor(
                 isUpdating = listData.isUpdating,
                 appList = aList,
                 defaultBackupAll = defaultBackupAll,
+                labels = labels,
+                selectedKeys = selectedKeys,
+                // 「移除标签」只列出确实挂在这批已选应用上的标签
+                selectedLabels = labels
+                    .filter { label -> refs.any { it.label == label.label && AppKey(it.packageName, it.userId, it.preserveId) in selectedKeySet } }
+                    .map { it.label },
             )
         }
 
@@ -195,6 +218,69 @@ class ListActionsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 给当前勾选的应用批量打标签。
+     *
+     * 刻意不改动勾选状态：用户打完标签通常紧接着就要备份，这里顺手清空选择就变成
+     * 「做一件事必须破坏另一件事」——正是此前「备份一个应用把整批勾选冲掉」的老问题。
+     * 同一批重复打标是幂等的（关联表主键 upsert）。
+     */
+    fun applyLabelsToSelected(labels: List<String>) {
+        viewModelScope.launchOnDefault {
+            val state = uiState.value as? Success.Apps ?: return@launchOnDefault
+            val keys = state.selectedKeys
+            if (keys.isEmpty() || labels.isEmpty()) return@launchOnDefault
+            val refs = labels.flatMap { label ->
+                keys.map { key ->
+                    LabelAppCrossRefEntity(
+                        label = label,
+                        packageName = key.packageName,
+                        userId = key.userId,
+                        preserveId = key.preserveId,
+                    )
+                }
+            }
+            labelsRepo.attachLabels(labels = labels, refs = refs)
+            withMainContext {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.label_applied, keys.size),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
+    /**
+     * 从当前勾选的应用上批量移除标签。只解除这批关联，标签本身保留——别的应用可能还在用。
+     * 同样不改动勾选状态。
+     */
+    fun removeLabelsFromSelected(labels: List<String>) {
+        viewModelScope.launchOnDefault {
+            val state = uiState.value as? Success.Apps ?: return@launchOnDefault
+            val keys = state.selectedKeys
+            if (keys.isEmpty() || labels.isEmpty()) return@launchOnDefault
+            val refs = labels.flatMap { label ->
+                keys.map { key ->
+                    LabelAppCrossRefEntity(
+                        label = label,
+                        packageName = key.packageName,
+                        userId = key.userId,
+                        preserveId = key.preserveId,
+                    )
+                }
+            }
+            labelsRepo.detachLabels(refs)
+            withMainContext {
+                Toast.makeText(
+                    context,
+                    context.getString(R.string.label_removed, keys.size),
+                    Toast.LENGTH_SHORT
+                ).show()
+            }
+        }
+    }
+
     fun showDataItemsSheet() {
         viewModelScope.launchOnDefault {
             listDataRepo.setShowDataItemsSheet(true)
@@ -257,6 +343,9 @@ sealed interface ListActionsUiState {
             override val isUpdating: Boolean,
             override val defaultBackupAll: Boolean,
             val appList: List<App>,
+            val labels: List<LabelEntity>,
+            val selectedKeys: List<AppKey>,
+            val selectedLabels: List<String>,
         ) : Success(opType, selected, total, isUpdating, defaultBackupAll)
 
         data class Files(
@@ -269,3 +358,10 @@ sealed interface ListActionsUiState {
         ) : Success(opType, selected, total, isUpdating, defaultBackupAll)
     }
 }
+
+/** 已选应用的身份（标签关联表主键去标签部分），与列表是否可见无关。 */
+data class AppKey(
+    val packageName: String,
+    val userId: Int,
+    val preserveId: Long,
+)

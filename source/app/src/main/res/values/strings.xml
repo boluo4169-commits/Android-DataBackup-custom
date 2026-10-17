@@ -497,6 +497,13 @@ Off by default. If your drive limits a single file to 4 GB, 2 GB is a safe choic
     <string name="apps_which_have_backups">Apps which have backups</string>
     <string name="apps_which_have_no_backups">Apps which have no backups</string>
     <string name="no_labels_here">No labels here.</string>
+    <string name="new_label">New label</string>
+    <string name="remove_label">Remove label</string>
+    <string name="label_applied">%1$d app(s) labeled</string>
+    <string name="label_removed">Label removed from %1$d app(s)</string>
+    <string name="no_labels_on_selected">Selected apps have no labels. Add one first.</string>
+    <string name="no_labels_available">No labels yet. Create one first.</string>
+    <string name="confirm_delete_label">Delete label \"%1$s\"? It will be removed from both apps and files, and cannot be undone.</string>
     <string name="backup_configs">Backup configs</string>
     <string name="backup_configs_desc">Export configurations to backup directory</string>
     <string name="restore_permissions">Restore permissions</string>

@@ -486,6 +486,13 @@
     <string name="apps_which_have_backups">存在备份</string>
     <string name="apps_which_have_no_backups">不存在备份</string>
     <string name="no_labels_here">这里没有标签。</string>
+    <string name="new_label">新建标签</string>
+    <string name="remove_label">移除标签</string>
+    <string name="label_applied">%1$d 个应用已打上标签</string>
+    <string name="label_removed">已从 %1$d 个应用移除标签</string>
+    <string name="no_labels_on_selected">所选应用没有标签，先用「添加标签」加一个</string>
+    <string name="no_labels_available">还没有任何标签，先用「新建标签」建一个</string>
+    <string name="confirm_delete_label">删除标签「%1$s」？应用和文件上的同一标签都会被移除，无法撤销。</string>
     <string name="backup_configs">备份配置</string>
     <string name="backup_configs_desc">将配置文件导出到备份目录</string>
     <string name="restore_permissions">恢复权限</string>

@@ -80,8 +80,19 @@ interface PackageDao {
     @Query("SELECT * FROM PackageEntity WHERE extraInfo_activated = 1 AND indexInfo_opType = :opType")
     suspend fun queryActivated(opType: OpType): List<PackageEntity>
 
+    /**
+     * 已选集合的响应式版本：批量操作（打标签）必须按**全库已选**取数，
+     * 不能用列表页过滤后的可见集合——两者口径不同，会给用户「选了 5 个只打了 3 个」的结果。
+     */
+    @Query("SELECT * FROM PackageEntity WHERE extraInfo_activated = 1 AND indexInfo_opType = :opType")
+    fun queryActivatedFlow(opType: OpType): Flow<List<PackageEntity>>
+
     @Query("SELECT * FROM PackageEntity WHERE extraInfo_activated = 1 AND indexInfo_opType = :opType AND indexInfo_cloud = :cloud AND indexInfo_backupDir = :backupDir")
     suspend fun queryActivated(opType: OpType, cloud: String, backupDir: String): List<PackageEntity>
+
+    /** 恢复页按当前备份源取已选，避免把别的云端/目录下的记录一起打上标签。 */
+    @Query("SELECT * FROM PackageEntity WHERE extraInfo_activated = 1 AND indexInfo_opType = :opType AND indexInfo_cloud = :cloud AND indexInfo_backupDir = :backupDir")
+    fun queryActivatedFlow(opType: OpType, cloud: String, backupDir: String): Flow<List<PackageEntity>>
 
     @Query("UPDATE PackageEntity SET extraInfo_activated = 0 WHERE indexInfo_opType = :opType")
     suspend fun clearActivated(opType: OpType)

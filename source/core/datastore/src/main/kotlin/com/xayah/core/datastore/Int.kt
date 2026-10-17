@@ -11,6 +11,8 @@ val KeyRestoreUser = intPreferencesKey("restore_user")
 val KeyCompressionLevel = intPreferencesKey("compression_level")
 val KeyCompressionThreads = intPreferencesKey("compression_threads")
 val KeyMaxPreserveCount = intPreferencesKey("max_preserve_count")
+val KeySortIndexApps = intPreferencesKey("sort_index_apps")
+val KeySortIndexFiles = intPreferencesKey("sort_index_files")
 
 
 // -----------------------------------------Read-----------------------------------------
@@ -21,6 +23,8 @@ fun Context.readCompressionLevel() = readStoreInt(key = KeyCompressionLevel, def
 /** 默认 1 线程：压缩更慢但发热最低，避免备份大应用时被系统温控打断（用户可在设置里自定义） */
 fun Context.readCompressionThreads() = readStoreInt(key = KeyCompressionThreads, defValue = 2)
 fun Context.readMaxPreserveCount() = readStoreInt(key = KeyMaxPreserveCount, defValue = 3)
+fun Context.readSortIndexApps() = readStoreInt(key = KeySortIndexApps, defValue = 0)
+fun Context.readSortIndexFiles() = readStoreInt(key = KeySortIndexFiles, defValue = 0)
 
 
 // -----------------------------------------Write-----------------------------------------
@@ -30,3 +34,6 @@ suspend fun Context.saveRestoreUser(value: Int) = saveStoreInt(key = KeyRestoreU
 suspend fun Context.saveCompressionLevel(value: Int) = saveStoreInt(key = KeyCompressionLevel, value = value)
 suspend fun Context.saveCompressionThreads(value: Int) = saveStoreInt(key = KeyCompressionThreads, value = value)
 suspend fun Context.saveMaxPreserveCount(value: Int) = saveStoreInt(key = KeyMaxPreserveCount, value = value)
+
+suspend fun Context.saveSortIndexApps(value: Int) = saveStoreInt(key = KeySortIndexApps, value = value)
+suspend fun Context.saveSortIndexFiles(value: Int) = saveStoreInt(key = KeySortIndexFiles, value = value)

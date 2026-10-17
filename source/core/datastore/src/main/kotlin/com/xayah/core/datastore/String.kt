@@ -17,6 +17,8 @@ val KeyCloudActivatedAccountName = stringPreferencesKey("cloud_activated_account
 val KeyLoadedIconMD5 = stringPreferencesKey("loaded_icon_md5")
 val KeySelectionType = stringPreferencesKey("selection_type")
 val KeyThemeType = stringPreferencesKey("theme_type")
+val KeySortTypeApps = stringPreferencesKey("sort_type_apps")
+val KeySortTypeFiles = stringPreferencesKey("sort_type_files")
 val KeyCustomSUFile = stringPreferencesKey("custom_su_file")
 val KeyKillAppOption = stringPreferencesKey("kill_app_option")
 val KeyCloudSplitSize = stringPreferencesKey("cloud_split_size")
@@ -57,3 +59,8 @@ suspend fun Context.saveKillAppOption(value: KillAppOption) = saveStoreString(ke
 suspend fun Context.saveCloudSplitSize(value: CloudSplitSize) = saveStoreString(key = KeyCloudSplitSize, value = value.name.trim())
 suspend fun Context.saveLanguage(value: String) = saveStoreString(key = KeyLanguage, value = value.trim())
 suspend fun Context.saveLastUpdateNotifyVersion(value: String) = saveStoreString(key = KeyLastUpdateNotifyVersion, value = value.trim())
+
+fun Context.readSortTypeApps() = readStoreString(key = KeySortTypeApps, defValue = "")
+fun Context.readSortTypeFiles() = readStoreString(key = KeySortTypeFiles, defValue = "")
+suspend fun Context.saveSortTypeApps(value: String) = saveStoreString(key = KeySortTypeApps, value = value)
+suspend fun Context.saveSortTypeFiles(value: String) = saveStoreString(key = KeySortTypeFiles, value = value)

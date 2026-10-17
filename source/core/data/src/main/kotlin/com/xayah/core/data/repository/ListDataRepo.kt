@@ -2,6 +2,14 @@ package com.xayah.core.data.repository
 
 import android.content.Context
 import com.xayah.core.datastore.readDefaultBackupAll
+import com.xayah.core.datastore.readSortIndexApps
+import com.xayah.core.datastore.readSortIndexFiles
+import com.xayah.core.datastore.readSortTypeApps
+import com.xayah.core.datastore.readSortTypeFiles
+import com.xayah.core.datastore.saveSortIndexApps
+import com.xayah.core.datastore.saveSortIndexFiles
+import com.xayah.core.datastore.saveSortTypeApps
+import com.xayah.core.datastore.saveSortTypeFiles
 import com.xayah.core.datastore.saveDefaultBackupAll
 import com.xayah.core.model.App
 import com.xayah.core.model.File
@@ -120,8 +128,9 @@ class ListDataRepo @Inject constructor(
         if (::searchQuery.isInitialized) searchQuery.tryEmit("")
         if (::showFilterSheet.isInitialized) showFilterSheet.tryEmit(false)
         if (::labels.isInitialized) labels.tryEmit(setOf())
-        if (::sortIndex.isInitialized) sortIndex.tryEmit(0)
-        if (::sortType.isInitialized) sortType.tryEmit(SortType.ASCENDING)
+        // 排序是用户偏好而非瞬时状态：重置时恢复上次的选择，否则每次进页面都要重设
+        if (::sortIndex.isInitialized) sortIndex.tryEmit(readSortIndex(target))
+        if (::sortType.isInitialized) sortType.tryEmit(readSortType(target))
         if (target == Target.Apps) {
             if (::showDataItemsSheet.isInitialized) showDataItemsSheet.tryEmit(false)
             if (::filters.isInitialized) {
@@ -156,8 +165,8 @@ class ListDataRepo @Inject constructor(
                 total = appsRepo.countApps(opType)
                 searchQuery = MutableStateFlow("")
                 showFilterSheet = MutableStateFlow(false)
-                sortIndex = MutableStateFlow(0)
-                sortType = MutableStateFlow(SortType.ASCENDING)
+                sortIndex = MutableStateFlow(readSortIndex(target))
+                sortType = MutableStateFlow(readSortType(target))
                 isUpdating = when (opType) {
                     OpType.BACKUP -> combine(workRepo.isFullInitRunning(), workRepo.isFullInitAndUpdateAppsRunning(), workRepo.isFastInitAndUpdateAppsRunning()) { fInit, full, fast -> fInit || full || fast }
                     OpType.RESTORE -> combine(workRepo.isFullInitRunning(), workRepo.isLoadAppBackupsRunning()) { fInit, lAppBackups -> fInit || lAppBackups }
@@ -203,8 +212,8 @@ class ListDataRepo @Inject constructor(
                 total = filesRepo.countFiles(opType)
                 searchQuery = MutableStateFlow("")
                 showFilterSheet = MutableStateFlow(false)
-                sortIndex = MutableStateFlow(0)
-                sortType = MutableStateFlow(SortType.ASCENDING)
+                sortIndex = MutableStateFlow(readSortIndex(target))
+                sortType = MutableStateFlow(readSortType(target))
                 isUpdating = when (opType) {
                     OpType.BACKUP -> combine(workRepo.isFullInitRunning(), workRepo.isFastInitAndUpdateFilesRunning()) { fInit, fast -> fInit || fast }
                     OpType.RESTORE -> combine(workRepo.isFullInitRunning(), workRepo.isLoadFileBackupsRunning()) { fInit, lFileBackups -> fInit || lFileBackups }
@@ -266,11 +275,41 @@ class ListDataRepo @Inject constructor(
     }
 
     suspend fun setSortIndex(block: (Int) -> Int) {
-        sortIndex.emit(block(sortIndex.value))
+        val value = block(sortIndex.value)
+        sortIndex.emit(value)
+        persistSortIndex(value)
     }
 
     suspend fun setSortType(block: (SortType) -> SortType) {
-        sortType.emit(block(sortType.value))
+        val value = block(sortType.value)
+        sortType.emit(value)
+        persistSortType(value)
+    }
+
+    /** 排序方式按列表类型各存一份（应用 / 文件），备份页与恢复页共用同一习惯 */
+    private fun readSortIndex(target: Target?): Int = runBlocking {
+        when (target) {
+            Target.Files -> context.readSortIndexFiles()
+            else -> context.readSortIndexApps()
+        }.first()
+    }
+
+    private fun readSortType(target: Target?): SortType = runBlocking {
+        val raw = when (target) {
+            Target.Files -> context.readSortTypeFiles()
+            else -> context.readSortTypeApps()
+        }.first()
+        runCatching { SortType.valueOf(raw) }.getOrDefault(SortType.ASCENDING)
+    }
+
+    private suspend fun persistSortIndex(value: Int) = when (currentTarget) {
+        Target.Files -> context.saveSortIndexFiles(value)
+        else -> context.saveSortIndexApps(value)
+    }
+
+    private suspend fun persistSortType(value: SortType) = when (currentTarget) {
+        Target.Files -> context.saveSortTypeFiles(value.name)
+        else -> context.saveSortTypeApps(value.name)
     }
 
     suspend fun setSearchQuery(value: String) {

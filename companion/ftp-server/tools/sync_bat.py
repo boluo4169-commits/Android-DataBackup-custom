@@ -290,4 +290,8 @@ def main():
 
 
 if __name__ == "__main__":
+    # Windows CI 的控制台是 cp1252，打印中文会抛 UnicodeEncodeError 让任务以 1 退出，
+    # 与「有没有同步」无关（v3.15.0 的 companion 构建就栽在这）。统一按 UTF-8 输出。
+    sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    sys.stderr.reconfigure(encoding="utf-8", errors="replace")
     sys.exit(main())

@@ -34,7 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
-import androidx.compose.ui.text.style.TextOverflow
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -181,6 +181,12 @@ fun AppItem(
             PackageIconImage(packageName = packageName, size = SizeTokens.Level32)
 
             Column(modifier = Modifier.weight(1f)) {
+                // 三行固定排列：应用名 / 版本 / 包名。各占一行，互不挤占宽度——
+                // 挤在一行时窄屏必有一项被吃光（实测 `155.0.8059.79 (805907904)` 会让应用名只剩 `...`）。
+                TitleLargeText(
+                    text = label.ifEmpty { stringResource(id = R.string.unknown) },
+                    maxLines = 1,
+                )
                 val version = if (showVersion) buildString {
                     // 恢复页扫描不到 apk 时 versionName 为空，此时只给版本码，不留一对空括号
                     if (versionName.isNotEmpty()) append(versionName)
@@ -190,26 +196,13 @@ fun AppItem(
                         if (versionName.isNotEmpty()) append(")")
                     }
                 } else ""
-                // 版本独占标题行右侧，不与包名挤同一行：窄屏或大字体下两者拼在一起会双双被省略
-                // （实测群友 4.7 寸机 + 版本开关时，包名只剩 `info.m.age.appshare`、版本只剩 `5…`）。
-                // 应用名 fill=false 让位，版本 maxLines=1 且不省略 —— 宁可压应用名，也要让版本读得全。
-                Row(verticalAlignment = Alignment.CenterVertically) {
-                    TitleLargeText(
-                        modifier = Modifier.weight(1f, fill = false),
-                        text = label.ifEmpty { stringResource(id = R.string.unknown) },
+                if (version.isNotEmpty()) {
+                    LabelSmallText(
+                        text = version,
+                        color = ThemedColorSchemeKeyTokens.Outline.value,
                         maxLines = 1,
                     )
-                    if (version.isNotEmpty()) {
-                        Spacer(modifier = Modifier.size(SizeTokens.Level8))
-                        LabelSmallText(
-                            text = version,
-                            color = ThemedColorSchemeKeyTokens.Outline.value,
-                            maxLines = 1,
-                            overflow = TextOverflow.Clip,
-                        )
-                    }
                 }
-                // 副标题只放包名，独占整行宽度
                 if (showPackage && packageName.isNotEmpty()) {
                     BodyMediumText(
                         text = packageName,
@@ -217,7 +210,6 @@ fun AppItem(
                         maxLines = 1,
                     )
                 }
-                // 备注：该备份版本专属的说明，用来分辨「这份备份是什么」。
                 if (note.isNotEmpty()) {
                     BodyMediumText(text = note, color = ThemedColorSchemeKeyTokens.BluePrimary.value, maxLines = 1)
                 }

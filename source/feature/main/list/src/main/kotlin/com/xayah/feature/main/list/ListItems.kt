@@ -34,6 +34,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.stringResource
@@ -49,6 +50,7 @@ import com.xayah.core.model.database.PackageEntity
 import com.xayah.core.ui.R
 import com.xayah.core.ui.component.BodyMediumText
 import com.xayah.core.ui.component.IconButton
+import com.xayah.core.ui.component.LabelSmallText
 import com.xayah.core.ui.component.PackageIconImage
 import com.xayah.core.ui.component.Surface
 import com.xayah.core.ui.component.TitleLargeText
@@ -179,8 +181,6 @@ fun AppItem(
             PackageIconImage(packageName = packageName, size = SizeTokens.Level32)
 
             Column(modifier = Modifier.weight(1f)) {
-                TitleLargeText(text = label.ifEmpty { stringResource(id = R.string.unknown) }, maxLines = 1)
-                // 副标题按两个开关组合：包名 / 版本 / 两者；都关掉则整行不占位
                 val version = if (showVersion) buildString {
                     // 恢复页扫描不到 apk 时 versionName 为空，此时只给版本码，不留一对空括号
                     if (versionName.isNotEmpty()) append(versionName)
@@ -190,12 +190,29 @@ fun AppItem(
                         if (versionName.isNotEmpty()) append(")")
                     }
                 } else ""
-                val subtitle = listOf(if (showPackage) packageName else "", version)
-                    .filter { it.isNotEmpty() }
-                    .joinToString("  ·  ")
-                if (subtitle.isNotEmpty()) {
+                // 版本独占标题行右侧，不与包名挤同一行：窄屏或大字体下两者拼在一起会双双被省略
+                // （实测群友 4.7 寸机 + 版本开关时，包名只剩 `info.m.age.appshare`、版本只剩 `5…`）。
+                // 应用名 fill=false 让位，版本 maxLines=1 且不省略 —— 宁可压应用名，也要让版本读得全。
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    TitleLargeText(
+                        modifier = Modifier.weight(1f, fill = false),
+                        text = label.ifEmpty { stringResource(id = R.string.unknown) },
+                        maxLines = 1,
+                    )
+                    if (version.isNotEmpty()) {
+                        Spacer(modifier = Modifier.size(SizeTokens.Level8))
+                        LabelSmallText(
+                            text = version,
+                            color = ThemedColorSchemeKeyTokens.Outline.value,
+                            maxLines = 1,
+                            overflow = TextOverflow.Clip,
+                        )
+                    }
+                }
+                // 副标题只放包名，独占整行宽度
+                if (showPackage && packageName.isNotEmpty()) {
                     BodyMediumText(
-                        text = subtitle,
+                        text = packageName,
                         color = ThemedColorSchemeKeyTokens.Outline.value,
                         maxLines = 1,
                     )

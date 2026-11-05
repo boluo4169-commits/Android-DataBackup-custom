@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.xayah.core.data.repository.AppsRepo
 import com.xayah.core.data.repository.FilesRepo
+import com.xayah.core.data.repository.LabelsRepo
 import com.xayah.core.data.repository.ListDataRepo
 import com.xayah.core.model.App
 import com.xayah.core.model.DataState
@@ -12,6 +13,8 @@ import com.xayah.core.model.File
 import com.xayah.core.model.OpType
 import com.xayah.core.model.Target
 import com.xayah.core.model.database.PackageEntity
+import com.xayah.core.model.util.AppLabelKey
+import com.xayah.core.model.util.buildAppLabelMap
 import com.xayah.core.model.util.of
 import com.xayah.core.ui.route.MainRoutes
 import com.xayah.core.util.decodeURL
@@ -21,6 +24,7 @@ import com.xayah.feature.main.list.ListItemsUiState.Success
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import javax.inject.Inject
@@ -29,6 +33,7 @@ import javax.inject.Inject
 class ListItemsViewModel @Inject constructor(
     savedStateHandle: SavedStateHandle,
     listDataRepo: ListDataRepo,
+    private val labelsRepo: LabelsRepo,
     private val appsRepo: AppsRepo,
     private val filesRepo: FilesRepo,
 ) : ViewModel() {
@@ -36,10 +41,17 @@ class ListItemsViewModel @Inject constructor(
     private val opType: OpType = OpType.of(savedStateHandle.get<String>(MainRoutes.ARG_OP_TYPE)?.decodeURL()?.trim())
 
     val uiState: StateFlow<ListItemsUiState> = when (target) {
-        Target.Apps -> listDataRepo.getAppList().map {
+        // 用全量关联表，不能用 ListDataRepo.labelAppRefs（那是按当前筛选标签过滤后的，
+        // 筛选开启时只剩被选中的标签，无法展示「这个应用打了哪些标签」）。
+        Target.Apps -> combine(
+            listDataRepo.getAppList(),
+            labelsRepo.getAppRefsFlow(),
+            labelsRepo.getLabelsFlow(),
+        ) { apps, refs, labels ->
             Success.Apps(
                 opType = opType,
-                appList = it,
+                appList = apps,
+                labelMap = buildAppLabelMap(refs, labels),
             )
         }
 
@@ -116,6 +128,7 @@ sealed interface ListItemsUiState {
         data class Apps(
             override val opType: OpType,
             val appList: List<App>,
+            val labelMap: Map<AppLabelKey, List<String>> = emptyMap(),
         ) : Success(opType)
 
         data class Files(

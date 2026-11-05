@@ -299,6 +299,7 @@ Off by default. If your drive limits a single file to 4 GB, 2 GB is a safe choic
     <string name="fat32_archive_aborted">Archive was cut off: the target partition cannot hold a single file over 4 GiB (FAT32). Switch to an exFAT card, internal storage, or cloud backup.</string>
     <string name="show_version_in_list">Show version in list</string>
     <string name="show_package_in_list">Show package name in list</string>
+    <string name="show_labels_in_list">Show labels in list</string>
     <string name="sort">Sort</string>
     <string name="args_loading_from_user">Loading from user %1$s</string>
     <string name="backup_parts">Backup parts</string>

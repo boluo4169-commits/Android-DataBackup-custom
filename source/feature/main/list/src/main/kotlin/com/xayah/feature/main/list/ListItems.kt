@@ -44,9 +44,11 @@ import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xayah.core.datastore.readListShowPackage
 import com.xayah.core.datastore.readListShowVersion
+import com.xayah.core.datastore.readListShowLabels
 import com.xayah.core.model.OpType
 import com.xayah.core.model.Target
 import com.xayah.core.model.database.PackageEntity
+import com.xayah.core.model.util.AppLabelKey
 import com.xayah.core.ui.R
 import com.xayah.core.ui.component.BodyMediumText
 import com.xayah.core.ui.component.IconButton
@@ -72,6 +74,7 @@ fun ListItems(
     // 列表副标题是否附带版本号：作为显示偏好直接订阅，改完即时生效，不必重进页面
     val showVersion by LocalContext.current.readListShowVersion().collectAsStateWithLifecycle(initialValue = false)
     val showPackage by LocalContext.current.readListShowPackage().collectAsStateWithLifecycle(initialValue = true)
+    val showLabels by LocalContext.current.readListShowLabels().collectAsStateWithLifecycle(initialValue = false)
 
     LazyColumn(
         modifier = Modifier.fillMaxSize(),
@@ -81,7 +84,7 @@ fun ListItems(
             Spacer(modifier = Modifier.size(SizeTokens.Level1))
         }
 
-        listItems(uiState = uiState, viewModel = viewModel, showVersion = showVersion, showPackage = showPackage)
+        listItems(uiState = uiState, viewModel = viewModel, showVersion = showVersion, showPackage = showPackage, showLabels = showLabels)
 
         item(key = "-2") {
             Spacer(modifier = Modifier.size(SizeTokens.Level128))
@@ -95,6 +98,7 @@ fun LazyListScope.listItems(
     viewModel: ListItemsViewModel,
     showVersion: Boolean = false,
     showPackage: Boolean = true,
+    showLabels: Boolean = false,
 ) {
     when (uiState) {
         is ListItemsUiState.Success.Apps -> {
@@ -110,6 +114,10 @@ fun LazyListScope.listItems(
                         versionCode = item.versionCode,
                         showVersion = showVersion,
                         showPackage = showPackage,
+                        showLabels = showLabels,
+                        tags = if (showLabels) {
+                            uiState.labelMap[AppLabelKey(item.packageName, item.userId, item.preserveId)].orEmpty()
+                        } else emptyList(),
                         note = item.note,
                         preserveId = item.preserveId,
                         preserveIndex = item.preserveIndex,
@@ -160,6 +168,8 @@ fun AppItem(
     versionCode: Long = 0L,
     showVersion: Boolean = false,
     showPackage: Boolean = true,
+    showLabels: Boolean = false,
+    tags: List<String> = emptyList(),
     note: String = "",
     preserveId: Long,
     preserveIndex: Int,
@@ -207,6 +217,14 @@ fun AppItem(
                     BodyMediumText(
                         text = packageName,
                         color = ThemedColorSchemeKeyTokens.Outline.value,
+                        maxLines = 1,
+                    )
+                }
+                // 标签：单行拼接，超长省略。用 Tertiary 与灰色包名、蓝色备注区分。
+                if (showLabels && tags.isNotEmpty()) {
+                    LabelSmallText(
+                        text = tags.joinToString(" · "),
+                        color = ThemedColorSchemeKeyTokens.Tertiary.value,
                         maxLines = 1,
                     )
                 }

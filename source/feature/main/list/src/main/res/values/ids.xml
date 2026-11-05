@@ -28,6 +28,7 @@
     <item name="labels" type="string" />
     <item name="show_version_in_list" type="string" />
     <item name="show_package_in_list" type="string" />
+    <item name="show_labels_in_list" type="string" />
     <item name="label" type="string" />
     <item name="add_label" type="string" />
     <item name="new_label" type="string" />

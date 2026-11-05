@@ -2,6 +2,7 @@ package com.xayah.feature.main.list
 
 import androidx.compose.animation.AnimatedContent
 import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
@@ -10,9 +11,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.LazyListScope
 import androidx.compose.foundation.lazy.LazyListState
@@ -34,6 +38,7 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -220,13 +225,9 @@ fun AppItem(
                         maxLines = 1,
                     )
                 }
-                // 标签：单行拼接，超长省略。用 Tertiary 与灰色包名、蓝色备注区分。
+                // 标签：紧凑胶囊 chip，靠背景色块与上面的灰色副文本拉开层级。
                 if (showLabels && tags.isNotEmpty()) {
-                    LabelSmallText(
-                        text = tags.joinToString(" · "),
-                        color = ThemedColorSchemeKeyTokens.Tertiary.value,
-                        maxLines = 1,
-                    )
+                    LabelChips(tags = tags)
                 }
                 if (note.isNotEmpty()) {
                     BodyMediumText(text = note, color = ThemedColorSchemeKeyTokens.BluePrimary.value, maxLines = 1)
@@ -269,6 +270,52 @@ fun AppItem(
                 onCheckedChange = { onSelectedChanged(id, selected.not()) }
             )
         }
+    }
+}
+
+private const val MAX_VISIBLE_LABELS = 3
+private val LABEL_CHIP_MAX_WIDTH = 120.dp
+
+/** 列表里的标签：单行紧凑胶囊，最多 [MAX_VISIBLE_LABELS] 个，其余收成 +N，行高恒定。 */
+@Composable
+private fun LabelChips(tags: List<String>) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(top = 4.dp),
+        horizontalArrangement = Arrangement.spacedBy(SizeTokens.Level8),
+        verticalAlignment = Alignment.CenterVertically,
+    ) {
+        tags.take(MAX_VISIBLE_LABELS).forEach { tag ->
+            LabelChip(text = tag, highlighted = true)
+        }
+        if (tags.size > MAX_VISIBLE_LABELS) {
+            LabelChip(text = "+${tags.size - MAX_VISIBLE_LABELS}", highlighted = false)
+        }
+    }
+}
+
+@Composable
+private fun LabelChip(text: String, highlighted: Boolean) {
+    Box(
+        modifier = Modifier
+            .widthIn(max = LABEL_CHIP_MAX_WIDTH)
+            .background(
+                color = if (highlighted) ThemedColorSchemeKeyTokens.TertiaryContainer.value
+                else ThemedColorSchemeKeyTokens.SurfaceVariant.value,
+                shape = RoundedCornerShape(50),
+            )
+            .padding(horizontal = 9.dp, vertical = 3.dp),
+        contentAlignment = Alignment.Center,
+    ) {
+        Text(
+            text = text,
+            color = if (highlighted) ThemedColorSchemeKeyTokens.OnTertiaryContainer.value
+            else ThemedColorSchemeKeyTokens.OnSurfaceVariant.value,
+            fontSize = 11.sp,
+            maxLines = 1,
+            overflow = TextOverflow.Ellipsis,
+        )
     }
 }
 

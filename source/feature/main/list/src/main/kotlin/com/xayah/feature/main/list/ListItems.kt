@@ -274,7 +274,7 @@ fun AppItem(
 }
 
 private const val MAX_VISIBLE_LABELS = 3
-private val LABEL_CHIP_MAX_WIDTH = 120.dp
+private val LABEL_CHIP_MAX_WIDTH = 96.dp
 
 /** 列表里的标签：单行紧凑胶囊，最多 [MAX_VISIBLE_LABELS] 个，其余收成 +N，行高恒定。 */
 @Composable
@@ -282,8 +282,8 @@ private fun LabelChips(tags: List<String>) {
     Row(
         modifier = Modifier
             .fillMaxWidth()
-            .padding(top = 4.dp),
-        horizontalArrangement = Arrangement.spacedBy(SizeTokens.Level8),
+            .padding(top = 2.dp),
+        horizontalArrangement = Arrangement.spacedBy(4.dp),
         verticalAlignment = Alignment.CenterVertically,
     ) {
         tags.take(MAX_VISIBLE_LABELS).forEach { tag ->
@@ -305,14 +305,14 @@ private fun LabelChip(text: String, highlighted: Boolean) {
                 else ThemedColorSchemeKeyTokens.SurfaceVariant.value,
                 shape = RoundedCornerShape(50),
             )
-            .padding(horizontal = 9.dp, vertical = 3.dp),
+            .padding(horizontal = 6.dp, vertical = 2.dp),
         contentAlignment = Alignment.Center,
     ) {
         Text(
             text = text,
             color = if (highlighted) ThemedColorSchemeKeyTokens.OnTertiaryContainer.value
             else ThemedColorSchemeKeyTokens.OnSurfaceVariant.value,
-            fontSize = 11.sp,
+            fontSize = 10.sp,
             maxLines = 1,
             overflow = TextOverflow.Ellipsis,
         )

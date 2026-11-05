@@ -15,9 +15,9 @@ captures/
 .idea/
 *.iml
 
-# ===== WorkBuddy 项目数据（本地专属，不提交）=====
-.workbuddy/
-.workbuddy-ai/
+# ===== work 项目数据（本地专属，不提交）=====
+.work/
+.work-ai/
 
 # ===== 系统文件 =====
 .DS_Store
@@ -38,6 +38,6 @@ companion/ftp-server/dist/
 
 __pycache__/
 
-/������/
+/������/
 
 companion/ftp-server/src/_tool_version.py

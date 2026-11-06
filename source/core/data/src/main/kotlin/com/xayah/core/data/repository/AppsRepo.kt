@@ -214,6 +214,24 @@ class AppsRepo @Inject constructor(
         appsDao.activateByIds(apps.map { it.id }, true)
     }
 
+    /**
+     * 一键恢复用：全选当前备份源内的应用。
+     *
+     * 与备份侧不同，这里**不排除系统应用** —— 恢复记录本来就来自用户备份过的归档，
+     * 备份过什么就该能恢复什么。调用方须先按所选源重载恢复列表，否则会全选到上一个源的记录。
+     */
+    suspend fun activateAllForRestore(cloudName: String, backupDir: String) {
+        val apps = appsDao.queryPackages(OpType.RESTORE, cloud = cloudName, backupDir = backupDir)
+            .filter { it.extraInfo.blocked.not() }
+        appsDao.activateByIds(apps.map { it.id }, true)
+    }
+
+    /** 一键恢复按勾选重建选择前先清空，避免上一次流程的残留勾选混进来。 */
+    suspend fun clearAllForRestore(cloudName: String, backupDir: String) {
+        val apps = appsDao.queryPackages(OpType.RESTORE, cloud = cloudName, backupDir = backupDir)
+        appsDao.activateByIds(apps.map { it.id }, false)
+    }
+
     suspend fun unselectAll(ids: List<Long>) {
         appsDao.activateByIds(ids, false)
     }

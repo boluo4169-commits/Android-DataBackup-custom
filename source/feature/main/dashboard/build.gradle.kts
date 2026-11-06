@@ -20,6 +20,9 @@ dependencies {
     implementation(project(":core:network"))
     implementation(project(":core:rootservice"))
 
+    // 一键备份/恢复复用系统数据（短信/通话/WiFi）的云端编排，无环依赖
+    implementation(project(":feature:main:system"))
+
     // Compose Navigation
     implementation(libs.androidx.navigation.compose)
     implementation(libs.androidx.hilt.navigation.compose)

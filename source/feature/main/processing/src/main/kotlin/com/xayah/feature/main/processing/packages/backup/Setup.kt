@@ -45,6 +45,7 @@ import com.xayah.core.datastore.KeyBackupConfigs
 import com.xayah.core.model.OpType
 import com.xayah.core.model.StorageMode
 import com.xayah.core.model.Target
+import com.xayah.core.ui.component.CheckBox
 import com.xayah.core.ui.component.Clickable
 import com.xayah.core.ui.component.LocalSlotScope
 import com.xayah.core.ui.component.PackageIcons
@@ -228,6 +229,20 @@ fun PagePackagesBackupProcessingSetup(localNavController: NavHostController, vie
                             navController.navigateSingle(MainRoutes.List.getRoute(Target.Files, OpType.BACKUP, returnToSetup = true))
                         },
                     )
+                    // 一键备份：系统数据作为第三类可勾选内容，勾选后随「继续」上传到当前激活云端账号。
+                    // 结果由 @Singleton 协调器持有，页面切换不丢；失败项如实显示，不谎报完成。
+                    val sdSelected by viewModel.systemDataSelected.collectAsStateWithLifecycle()
+                    val sdState by viewModel.systemDataState.collectAsStateWithLifecycle()
+                    CheckBox(
+                        checked = sdSelected.isNotEmpty(),
+                        text = stringResource(id = R.string.system_data),
+                        onValueChange = { checked -> viewModel.setSystemDataEnabled(checked) },
+                    )
+                    when {
+                        sdState.error == "NO_CLOUD_ACCOUNT" -> Text(text = stringResource(id = R.string.one_click_no_cloud))
+                        sdState.running -> Text(text = stringResource(id = R.string.processing))
+                        sdState.results.isNotEmpty() -> Text(text = "${sdState.results.count { it.success }} / ${sdState.results.size}")
+                    }
                 }
             }
             Title(title = stringResource(id = R.string.settings)) {

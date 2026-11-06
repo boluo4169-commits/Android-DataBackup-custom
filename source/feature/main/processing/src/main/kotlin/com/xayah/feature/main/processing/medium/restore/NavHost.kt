@@ -21,13 +21,14 @@ import kotlinx.coroutines.ExperimentalCoroutinesApi
 @ExperimentalFoundationApi
 @ExperimentalMaterial3Api
 @Composable
-fun MediumRestoreProcessingGraph() {
+fun MediumRestoreProcessingGraph(skipSetup: Boolean = false) {
     val localNavController = rememberNavController()
     val viewModel = hiltViewModel<RestoreViewModelImpl>()
 
     AnimatedNavHost(
         navController = localNavController,
-        startDestination = MainRoutes.MediumRestoreProcessingSetup.route,
+        // 一键恢复接续场景：应用恢复已完成且文件勾选已确认，直接进处理页，不再重复引导
+        startDestination = if (skipSetup) MainRoutes.MediumRestoreProcessing.route else MainRoutes.MediumRestoreProcessingSetup.route,
     ) {
         composable(MainRoutes.MediumRestoreProcessing.route) {
             PageProcessing(

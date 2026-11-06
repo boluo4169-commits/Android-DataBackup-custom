@@ -95,6 +95,24 @@ class FilesRepo @Inject constructor(
         filesDao.activateByIds(files.map { it.id }, true)
     }
 
+    /**
+     * 一键恢复用：全选恢复列表里的文件目录。
+     *
+     * 这里刻意不过滤 `extraInfo.existed`：备份侧过滤是因为本地目录可能暂时不存在，
+     * 而恢复记录来自归档扫描，existed 反映的是本机目录状态，不该决定能否从备份恢复。
+     * 调用方须先按所选源重载恢复列表。
+     */
+    suspend fun activateAllForRestore() {
+        val files = filesDao.query(opType = OpType.RESTORE, blocked = false)
+        filesDao.activateByIds(files.map { it.id }, true)
+    }
+
+    /** 一键恢复按勾选重建选择前先清空，避免上一次流程的残留勾选混进来。 */
+    suspend fun clearAllForRestore() {
+        val files = filesDao.query(opType = OpType.RESTORE, blocked = false)
+        filesDao.activateByIds(files.map { it.id }, false)
+    }
+
     suspend fun unselectAll(ids: List<Long>) {
         filesDao.activateByIds(ids, false)
     }

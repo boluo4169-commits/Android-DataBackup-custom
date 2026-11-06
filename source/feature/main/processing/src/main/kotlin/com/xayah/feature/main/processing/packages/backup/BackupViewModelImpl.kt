@@ -4,6 +4,7 @@ import android.content.Context
 import androidx.compose.material3.ExperimentalMaterial3Api
 import com.xayah.core.data.repository.AppsRepo
 import com.xayah.core.data.repository.CloudRepository
+import com.xayah.core.datastore.readCloudActivatedAccountName
 import com.xayah.core.data.repository.FilesRepo
 import com.xayah.core.data.repository.PackageRepository
 import com.xayah.core.data.repository.TaskRepository
@@ -32,12 +33,15 @@ import com.xayah.feature.main.processing.ProcessingUiIntent
 import com.xayah.feature.main.processing.R
 import com.xayah.feature.main.processing.SetCloudEntity
 import com.xayah.feature.main.processing.UpdateApps
+import com.xayah.feature.main.system.SystemDataBackupState
+import com.xayah.feature.main.system.SystemDataCoordinator
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.flow.map
 import javax.inject.Inject
 
@@ -53,12 +57,24 @@ class BackupViewModelImpl @Inject constructor(
     private val mCloudRepo: CloudRepository,
     private val mAppsRepo: AppsRepo,
     private val mFilesRepo: FilesRepo,
+    private val mSystemData: SystemDataCoordinator,
     mLocalService: ProcessingServiceProxyLocalImpl,
     mCloudService: ProcessingServiceProxyCloudImpl,
 ) : AbstractPackagesProcessingViewModel(mContext, mRootService, mTaskRepo, mLocalService, mCloudService) {
 
     /** 一键备份流程：应用备份完成后自动接续文件备份（由路由参数传入） */
     val chainFileBackup: Boolean = savedStateHandle.get<Boolean>(MainRoutes.ARG_CHAIN_FILE_BACKUP) ?: false
+
+    /** 一键备份里系统数据（短信/通话/WiFi）的上传状态，供引导页如实显示。 */
+    val systemDataState: StateFlow<SystemDataBackupState> = mSystemData.backupState
+    val systemDataSelected = mSystemData.selectedItems
+
+    /** 一键备份引导页的「系统数据」整体开关：关掉就三项都不传。 */
+    fun setSystemDataEnabled(enabled: Boolean) {
+        com.xayah.feature.main.system.SystemDataItem.values().forEach {
+            mSystemData.setItemSelected(it, enabled)
+        }
+    }
 
     /**
      * 上次扫描时的勾选签名（已激活 id 集合）。引导页的 UpdateApps 由 LaunchedEffect(null) 驱动，
@@ -129,6 +145,11 @@ class BackupViewModelImpl @Inject constructor(
             }
 
             is FinishSetup -> {
+                // 一键备份：系统数据按当前激活云端账号上传。与应用/文件处理并行，
+                // 结果留在 @Singleton 协调器里，页面切换不会丢，也不能谎报成功。
+                if (chainFileBackup) {
+                    mSystemData.startBackup(mContext.readCloudActivatedAccountName().first())
+                }
                 // 空 selection 保护：应用一个都没勾时跳过空的应用备份——
                 // 有文件则直接进文件备份（一键备份只选文件的场景），两者都空则提示。
                 val hasPackages = mPkgRepo.queryActivated(OpType.BACKUP).isNotEmpty()

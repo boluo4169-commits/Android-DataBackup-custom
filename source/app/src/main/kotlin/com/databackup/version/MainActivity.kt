@@ -171,7 +171,15 @@ class MainActivity : AppCompatActivity() {
                         ) {
                             PackagesBackupProcessingGraph()
                         }
-                        composable(MainRoutes.PackagesRestoreProcessingGraph.route) {
+                        composable(
+                            MainRoutes.PackagesRestoreProcessingGraph.route,
+                            arguments = listOf(
+                                androidx.navigation.navArgument(MainRoutes.ARG_CHAIN_FILE_RESTORE) {
+                                    type = androidx.navigation.NavType.BoolType
+                                    defaultValue = false
+                                }
+                            )
+                        ) {
                             PackagesRestoreProcessingGraph()
                         }
                         composable(
@@ -185,8 +193,16 @@ class MainActivity : AppCompatActivity() {
                         ) { entry ->
                             MediumBackupProcessingGraph(skipSetup = entry.arguments?.getBoolean(MainRoutes.ARG_SKIP_SETUP) ?: false)
                         }
-                        composable(MainRoutes.MediumRestoreProcessingGraph.route) {
-                            MediumRestoreProcessingGraph()
+                        composable(
+                            MainRoutes.MediumRestoreProcessingGraph.route,
+                            arguments = listOf(
+                                androidx.navigation.navArgument(MainRoutes.ARG_SKIP_SETUP) {
+                                    type = androidx.navigation.NavType.BoolType
+                                    defaultValue = false
+                                }
+                            )
+                        ) { entry ->
+                            MediumRestoreProcessingGraph(skipSetup = entry.arguments?.getBoolean(MainRoutes.ARG_SKIP_SETUP) ?: false)
                         }
                         composable(MainRoutes.Settings.route) {
                             PageSettings()

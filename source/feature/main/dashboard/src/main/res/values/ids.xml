@@ -90,4 +90,15 @@
     <item name="ic_rounded_folder_open" type="drawable" />
     <item name="ic_rounded_acute" type="drawable" />
     <item name="ic_rounded_history" type="drawable" />
+    <item name="one_click_restore" type="string" />
+    <item name="one_click_restore_desc" type="string" />
+    <item name="one_click_restore_source" type="string" />
+    <item name="one_click_restore_confirm" type="string" />
+    <item name="one_click_restore_confirm_desc" type="string" />
+    <item name="one_click_restore_gap" type="string" />
+    <item name="one_click_restore_gap_desc" type="string" />
+    <item name="one_click_error" type="string" />
+    <item name="local" type="string" />
+    <item name="apps" type="string" />
+    <item name="files" type="string" />
 </resources>

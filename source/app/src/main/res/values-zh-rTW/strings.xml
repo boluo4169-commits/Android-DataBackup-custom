@@ -561,4 +561,13 @@
     <string name="schedule_failed">定時備份失敗</string>
     <string name="schedule_never_ran">尚未執行過</string>
     <string name="nothing_to_backup">沒有勾選任何可備份的內容</string>
+    <string name="one_click_no_cloud">未設定雲端帳號，系統資料不會備份</string>
+    <string name="one_click_error">一鍵操作失敗（%1$s）</string>
+    <string name="one_click_restore_confirm_desc">將從所選備份來源還原全部應用程式、檔案與系統資料，並覆蓋本機現有資料。</string>
+    <string name="one_click_restore">一鍵恢復</string>
+    <string name="one_click_restore_confirm">還原將覆蓋本機資料</string>
+    <string name="one_click_restore_desc">從所選備份來源還原應用程式、檔案與系統資料</string>
+    <string name="one_click_restore_gap_desc">備份中缺少 %1$d 個欄位，繼續可能覆蓋本機資料庫，是否確認？</string>
+    <string name="one_click_restore_gap">系統資料結構不一致</string>
+    <string name="one_click_restore_source">選擇備份來源</string>
 </resources>

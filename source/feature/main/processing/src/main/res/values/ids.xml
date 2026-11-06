@@ -102,4 +102,6 @@
     <item name="ic_rounded_deployed_code" type="drawable" />
     <item name="ic_rounded_acute" type="drawable" />
     <item name="ic_rounded_folder_open" type="drawable" />
+    <item name="system_data" type="string" />
+    <item name="one_click_no_cloud" type="string" />
 </resources>

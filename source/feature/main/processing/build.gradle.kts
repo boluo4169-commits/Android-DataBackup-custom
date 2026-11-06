@@ -22,6 +22,8 @@ dependencies {
     implementation(project(":core:service"))
     implementation(project(":core:network"))
     implementation(project(":feature:main:settings"))
+    // 一键备份/恢复复用系统数据（短信/通话/WiFi）的云端编排
+    implementation(project(":feature:main:system"))
 
     // Hilt navigation
     implementation(libs.androidx.hilt.navigation.compose)

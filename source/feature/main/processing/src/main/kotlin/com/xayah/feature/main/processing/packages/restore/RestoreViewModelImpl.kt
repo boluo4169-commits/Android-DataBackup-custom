@@ -53,6 +53,13 @@ class RestoreViewModelImpl @Inject constructor(
     mCloudService: ProcessingServiceProxyCloudImpl,
     private val args: SavedStateHandle,
 ) : AbstractPackagesProcessingViewModel(mContext, mRootService, mTaskRepo, mLocalService, mCloudService) {
+    /** 一键恢复：应用恢复完成后自动接续文件恢复。 */
+    val chainFileRestore: Boolean = args.get<Boolean>(MainRoutes.ARG_CHAIN_FILE_RESTORE) ?: false
+
+    /** 原样保留路由编码参数，接续文件恢复图时复用，避免二次编码错配。 */
+    val cloudNameArg: String = args.get<String>(MainRoutes.ARG_ACCOUNT_NAME).orEmpty()
+    val backupDirArg: String = args.get<String>(MainRoutes.ARG_ACCOUNT_REMOTE).orEmpty()
+
     override suspend fun onOtherEvent(state: IndexUiState, intent: ProcessingUiIntent) {
         when (intent) {
             is UpdateApps -> {

@@ -22,7 +22,10 @@ sealed class MainRoutes(val route: String) {
         /** 一键备份：应用备份处理完成后自动接续文件备份 */
         const val ARG_CHAIN_FILE_BACKUP = "chainFileBackup"
 
-        /** 文件备份图直接进处理页（跳过引导页），一键备份接续场景用 */
+        /** 一键恢复：应用恢复处理完成后自动接续文件恢复 */
+        const val ARG_CHAIN_FILE_RESTORE = "chainFileRestore"
+
+        /** 文件备份/恢复图直接进处理页（跳过引导页），一键流程接续场景用 */
         const val ARG_SKIP_SETUP = "skipSetup"
     }
 
@@ -93,8 +96,9 @@ sealed class MainRoutes(val route: String) {
 
     data object PackagesRestoreProcessing : MainRoutes(route = "main_packages_restore_processing")
     data object PackagesRestoreProcessingSetup : MainRoutes(route = "main_packages_restore_processing_setup")
-    data object PackagesRestoreProcessingGraph : MainRoutes(route = "main_packages_restore_processing_graph/{$ARG_ACCOUNT_NAME}/{$ARG_ACCOUNT_REMOTE}") {
-        fun getRoute(cloudName: String = encodedURLWithSpace, backupDir: String = encodedURLWithSpace) = "main_packages_restore_processing_graph/${cloudName}/${backupDir}"
+    data object PackagesRestoreProcessingGraph : MainRoutes(route = "main_packages_restore_processing_graph/{$ARG_ACCOUNT_NAME}/{$ARG_ACCOUNT_REMOTE}?$ARG_CHAIN_FILE_RESTORE={$ARG_CHAIN_FILE_RESTORE}") {
+        fun getRoute(cloudName: String = encodedURLWithSpace, backupDir: String = encodedURLWithSpace, chainFileRestore: Boolean = false) =
+            "main_packages_restore_processing_graph/${cloudName}/${backupDir}" + if (chainFileRestore) "?$ARG_CHAIN_FILE_RESTORE=true" else ""
     }
 
     data object MediumBackupProcessing : MainRoutes(route = "main_medium_backup_processing")
@@ -106,7 +110,8 @@ sealed class MainRoutes(val route: String) {
 
     data object MediumRestoreProcessing : MainRoutes(route = "main_medium_restore_processing")
     data object MediumRestoreProcessingSetup : MainRoutes(route = "main_medium_restore_processing_setup")
-    data object MediumRestoreProcessingGraph : MainRoutes(route = "main_medium_restore_processing_graph/{$ARG_ACCOUNT_NAME}/{$ARG_ACCOUNT_REMOTE}") {
-        fun getRoute(cloudName: String = encodedURLWithSpace, backupDir: String = encodedURLWithSpace) = "main_medium_restore_processing_graph/${cloudName}/${backupDir}"
+    data object MediumRestoreProcessingGraph : MainRoutes(route = "main_medium_restore_processing_graph/{$ARG_ACCOUNT_NAME}/{$ARG_ACCOUNT_REMOTE}?$ARG_SKIP_SETUP={$ARG_SKIP_SETUP}") {
+        fun getRoute(cloudName: String = encodedURLWithSpace, backupDir: String = encodedURLWithSpace, skipSetup: Boolean = false) =
+            "main_medium_restore_processing_graph/${cloudName}/${backupDir}" + if (skipSetup) "?$ARG_SKIP_SETUP=true" else ""
     }
 }

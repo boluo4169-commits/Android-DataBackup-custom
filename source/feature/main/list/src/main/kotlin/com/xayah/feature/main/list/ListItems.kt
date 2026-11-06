@@ -53,7 +53,7 @@ import com.xayah.core.datastore.readListShowLabels
 import com.xayah.core.model.OpType
 import com.xayah.core.model.Target
 import com.xayah.core.model.database.PackageEntity
-import com.xayah.core.model.util.AppLabelKey
+import com.xayah.core.model.util.AppKey
 import com.xayah.core.ui.R
 import com.xayah.core.ui.component.BodyMediumText
 import com.xayah.core.ui.component.IconButton
@@ -121,7 +121,7 @@ fun LazyListScope.listItems(
                         showPackage = showPackage,
                         showLabels = showLabels,
                         tags = if (showLabels) {
-                            uiState.labelMap[AppLabelKey(item.packageName, item.userId, item.preserveId)].orEmpty()
+                            uiState.labelMap[AppKey(item.packageName, item.userId, item.preserveId)].orEmpty()
                         } else emptyList(),
                         note = item.note,
                         preserveId = item.preserveId,
@@ -276,7 +276,13 @@ fun AppItem(
 private const val MAX_VISIBLE_LABELS = 3
 private val LABEL_CHIP_MAX_WIDTH = 96.dp
 
-/** 列表里的标签：单行紧凑胶囊，最多 [MAX_VISIBLE_LABELS] 个，其余收成 +N，行高恒定。 */
+/**
+ * 列表里的标签：单行紧凑胶囊，最多 [MAX_VISIBLE_LABELS] 个标签 + 1 个 `+N` 角标。
+ *
+ * 每个 chip 用 `weight(1f, fill = false)` 平分宽度约束：窄屏下也不会把最后一个 `+N`
+ * 挤成 0 宽（普通 Row 会按剩余宽度逐个压缩，超出的子项直接消失）；`fill = false`
+ * 保证短标签不被拉伸，行高恒定、不换行。
+ */
 @Composable
 private fun LabelChips(tags: List<String>) {
     Row(
@@ -287,18 +293,26 @@ private fun LabelChips(tags: List<String>) {
         verticalAlignment = Alignment.CenterVertically,
     ) {
         tags.take(MAX_VISIBLE_LABELS).forEach { tag ->
-            LabelChip(text = tag, highlighted = true)
+            LabelChip(
+                text = tag,
+                highlighted = true,
+                modifier = Modifier.weight(1f, fill = false),
+            )
         }
         if (tags.size > MAX_VISIBLE_LABELS) {
-            LabelChip(text = "+${tags.size - MAX_VISIBLE_LABELS}", highlighted = false)
+            LabelChip(
+                text = "+${tags.size - MAX_VISIBLE_LABELS}",
+                highlighted = false,
+                modifier = Modifier.weight(1f, fill = false),
+            )
         }
     }
 }
 
 @Composable
-private fun LabelChip(text: String, highlighted: Boolean) {
+private fun LabelChip(text: String, highlighted: Boolean, modifier: Modifier = Modifier) {
     Box(
-        modifier = Modifier
+        modifier = modifier
             .widthIn(max = LABEL_CHIP_MAX_WIDTH)
             .background(
                 color = if (highlighted) ThemedColorSchemeKeyTokens.TertiaryContainer.value

@@ -17,6 +17,7 @@ import com.xayah.core.model.OpType
 import com.xayah.core.model.Target
 import com.xayah.core.model.database.LabelAppCrossRefEntity
 import com.xayah.core.model.database.LabelEntity
+import com.xayah.core.model.util.AppKey
 import com.xayah.core.model.util.of
 import com.xayah.core.ui.route.MainRoutes
 import com.xayah.core.util.decodeURL
@@ -358,10 +359,3 @@ sealed interface ListActionsUiState {
         ) : Success(opType, selected, total, isUpdating, defaultBackupAll)
     }
 }
-
-/** 已选应用的身份（标签关联表主键去标签部分），与列表是否可见无关。 */
-data class AppKey(
-    val packageName: String,
-    val userId: Int,
-    val preserveId: Long,
-)

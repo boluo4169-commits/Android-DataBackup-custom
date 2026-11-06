@@ -2,7 +2,7 @@ package com.xayah.core.model
 
 import com.xayah.core.model.database.LabelAppCrossRefEntity
 import com.xayah.core.model.database.LabelEntity
-import com.xayah.core.model.util.AppLabelKey
+import com.xayah.core.model.util.AppKey
 import com.xayah.core.model.util.buildAppLabelMap
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -26,7 +26,7 @@ class AppLabelMapTest {
             listOf(ref("已删标签"), ref("游戏")),
             labels("游戏"),
         )
-        assertEquals(listOf("游戏"), map[AppLabelKey("com.example.app", 0, 0L)])
+        assertEquals(listOf("游戏"), map[AppKey("com.example.app", 0, 0L)])
     }
 
     @Test
@@ -36,7 +36,7 @@ class AppLabelMapTest {
             labels("游戏", "常备份", "大体积"),
         )
         // sorted() 按 Unicode 码点，断言顺序稳定且去重即可
-        val result = map.getValue(AppLabelKey("com.example.app", 0, 0L))
+        val result = map.getValue(AppKey("com.example.app", 0, 0L))
         assertEquals(3, result.size)
         assertEquals(result.distinct().sorted(), result)
         assertTrue("大体积" in result)
@@ -48,8 +48,8 @@ class AppLabelMapTest {
             listOf(ref("主空间", userId = 0), ref("双开", userId = 999)),
             labels("主空间", "双开"),
         )
-        assertEquals(listOf("主空间"), map[AppLabelKey("com.example.app", 0, 0L)])
-        assertEquals(listOf("双开"), map[AppLabelKey("com.example.app", 999, 0L)])
+        assertEquals(listOf("主空间"), map[AppKey("com.example.app", 0, 0L)])
+        assertEquals(listOf("双开"), map[AppKey("com.example.app", 999, 0L)])
     }
 
     @Test
@@ -58,8 +58,8 @@ class AppLabelMapTest {
             listOf(ref("主版本", preserveId = 0L), ref("保护版本", preserveId = 1700000000L)),
             labels("主版本", "保护版本"),
         )
-        assertEquals(listOf("主版本"), map[AppLabelKey("com.example.app", 0, 0L)])
-        assertEquals(listOf("保护版本"), map[AppLabelKey("com.example.app", 0, 1700000000L)])
+        assertEquals(listOf("主版本"), map[AppKey("com.example.app", 0, 0L)])
+        assertEquals(listOf("保护版本"), map[AppKey("com.example.app", 0, 1700000000L)])
     }
 
     @Test
@@ -69,7 +69,7 @@ class AppLabelMapTest {
             labels("有效"),
         )
         assertEquals(1, map.size)
-        assertEquals(listOf("有效"), map[AppLabelKey("com.example.app", 0, 0L)])
+        assertEquals(listOf("有效"), map[AppKey("com.example.app", 0, 0L)])
     }
 
     @Test
@@ -79,7 +79,33 @@ class AppLabelMapTest {
             labels("游戏", "工具", "常备份"),
         )
         assertEquals(2, map.size)
-        assertEquals(2, map.getValue(AppLabelKey("com.a", 0, 0L)).size)
-        assertEquals(listOf("工具"), map[AppLabelKey("com.b", 0, 0L)])
+        assertEquals(2, map.getValue(AppKey("com.a", 0, 0L)).size)
+        assertEquals(listOf("工具"), map[AppKey("com.b", 0, 0L)])
+    }
+
+    @Test
+    fun emptyLabelsWithRefs_returnsEmptyMap() {
+        // 标签表为空但关联表有残留：不能崩，也不能把孤儿显示出来
+        val map = buildAppLabelMap(listOf(ref("幽灵")), emptyList())
+        assertTrue(map.isEmpty())
+    }
+
+    @Test
+    fun allOrphanRefs_produceEmptyMap() {
+        val map = buildAppLabelMap(
+            listOf(ref("已删一"), ref("已删二")),
+            labels("别的标签"),
+        )
+        assertTrue(map.isEmpty())
+    }
+
+    @Test
+    fun paddedLabelNames_areNormalizedOnBothSides() {
+        // addLabel 入口不 trim、attachLabels 入口 trim，库里可能残留带空格的标签名
+        val map = buildAppLabelMap(
+            listOf(ref(" 游戏 ")),
+            labels("游戏"),
+        )
+        assertEquals(listOf("游戏"), map[AppKey("com.example.app", 0, 0L)])
     }
 }

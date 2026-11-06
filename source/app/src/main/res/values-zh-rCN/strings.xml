@@ -596,4 +596,7 @@
     <string name="one_click_restore_gap_desc">备份中缺少 %1$d 个字段，继续可能覆盖本机数据库，是否确认？</string>
     <string name="one_click_restore_gap">系统数据结构不一致</string>
     <string name="one_click_restore_source">选择备份源</string>
+    <string name="system_data_call_log">通话记录</string>
+    <string name="system_data_sms">短信</string>
+    <string name="system_data_wifi">WiFi 配置</string>
 </resources>

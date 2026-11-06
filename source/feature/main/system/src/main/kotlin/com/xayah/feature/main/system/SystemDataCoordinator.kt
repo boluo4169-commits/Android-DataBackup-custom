@@ -39,6 +39,13 @@ data class SystemDataBackupState(
     val error: String? = null,
 )
 
+/** 一键恢复里系统数据的状态。列差异项不自动覆盖，记为「需手动确认」。 */
+data class SystemDataRestoreState(
+    val running: Boolean = false,
+    val results: List<SystemDataTaskResult> = emptyList(),
+    val needsManualConfirm: Int = 0,
+)
+
 /**
  * 一键备份 / 一键恢复用的系统数据编排器（无 UI、无 ViewModel 状态）。
  *
@@ -65,6 +72,35 @@ class SystemDataCoordinator @Inject constructor(
 
     private val _backupState = MutableStateFlow(SystemDataBackupState())
     val backupState: StateFlow<SystemDataBackupState> = _backupState.asStateFlow()
+
+    private val _restoreState = MutableStateFlow(SystemDataRestoreState())
+    val restoreState: StateFlow<SystemDataRestoreState> = _restoreState.asStateFlow()
+
+    fun resetRestoreState() {
+        _restoreState.value = SystemDataRestoreState()
+    }
+
+    /** 一键恢复：点引导页「继续」时启动，按当前勾选逐项下载并恢复。 */
+    fun startRestore(cloudName: String) {
+        val items = SystemDataItem.values().filter { it in _selectedItems.value }
+        if (cloudName.isBlank() || items.isEmpty()) {
+            _restoreState.value = SystemDataRestoreState()
+            return
+        }
+        _restoreState.value = SystemDataRestoreState(running = true)
+        scope.launch {
+            val results = runCatching { prepareRestoreFromCloud(cloudName, items) }
+                .onFailure { log("startRestore failed: ${it.stackTraceToString()}") }
+                .getOrDefault(items.map { SystemDataTaskResult(it, false) })
+            // 列差异项绝不自动覆盖：清掉缓存，交给用户到系统数据页手动确认后恢复
+            cleanup()
+            _restoreState.value = SystemDataRestoreState(
+                running = false,
+                results = results,
+                needsManualConfirm = results.count { it.pending != null },
+            )
+        }
+    }
 
     fun setItemSelected(item: SystemDataItem, selected: Boolean) {
         _selectedItems.value = if (selected) _selectedItems.value + item else _selectedItems.value - item

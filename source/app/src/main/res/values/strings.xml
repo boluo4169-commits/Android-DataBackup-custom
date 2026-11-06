@@ -608,4 +608,7 @@ Off by default. If your drive limits a single file to 4 GB, 2 GB is a safe choic
     <string name="one_click_restore_gap_desc">%1$d columns are missing in the backup. Continuing may overwrite the local database. Confirm?</string>
     <string name="one_click_restore_gap">System data schema mismatch</string>
     <string name="one_click_restore_source">Select backup source</string>
+    <string name="system_data_call_log">Call log</string>
+    <string name="system_data_sms">SMS / MMS</string>
+    <string name="system_data_wifi">Wi-Fi networks</string>
 </resources>

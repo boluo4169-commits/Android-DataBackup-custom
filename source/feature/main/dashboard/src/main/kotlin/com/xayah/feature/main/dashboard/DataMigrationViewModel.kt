@@ -9,8 +9,6 @@ import com.xayah.core.data.repository.FilesRepo
 import com.xayah.core.data.repository.TaskRepository
 import com.xayah.core.model.database.CloudEntity
 import com.xayah.feature.main.system.SystemDataCoordinator
-import com.xayah.feature.main.system.SystemDataItem
-import com.xayah.feature.main.system.SystemDataPending
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
@@ -55,43 +53,19 @@ class DataMigrationViewModel @Inject constructor(
     }
 
     /**
-     * 一键恢复准备阶段：把云端系统数据下载到私有缓存并做列差异检查。
-     * 返回需要用户确认的项 —— **绝不自动跳过**，跨品牌恢复可能整表覆盖丢数据。
-     * 本地源不恢复系统数据（系统数据备份口径为云端）。
-     */
-    suspend fun prepareOneClickRestore(cloudName: String): List<SystemDataPending> =
-        withContext(Dispatchers.Default) {
-            if (cloudName.isEmpty()) return@withContext emptyList()
-            runCatching { systemData.prepareRestoreFromCloud(cloudName, SystemDataItem.values().toList()) }
-                .getOrDefault(emptyList())
-                .mapNotNull { it.pending }
-        }
-
-    suspend fun confirmSystemDataPending(pending: List<SystemDataPending>) = withContext(Dispatchers.Default) {
-        pending.forEach { runCatching { systemData.applyPending(it) } }
-        systemData.cleanup()
-    }
-
-    fun cancelSystemData() = systemData.cleanup()
-
-    /**
      * 一键恢复收尾：全选所选备份源内的应用 + 文件。
      * 返回 null 表示成功，"BUSY"/"FAILED" 为失败原因。
      */
-    suspend fun finishOneClickRestore(
-        cloudName: String,
-        backupDir: String,
-        includeApps: Boolean,
-        includeFiles: Boolean,
-    ): String? = withContext(Dispatchers.Default) {
-        if (taskRepo.hasProcessingTask()) return@withContext "BUSY"
-        runCatching {
-            // 先清空再按勾选重建，避免上一次流程的残留勾选混进来
-            appsRepo.clearAllForRestore(cloudName, backupDir)
-            filesRepo.clearAllForRestore()
-            if (includeApps) appsRepo.activateAllForRestore(cloudName, backupDir)
-            if (includeFiles) filesRepo.activateAllForRestore()
-            null
-        }.getOrElse { "FAILED" }
-    }
+    suspend fun finishOneClickRestore(cloudName: String, backupDir: String): String? =
+        withContext(Dispatchers.Default) {
+            if (taskRepo.hasProcessingTask()) return@withContext "BUSY"
+            runCatching {
+                // 先清空再全选，避免上一次流程的残留勾选混进来；具体微调在恢复引导页里做
+                appsRepo.clearAllForRestore(cloudName, backupDir)
+                filesRepo.clearAllForRestore()
+                appsRepo.activateAllForRestore(cloudName, backupDir)
+                filesRepo.activateAllForRestore()
+                null
+            }.getOrElse { "FAILED" }
+        }
 }

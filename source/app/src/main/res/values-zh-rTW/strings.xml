@@ -570,4 +570,7 @@
     <string name="one_click_restore_gap_desc">備份中缺少 %1$d 個欄位，繼續可能覆蓋本機資料庫，是否確認？</string>
     <string name="one_click_restore_gap">系統資料結構不一致</string>
     <string name="one_click_restore_source">選擇備份來源</string>
+    <string name="system_data_call_log">通話記錄</string>
+    <string name="system_data_sms">簡訊</string>
+    <string name="system_data_wifi">WiFi 設定</string>
 </resources>

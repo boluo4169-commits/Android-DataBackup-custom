@@ -31,6 +31,8 @@ import com.xayah.feature.main.processing.ProcessingUiIntent
 import com.xayah.feature.main.processing.R
 import com.xayah.feature.main.processing.SetCloudEntity
 import com.xayah.feature.main.processing.UpdateApps
+import com.xayah.feature.main.system.SystemDataCoordinator
+import com.xayah.feature.main.system.SystemDataItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -51,6 +53,7 @@ class RestoreViewModelImpl @Inject constructor(
     private val mCloudRepo: CloudRepository,
     mLocalService: ProcessingServiceProxyLocalImpl,
     mCloudService: ProcessingServiceProxyCloudImpl,
+    private val mSystemData: SystemDataCoordinator,
     private val args: SavedStateHandle,
 ) : AbstractPackagesProcessingViewModel(mContext, mRootService, mTaskRepo, mLocalService, mCloudService) {
     /** 一键恢复：应用恢复完成后自动接续文件恢复。 */
@@ -59,6 +62,20 @@ class RestoreViewModelImpl @Inject constructor(
     /** 原样保留路由编码参数，接续文件恢复图时复用，避免二次编码错配。 */
     val cloudNameArg: String = args.get<String>(MainRoutes.ARG_ACCOUNT_NAME).orEmpty()
     val backupDirArg: String = args.get<String>(MainRoutes.ARG_ACCOUNT_REMOTE).orEmpty()
+
+    /** 一键恢复引导页：系统数据三项可逐项勾选，状态与备份侧共用 @Singleton 协调器。 */
+    val systemDataSelected = mSystemData.selectedItems
+    val systemDataRestoreState = mSystemData.restoreState
+
+    fun setSystemDataItemSelected(item: SystemDataItem, selected: Boolean) =
+        mSystemData.setItemSelected(item, selected)
+
+    /** 引导页点「继续」时启动系统数据恢复；本地源（账号名为空/空格）不恢复系统数据。 */
+    fun startSystemDataRestore() {
+        val cloud = args.get<String>(MainRoutes.ARG_ACCOUNT_NAME)?.decodeURL()?.trim().orEmpty()
+        mSystemData.resetRestoreState()
+        mSystemData.startRestore(cloud)
+    }
 
     override suspend fun onOtherEvent(state: IndexUiState, intent: ProcessingUiIntent) {
         when (intent) {

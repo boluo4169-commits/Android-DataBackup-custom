@@ -104,4 +104,9 @@
     <item name="ic_rounded_folder_open" type="drawable" />
     <item name="system_data" type="string" />
     <item name="one_click_no_cloud" type="string" />
+    <item name="system_data_sms" type="string" />
+    <item name="system_data_call_log" type="string" />
+    <item name="system_data_wifi" type="string" />
+    <item name="cancel" type="string" />
+    <item name="one_click_restore_gap" type="string" />
 </resources>

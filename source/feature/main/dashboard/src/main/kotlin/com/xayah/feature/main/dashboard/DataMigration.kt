@@ -19,10 +19,7 @@ import android.widget.Toast
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
@@ -33,7 +30,6 @@ import com.xayah.core.ui.component.Clickable
 import com.xayah.core.ui.component.InnerBottomSpacer
 import com.xayah.core.ui.component.InnerTopSpacer
 import com.xayah.core.ui.component.SecondaryLargeTopBar
-import com.xayah.core.ui.component.CheckBox
 import com.xayah.core.ui.component.LocalSlotScope
 import com.xayah.core.ui.component.Section
 import com.xayah.core.ui.component.select
@@ -55,10 +51,6 @@ fun PageDataMigration(viewModel: DataMigrationViewModel = hiltViewModel()) {
     val scope = rememberCoroutineScope()
     val dialogState = LocalSlotScope.current!!.dialogSlot
     val clouds by viewModel.clouds.collectAsStateWithLifecycle(initialValue = emptyList())
-    // 一键恢复可选的三类内容，默认全选；每次打开入口都从全选开始，不记住上次的临时选择
-    var includeApps by remember { mutableStateOf(true) }
-    var includeFiles by remember { mutableStateOf(true) }
-    var includeSystemData by remember { mutableStateOf(true) }
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
 
     Scaffold(
@@ -119,10 +111,6 @@ fun PageDataMigration(viewModel: DataMigrationViewModel = hiltViewModel()) {
                     trailingIcon = Icons.Rounded.KeyboardArrowRight,
                 ) {
                     scope.launch {
-                        // 每次进入都从「三类全选」开始，不沿用上次的临时选择
-                        includeApps = true
-                        includeFiles = true
-                        includeSystemData = true
                         val sources = buildList {
                             add(DialogRadioItem<String>(title = context.getString(R.string.local)))
                             clouds.forEach { add(DialogRadioItem<String>(title = it.name)) }
@@ -137,75 +125,29 @@ fun PageDataMigration(viewModel: DataMigrationViewModel = hiltViewModel()) {
                         val cloudName = cloudEntity?.name.orEmpty()
                         val backupDir = cloudEntity?.remote ?: context.localBackupSaveDir()
 
-                        // 全选恢复会覆盖本机数据，进流程前必须明确确认一次
+                        // 全选恢复会覆盖本机数据：只留一句文字确认，三类内容改在恢复引导页里选/微调
                         val (confirmState, _) = dialogState.open(
                             initialState = Unit,
                             title = context.getString(R.string.one_click_restore_confirm),
                             confirmText = context.getString(R.string.confirm),
                             dismissText = context.getString(R.string.cancel),
                         ) { _ ->
-                            Column {
-                                Text(text = context.getString(R.string.one_click_restore_confirm_desc))
-                                CheckBox(
-                                    checked = includeApps,
-                                    text = context.getString(R.string.apps),
-                                    onValueChange = { includeApps = it },
-                                )
-                                CheckBox(
-                                    checked = includeFiles,
-                                    text = context.getString(R.string.files),
-                                    onValueChange = { includeFiles = it },
-                                )
-                                CheckBox(
-                                    checked = includeSystemData,
-                                    text = context.getString(R.string.system_data),
-                                    onValueChange = { includeSystemData = it },
-                                )
-                            }
+                            Text(text = context.getString(R.string.one_click_restore_confirm_desc))
                         }
                         if (confirmState.isConfirm.not()) return@launch
-                        if (includeApps.not() && includeFiles.not() && includeSystemData.not()) return@launch
 
-                        // 系统数据只从云端恢复：列差异确认绝不自动跳过
-                        val pending = if (includeSystemData) viewModel.prepareOneClickRestore(cloudName) else emptyList()
-                        if (pending.isNotEmpty()) {
-                            val gapCount = pending.sumOf { it.missingColumns.size }
-                            val (gapState, _) = dialogState.open(
-                                initialState = Unit,
-                                title = context.getString(R.string.one_click_restore_gap),
-                                confirmText = context.getString(R.string.confirm),
-                                dismissText = context.getString(R.string.cancel),
-                            ) { _ ->
-                                Text(text = context.getString(R.string.one_click_restore_gap_desc, gapCount))
-                            }
-                            if (gapState.isConfirm) {
-                                viewModel.confirmSystemDataPending(pending)
-                            } else {
-                                viewModel.cancelSystemData()
-                                return@launch
-                            }
-                        }
-
-                        val error = viewModel.finishOneClickRestore(cloudName, backupDir, includeApps, includeFiles)
+                        val error = viewModel.finishOneClickRestore(cloudName, backupDir)
                         if (error != null) {
                             Toast.makeText(context, context.getString(R.string.one_click_error, error), Toast.LENGTH_SHORT).show()
                             return@launch
                         }
-                        // 没勾应用就直接进文件恢复处理页，避免空的「应用恢复」流程卡住
-                        val route = if (includeApps) {
+                        navController.navigateSingle(
                             MainRoutes.PackagesRestoreProcessingGraph.getRoute(
                                 cloudName = cloudName.ifEmptyEncodeURLWithSpace(),
                                 backupDir = backupDir.ifEmptyEncodeURLWithSpace(),
-                                chainFileRestore = includeFiles,
+                                chainFileRestore = true,
                             )
-                        } else {
-                            MainRoutes.MediumRestoreProcessingGraph.getRoute(
-                                cloudName = cloudName.ifEmptyEncodeURLWithSpace(),
-                                backupDir = backupDir.ifEmptyEncodeURLWithSpace(),
-                                skipSetup = true,
-                            )
-                        }
-                        navController.navigateSingle(route)
+                        )
                     }
                 }
             }

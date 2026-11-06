@@ -15,6 +15,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.rounded.KeyboardArrowRight
+import androidx.compose.material.icons.rounded.Storage
 import androidx.compose.material3.Button
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.Icon
@@ -67,6 +68,7 @@ import com.xayah.feature.main.processing.ProcessingSetupScaffold
 import com.xayah.feature.main.processing.R
 import com.xayah.feature.main.processing.SetCloudEntity
 import com.xayah.feature.main.processing.UpdateApps
+import com.xayah.feature.main.system.SystemDataItem
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 
 @ExperimentalCoroutinesApi
@@ -229,20 +231,56 @@ fun PagePackagesBackupProcessingSetup(localNavController: NavHostController, vie
                             navController.navigateSingle(MainRoutes.List.getRoute(Target.Files, OpType.BACKUP, returnToSetup = true))
                         },
                     )
-                    // 一键备份：系统数据作为第三类可勾选内容，勾选后随「继续」上传到当前激活云端账号。
+                    // 一键备份：系统数据与应用/文件同款 Clickable，点进去逐项勾选。
                     // 结果由 @Singleton 协调器持有，页面切换不丢；失败项如实显示，不谎报完成。
                     val sdSelected by viewModel.systemDataSelected.collectAsStateWithLifecycle()
                     val sdState by viewModel.systemDataState.collectAsStateWithLifecycle()
-                    CheckBox(
-                        checked = sdSelected.isNotEmpty(),
-                        text = stringResource(id = R.string.system_data),
-                        onValueChange = { checked -> viewModel.setSystemDataEnabled(checked) },
+                    val sdDialogState = LocalSlotScope.current!!.dialogSlot
+                    val sdInteractionSource = remember { MutableInteractionSource() }
+                    Clickable(
+                        title = stringResource(id = R.string.system_data),
+                        value = when {
+                            sdState.running -> stringResource(id = R.string.processing)
+                            sdState.error == "NO_CLOUD_ACCOUNT" -> stringResource(id = R.string.one_click_no_cloud)
+                            sdState.results.isNotEmpty() -> "${sdState.results.count { it.success }} / ${sdState.results.size}"
+                            else -> "${sdSelected.size} / ${SystemDataItem.values().size}"
+                        },
+                        leadingIcon = {
+                            Icon(imageVector = Icons.Rounded.Storage, contentDescription = null)
+                        },
+                        trailingIcon = {
+                            Icon(imageVector = Icons.Rounded.KeyboardArrowRight, contentDescription = null)
+                        },
+                        interactionSource = sdInteractionSource,
+                        onClick = {
+                            viewModel.launchOnIO {
+                                sdDialogState.open(
+                                    initialState = Unit,
+                                    title = context.getString(R.string.system_data),
+                                    confirmText = context.getString(R.string.confirm),
+                                    dismissText = context.getString(R.string.cancel),
+                                ) { _ ->
+                                    Column {
+                                        SystemDataItem.values().forEach { item ->
+                                            CheckBox(
+                                                checked = item in sdSelected,
+                                                text = context.getString(
+                                                    when (item) {
+                                                        SystemDataItem.Sms -> R.string.system_data_sms
+                                                        SystemDataItem.CallLog -> R.string.system_data_call_log
+                                                        SystemDataItem.Wifi -> R.string.system_data_wifi
+                                                    }
+                                                ),
+                                                onValueChange = { checked ->
+                                                    viewModel.setSystemDataItemSelected(item, checked)
+                                                },
+                                            )
+                                        }
+                                    }
+                                }
+                            }
+                        },
                     )
-                    when {
-                        sdState.error == "NO_CLOUD_ACCOUNT" -> Text(text = stringResource(id = R.string.one_click_no_cloud))
-                        sdState.running -> Text(text = stringResource(id = R.string.processing))
-                        sdState.results.isNotEmpty() -> Text(text = "${sdState.results.count { it.success }} / ${sdState.results.size}")
-                    }
                 }
             }
             Title(title = stringResource(id = R.string.settings)) {

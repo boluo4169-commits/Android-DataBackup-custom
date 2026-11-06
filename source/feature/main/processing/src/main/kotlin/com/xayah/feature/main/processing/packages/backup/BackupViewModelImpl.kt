@@ -76,6 +76,10 @@ class BackupViewModelImpl @Inject constructor(
         }
     }
 
+    /** 点进「系统数据」行后逐项勾选。 */
+    fun setSystemDataItemSelected(item: com.xayah.feature.main.system.SystemDataItem, selected: Boolean) =
+        mSystemData.setItemSelected(item, selected)
+
     /**
      * 上次扫描时的勾选签名（已激活 id 集合）。引导页的 UpdateApps 由 LaunchedEffect(null) 驱动，
      * 而「点进应用/文件列表微调勾选 → 返回」会让引导页重新进入组合、再次触发 —— 只要勾选没变，

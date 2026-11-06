@@ -134,6 +134,16 @@ class SystemDataCoordinator @Inject constructor(
         _selectedItems.value = if (selected) _selectedItems.value + item else _selectedItems.value - item
     }
 
+    /** 勾选弹窗里点「取消」时还原到打开前的快照，避免即时生效的改动被当成已确认。 */
+    fun setSelectedItems(items: Set<SystemDataItem>) {
+        _selectedItems.value = items
+    }
+
+    /** 每次进入一键流程时恢复默认「三项全选」，避免上一轮关掉后静默漏备份/漏恢复。 */
+    fun resetSelection() {
+        _selectedItems.value = SystemDataItem.values().toSet()
+    }
+
     fun resetBackupState() {
         _backupState.value = SystemDataBackupState()
     }

@@ -253,8 +253,11 @@ fun PagePackagesBackupProcessingSetup(localNavController: NavHostController, vie
                         },
                         interactionSource = sdInteractionSource,
                         onClick = {
+                            // CheckBox 是即时写入全局状态的；「取消」必须还原打开前的快照，
+                            // 否则用户以为没改、实际已经改了（真机实测过）。
+                            val snapshot = sdSelected.toSet()
                             viewModel.launchOnIO {
-                                sdDialogState.open(
+                                val (state, _) = sdDialogState.open(
                                     initialState = Unit,
                                     title = context.getString(R.string.system_data),
                                     confirmText = context.getString(R.string.confirm),
@@ -278,6 +281,7 @@ fun PagePackagesBackupProcessingSetup(localNavController: NavHostController, vie
                                         }
                                     }
                                 }
+                                if (state.isConfirm.not()) viewModel.restoreSystemDataSelection(snapshot)
                             }
                         },
                     )

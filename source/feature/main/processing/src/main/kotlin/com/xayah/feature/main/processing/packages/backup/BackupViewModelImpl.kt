@@ -35,6 +35,7 @@ import com.xayah.feature.main.processing.SetCloudEntity
 import com.xayah.feature.main.processing.UpdateApps
 import com.xayah.feature.main.system.SystemDataBackupState
 import com.xayah.feature.main.system.SystemDataCoordinator
+import com.xayah.feature.main.system.SystemDataItem
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -77,8 +78,11 @@ class BackupViewModelImpl @Inject constructor(
     }
 
     /** 点进「系统数据」行后逐项勾选。 */
-    fun setSystemDataItemSelected(item: com.xayah.feature.main.system.SystemDataItem, selected: Boolean) =
+    fun setSystemDataItemSelected(item: SystemDataItem, selected: Boolean) =
         mSystemData.setItemSelected(item, selected)
+
+    /** 勾选弹窗点「取消」时还原到打开前的快照。 */
+    fun restoreSystemDataSelection(items: Set<SystemDataItem>) = mSystemData.setSelectedItems(items)
 
     /**
      * 上次扫描时的勾选签名（已激活 id 集合）。引导页的 UpdateApps 由 LaunchedEffect(null) 驱动，

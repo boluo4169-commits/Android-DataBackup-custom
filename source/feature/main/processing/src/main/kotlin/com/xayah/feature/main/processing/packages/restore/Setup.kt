@@ -185,8 +185,10 @@ fun PagePackagesRestoreProcessingSetup(localNavController: NavHostController, vi
                             // 与「继续」的列差异弹窗共用同一个 dialogSlot，准备阶段禁止再开第二个，
                             // 否则后开的 content 会覆盖前一个，suspendCancellableCoroutine 永不 resume。
                             if (continuing.not()) {
+                                // CheckBox 即时写入全局状态，「取消」时还原快照
+                                val snapshot = sdSelected.toSet()
                                 viewModel.launchOnIO {
-                                    gapDialogState.open(
+                                    val (state, _) = gapDialogState.open(
                                         initialState = Unit,
                                         title = appContext.getString(R.string.system_data),
                                         confirmText = appContext.getString(R.string.confirm),
@@ -210,6 +212,7 @@ fun PagePackagesRestoreProcessingSetup(localNavController: NavHostController, vi
                                             }
                                         }
                                     }
+                                    if (state.isConfirm.not()) viewModel.restoreSystemDataSelection(snapshot)
                                 }
                             }
                         },

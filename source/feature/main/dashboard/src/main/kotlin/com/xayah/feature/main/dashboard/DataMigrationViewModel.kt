@@ -32,8 +32,10 @@ class DataMigrationViewModel @Inject constructor(
     /**
      * 一键备份：全选应用 + 文件，进入备份引导页。
      *
-     * 系统数据在引导页点「继续」时由 BackupViewModelImpl 并行上传到当前激活云端账号，
-     * 这里只负责重置上一轮结果。补了并发检查与异常兜底 —— 之前失败会静默、点了没反应。
+     * 系统数据在引导页点「继续」时由 BackupViewModelImpl 并行上传到当前激活云端账号。
+     * 这里重置上一轮结果，并把系统数据勾选恢复成默认全选 —— 否则上次关掉三项后，
+     * 应用/文件每次都重新全选而系统数据仍是 0/3，会静默漏备份。
+     * 补了并发检查与异常兜底 —— 之前失败会静默、点了没反应。
      */
     fun oneClickBackup(onReady: () -> Unit, onError: (String) -> Unit) {
         viewModelScope.launch {
@@ -43,6 +45,7 @@ class DataMigrationViewModel @Inject constructor(
                     appsRepo.activateAllForBackup()
                     filesRepo.activateAllForBackup()
                     systemData.resetBackupState()
+                    systemData.resetSelection()
                     ""
                 }.getOrElse { "FAILED" }
             }
@@ -65,6 +68,8 @@ class DataMigrationViewModel @Inject constructor(
                 filesRepo.clearAllForRestore()
                 appsRepo.activateAllForRestore(cloudName, backupDir)
                 filesRepo.activateAllForRestore()
+                // 与一键备份同口径：恢复引导页的系统数据也回到默认全选，不沿用上一轮的关闭状态
+                systemData.resetSelection()
                 null
             }.getOrElse { "FAILED" }
         }

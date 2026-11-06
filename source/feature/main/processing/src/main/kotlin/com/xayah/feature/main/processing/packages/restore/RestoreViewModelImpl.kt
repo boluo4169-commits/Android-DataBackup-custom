@@ -71,6 +71,9 @@ class RestoreViewModelImpl @Inject constructor(
     fun setSystemDataItemSelected(item: SystemDataItem, selected: Boolean) =
         mSystemData.setItemSelected(item, selected)
 
+    /** 勾选弹窗点「取消」时还原到打开前的快照。 */
+    fun restoreSystemDataSelection(items: Set<SystemDataItem>) = mSystemData.setSelectedItems(items)
+
     /**
      * 引导页点「继续」时同步准备系统数据恢复，返回需要弹窗确认的列差异项。
      * 本地源（账号名为空/空格）不恢复系统数据。

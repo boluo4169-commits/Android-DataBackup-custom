@@ -567,7 +567,7 @@
     <string name="one_click_restore">一鍵恢復</string>
     <string name="one_click_restore_confirm">還原將覆蓋本機資料</string>
     <string name="one_click_restore_desc">從所選備份來源還原應用程式、檔案與系統資料</string>
-    <string name="one_click_restore_gap_desc">備份中缺少 %1$d 個欄位，繼續可能覆蓋本機資料庫，是否確認？</string>
+    <string name="one_click_restore_gap_desc">備份與本機資料庫存在 %1$d 處結構差異。確認將覆蓋本機資料，取消則跳過這些系統資料項。</string>
     <string name="one_click_restore_gap">系統資料結構不一致</string>
     <string name="one_click_restore_source">選擇備份來源</string>
     <string name="system_data_call_log">通話記錄</string>

@@ -593,7 +593,7 @@
     <string name="one_click_restore">一键恢复</string>
     <string name="one_click_restore_confirm">恢复将覆盖本机数据</string>
     <string name="one_click_restore_desc">从所选备份源恢复应用、文件与系统数据</string>
-    <string name="one_click_restore_gap_desc">备份中缺少 %1$d 个字段，继续可能覆盖本机数据库，是否确认？</string>
+    <string name="one_click_restore_gap_desc">备份与本机数据库存在 %1$d 处结构差异。确认将覆盖本机数据，取消则跳过这些系统数据项。</string>
     <string name="one_click_restore_gap">系统数据结构不一致</string>
     <string name="one_click_restore_source">选择备份源</string>
     <string name="system_data_call_log">通话记录</string>

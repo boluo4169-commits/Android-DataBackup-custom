@@ -109,4 +109,5 @@
     <item name="system_data_wifi" type="string" />
     <item name="cancel" type="string" />
     <item name="one_click_restore_gap" type="string" />
+    <item name="one_click_restore_gap_desc" type="string" />
 </resources>

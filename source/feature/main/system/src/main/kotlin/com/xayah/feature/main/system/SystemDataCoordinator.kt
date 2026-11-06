@@ -39,11 +39,11 @@ data class SystemDataBackupState(
     val error: String? = null,
 )
 
-/** 一键恢复里系统数据的状态。列差异项不自动覆盖，记为「需手动确认」。 */
+/** 一键恢复里系统数据的状态。列差异项不自动覆盖，[pending] 交给引导页弹窗确认。 */
 data class SystemDataRestoreState(
     val running: Boolean = false,
     val results: List<SystemDataTaskResult> = emptyList(),
-    val needsManualConfirm: Int = 0,
+    val pending: List<SystemDataPending> = emptyList(),
 )
 
 /**
@@ -77,29 +77,57 @@ class SystemDataCoordinator @Inject constructor(
     val restoreState: StateFlow<SystemDataRestoreState> = _restoreState.asStateFlow()
 
     fun resetRestoreState() {
+        cleanup()
         _restoreState.value = SystemDataRestoreState()
     }
 
-    /** 一键恢复：点引导页「继续」时启动，按当前勾选逐项下载并恢复。 */
-    fun startRestore(cloudName: String) {
+    /**
+     * 一键恢复：引导页点「继续」时**同步**执行，按当前勾选逐项下载并恢复。
+     *
+     * 无差异项在这里就已恢复；有差异项返回 [SystemDataPending] 交给引导页弹窗确认，
+     * **绝不自动覆盖**。此时不能清缓存 —— pending 的 staged 文件还要用于 [applyPending]，
+     * 缓存统一在 [confirmPending] / [cancelPending] 之后清理。
+     */
+    suspend fun prepareRestore(cloudName: String): List<SystemDataPending> {
         val items = SystemDataItem.values().filter { it in _selectedItems.value }
         if (cloudName.isBlank() || items.isEmpty()) {
             _restoreState.value = SystemDataRestoreState()
-            return
+            return emptyList()
         }
         _restoreState.value = SystemDataRestoreState(running = true)
-        scope.launch {
-            val results = runCatching { prepareRestoreFromCloud(cloudName, items) }
-                .onFailure { log("startRestore failed: ${it.stackTraceToString()}") }
-                .getOrDefault(items.map { SystemDataTaskResult(it, false) })
-            // 列差异项绝不自动覆盖：清掉缓存，交给用户到系统数据页手动确认后恢复
-            cleanup()
-            _restoreState.value = SystemDataRestoreState(
-                running = false,
-                results = results,
-                needsManualConfirm = results.count { it.pending != null },
+        val results = runCatching { prepareRestoreFromCloud(cloudName, items) }
+            .onFailure { log("prepareRestore failed: ${it.stackTraceToString()}") }
+            .getOrDefault(items.map { SystemDataTaskResult(it, false) })
+        val pending = results.mapNotNull { it.pending }
+        _restoreState.value = SystemDataRestoreState(running = false, results = results, pending = pending)
+        return pending
+    }
+
+    /** 用户在列差异弹窗里点了「继续」：逐项覆盖恢复，结果如实写回状态。 */
+    suspend fun confirmPending(pending: List<SystemDataPending>) {
+        val confirmed = pending.map { p ->
+            SystemDataTaskResult(
+                item = p.item,
+                success = runCatching { applyPending(p) }
+                    .onFailure { log("confirmPending ${p.item.name} failed: ${it.stackTraceToString()}") }
+                    .getOrDefault(false),
             )
         }
+        _restoreState.value = _restoreState.value.let { s ->
+            s.copy(results = s.results.filter { it.pending == null } + confirmed, pending = emptyList())
+        }
+        cleanup()
+    }
+
+    /** 用户取消：不覆盖本机数据库，跳过这些系统数据项，其余恢复照常进行。 */
+    fun cancelPending() {
+        _restoreState.value = _restoreState.value.let { s ->
+            s.copy(
+                results = s.results.map { if (it.pending != null) it.copy(pending = null) else it },
+                pending = emptyList(),
+            )
+        }
+        cleanup()
     }
 
     fun setItemSelected(item: SystemDataItem, selected: Boolean) {
@@ -239,7 +267,7 @@ class SystemDataCoordinator @Inject constructor(
         }
     }
 
-    /** 用户在列差异提示里点了「继续」。 */
+    /** 列差异弹窗确认后，把 staged 文件覆盖到目标库。 */
     suspend fun applyPending(pending: SystemDataPending): Boolean {
         if (pending.item == SystemDataItem.Wifi) return false
         return SystemDataUtil.restoreFromStaged(

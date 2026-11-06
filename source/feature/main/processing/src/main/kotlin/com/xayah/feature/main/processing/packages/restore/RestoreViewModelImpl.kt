@@ -33,6 +33,7 @@ import com.xayah.feature.main.processing.SetCloudEntity
 import com.xayah.feature.main.processing.UpdateApps
 import com.xayah.feature.main.system.SystemDataCoordinator
 import com.xayah.feature.main.system.SystemDataItem
+import com.xayah.feature.main.system.SystemDataPending
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
@@ -70,12 +71,22 @@ class RestoreViewModelImpl @Inject constructor(
     fun setSystemDataItemSelected(item: SystemDataItem, selected: Boolean) =
         mSystemData.setItemSelected(item, selected)
 
-    /** 引导页点「继续」时启动系统数据恢复；本地源（账号名为空/空格）不恢复系统数据。 */
-    fun startSystemDataRestore() {
-        val cloud = args.get<String>(MainRoutes.ARG_ACCOUNT_NAME)?.decodeURL()?.trim().orEmpty()
-        mSystemData.resetRestoreState()
-        mSystemData.startRestore(cloud)
+    /**
+     * 引导页点「继续」时同步准备系统数据恢复，返回需要弹窗确认的列差异项。
+     * 本地源（账号名为空/空格）不恢复系统数据。
+     */
+    suspend fun prepareSystemDataRestore(): List<SystemDataPending> {
+        val cloud = cloudNameArg.decodeURL().trim()
+        if (cloud.isEmpty()) {
+            mSystemData.resetRestoreState()
+            return emptyList()
+        }
+        return mSystemData.prepareRestore(cloud)
     }
+
+    suspend fun confirmSystemDataPending(pending: List<SystemDataPending>) = mSystemData.confirmPending(pending)
+
+    fun cancelSystemDataPending() = mSystemData.cancelPending()
 
     override suspend fun onOtherEvent(state: IndexUiState, intent: ProcessingUiIntent) {
         when (intent) {

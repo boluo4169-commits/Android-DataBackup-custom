@@ -23,6 +23,7 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -72,6 +73,9 @@ fun PagePackagesRestoreProcessingSetup(localNavController: NavHostController, vi
     val scrollBehavior = TopAppBarDefaults.exitUntilCollapsedScrollBehavior(rememberTopAppBarState())
     val mainNavController = LocalNavController.current!!
     val appContext = LocalContext.current
+    // 列差异确认弹窗要在点「继续」后、进入处理页之前弹出，因此在页面顶层取一次 dialogSlot
+    val gapDialogState = LocalSlotScope.current!!.dialogSlot
+    var continuing by remember { mutableStateOf(false) }
     val packages by viewModel.packages.collectAsStateWithLifecycle()
     val packagesSize by viewModel.packagesSize.collectAsStateWithLifecycle()
     val restoreUsers by viewModel.restoreUsers.collectAsStateWithLifecycle()
@@ -97,10 +101,37 @@ fun PagePackagesRestoreProcessingSetup(localNavController: NavHostController, vi
                 horizontalArrangement = Arrangement.spacedBy(SizeTokens.Level12, Alignment.End),
             ) {
                 Button(
+                    enabled = continuing.not(),
                     onClick = {
-                        // 一键恢复：系统数据按勾选在「继续」时才执行，与备份侧时机一致
-                        if (viewModel.chainFileRestore) viewModel.startSystemDataRestore()
-                        viewModel.emitIntentOnIO(FinishSetup(navController = localNavController))
+                        continuing = true
+                        viewModel.launchOnIO {
+                            try {
+                                // 一键恢复：系统数据按勾选在「继续」时才执行，与备份侧时机一致。
+                                // 列差异项必须在这里弹窗确认，确认/取消后才清缓存并进入处理页。
+                                if (viewModel.chainFileRestore) {
+                                    val pending = viewModel.prepareSystemDataRestore()
+                                    if (pending.isNotEmpty()) {
+                                        val gapCount = pending.sumOf { it.missingColumns.size }
+                                        val (gapState, _) = gapDialogState.open(
+                                            initialState = Unit,
+                                            title = appContext.getString(R.string.one_click_restore_gap),
+                                            confirmText = appContext.getString(R.string.confirm),
+                                            dismissText = appContext.getString(R.string.cancel),
+                                        ) { _ ->
+                                            Text(text = appContext.getString(R.string.one_click_restore_gap_desc, gapCount))
+                                        }
+                                        if (gapState.isConfirm) {
+                                            viewModel.confirmSystemDataPending(pending)
+                                        } else {
+                                            viewModel.cancelSystemDataPending()
+                                        }
+                                    }
+                                }
+                                viewModel.emitIntent(FinishSetup(navController = localNavController))
+                            } finally {
+                                continuing = false
+                            }
+                        }
                     }) {
                     Text(text = stringResource(id = R.string._continue))
                 }
@@ -139,41 +170,44 @@ fun PagePackagesRestoreProcessingSetup(localNavController: NavHostController, vi
                     )
                     val sdSelected by viewModel.systemDataSelected.collectAsStateWithLifecycle()
                     val sdState by viewModel.systemDataRestoreState.collectAsStateWithLifecycle()
-                    val sdDialogState = LocalSlotScope.current!!.dialogSlot
                     Clickable(
                         title = stringResource(id = R.string.system_data),
                         value = when {
                             sdState.running -> stringResource(id = R.string.processing)
-                            // 列差异项绝不自动覆盖，提示用户到系统数据页手动确认
-                            sdState.needsManualConfirm > 0 -> stringResource(id = R.string.one_click_restore_gap)
+                            // 列差异待确认（弹窗由「继续」承载，这里只做状态提示）
+                            sdState.pending.isNotEmpty() -> stringResource(id = R.string.one_click_restore_gap)
                             sdState.results.isNotEmpty() -> "${sdState.results.count { it.success }} / ${sdState.results.size}"
                             else -> "${sdSelected.size} / ${SystemDataItem.values().size}"
                         },
                         leadingIcon = Icons.Rounded.Storage,
                         trailingIcon = Icons.Rounded.KeyboardArrowRight,
                         onClick = {
-                            viewModel.launchOnIO {
-                                sdDialogState.open(
-                                    initialState = Unit,
-                                    title = appContext.getString(R.string.system_data),
-                                    confirmText = appContext.getString(R.string.confirm),
-                                    dismissText = appContext.getString(R.string.cancel),
-                                ) { _ ->
-                                    Column {
-                                        SystemDataItem.values().forEach { item ->
-                                            CheckBox(
-                                                checked = item in sdSelected,
-                                                text = appContext.getString(
-                                                    when (item) {
-                                                        SystemDataItem.Sms -> R.string.system_data_sms
-                                                        SystemDataItem.CallLog -> R.string.system_data_call_log
-                                                        SystemDataItem.Wifi -> R.string.system_data_wifi
-                                                    }
-                                                ),
-                                                onValueChange = { checked ->
-                                                    viewModel.setSystemDataItemSelected(item, checked)
-                                                },
-                                            )
+                            // 与「继续」的列差异弹窗共用同一个 dialogSlot，准备阶段禁止再开第二个，
+                            // 否则后开的 content 会覆盖前一个，suspendCancellableCoroutine 永不 resume。
+                            if (continuing.not()) {
+                                viewModel.launchOnIO {
+                                    gapDialogState.open(
+                                        initialState = Unit,
+                                        title = appContext.getString(R.string.system_data),
+                                        confirmText = appContext.getString(R.string.confirm),
+                                        dismissText = appContext.getString(R.string.cancel),
+                                    ) { _ ->
+                                        Column {
+                                            SystemDataItem.values().forEach { item ->
+                                                CheckBox(
+                                                    checked = item in sdSelected,
+                                                    text = appContext.getString(
+                                                        when (item) {
+                                                            SystemDataItem.Sms -> R.string.system_data_sms
+                                                            SystemDataItem.CallLog -> R.string.system_data_call_log
+                                                            SystemDataItem.Wifi -> R.string.system_data_wifi
+                                                        }
+                                                    ),
+                                                    onValueChange = { checked ->
+                                                        viewModel.setSystemDataItemSelected(item, checked)
+                                                    },
+                                                )
+                                            }
                                         }
                                     }
                                 }

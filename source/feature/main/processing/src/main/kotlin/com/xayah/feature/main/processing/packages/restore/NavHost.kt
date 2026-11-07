@@ -12,6 +12,8 @@ import com.xayah.core.model.OperationState
 import com.xayah.core.ui.component.AnimatedNavHost
 import com.xayah.core.ui.route.MainRoutes
 import com.xayah.core.ui.util.LocalNavController
+import com.xayah.core.util.decodeURL
+import com.xayah.core.util.ifEmptyEncodeURLWithSpace
 import com.xayah.core.util.maybePopBackAndNavigateSingle
 import com.xayah.feature.main.processing.PageProcessing
 import com.xayah.feature.main.processing.R
@@ -50,10 +52,13 @@ fun PackagesRestoreProcessingGraph() {
                     // 一键恢复：应用恢复完成后自动接续文件恢复。
                     // skipSetup = 文件勾选已确认，直达文件处理页；先弹掉应用恢复图。
                     if (viewModel.chainFileRestore) {
+                        // SavedStateHandle 里的路径参数已被 Navigation decode（"/storage/..."），
+                        // 直接拼回 route 会被 "/" 切成多段 → destination not found 崩溃（真机实测）。
+                        // 统一规范化：decode → trim → encode；本地源的 "+" 与中文云端账号名都能还原。
                         navController.maybePopBackAndNavigateSingle(
                             MainRoutes.MediumRestoreProcessingGraph.getRoute(
-                                cloudName = viewModel.cloudNameArg,
-                                backupDir = viewModel.backupDirArg,
+                                cloudName = viewModel.cloudNameArg.decodeURL().trim().ifEmptyEncodeURLWithSpace(),
+                                backupDir = viewModel.backupDirArg.decodeURL().ifEmptyEncodeURLWithSpace(),
                                 skipSetup = true,
                             )
                         )

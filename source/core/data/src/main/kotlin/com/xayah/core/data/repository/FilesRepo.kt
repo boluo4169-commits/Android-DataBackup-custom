@@ -113,6 +113,16 @@ class FilesRepo @Inject constructor(
         filesDao.activateByIds(files.map { it.id }, false)
     }
 
+    /**
+     * 「全部不选」：清空该 [opType] 下整张表的勾选，不受列表页筛选影响。
+     * 与 [AppsRepo.clearAllActivated] 同口径，原因见其注释：按可见集合清会留下被隐藏的
+     * 已选目录，恢复时会被误恢复。
+     */
+    suspend fun clearAllActivated(opType: OpType) {
+        filesDao.clearActivated(opType)
+    }
+
+    /** 按指定 id 局部取消勾选。批量「全部不选」请走 [clearAllActivated]。 */
     suspend fun unselectAll(ids: List<Long>) {
         filesDao.activateByIds(ids, false)
     }

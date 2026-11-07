@@ -232,6 +232,22 @@ class AppsRepo @Inject constructor(
         appsDao.activateByIds(apps.map { it.id }, false)
     }
 
+    /**
+     * 「全部不选」：清空该 [opType] 下**整张表**的勾选，不受列表页筛选/搜索影响。
+     *
+     * 列表页的 `appList` 是过滤后的可见集合，按它清空会留下「看不见但仍处于勾选」的记录。
+     * 恢复页尤其危险：一键恢复按云端源全选后，本机未安装的应用会被筛选隐藏；用户点了
+     * 「全部不选」以为清空了，引导页却仍显示体积，点「继续」会把这些应用恢复覆盖本机。
+     *
+     * 这里刻意不按 cloud/backupDir 限定：列表页路由并未传备份源参数，且恢复服务取数时
+     * 本来就按 `cloud + backupDir` 再过滤一次；`extraInfo_activated` 只是 UI 勾选状态，
+     * 整表清既不会丢数据，也不会误恢复别的源，反而能顺带清掉跨源残留的幽灵勾选。
+     */
+    suspend fun clearAllActivated(opType: OpType) {
+        appsDao.clearActivated(opType)
+    }
+
+    /** 按指定 id 局部取消勾选（单个条目 / 局部微调用）。批量「全部不选」请走 [clearAllActivated]。 */
     suspend fun unselectAll(ids: List<Long>) {
         appsDao.activateByIds(ids, false)
     }

@@ -162,22 +162,23 @@ class ListActionsViewModel @Inject constructor(
         }
     }
 
+    /**
+     * 「全部不选」必须按当前 opType 整表清，不能用 [Success.Apps.appList] / [Success.Files.fileList]。
+     *
+     * 那两个集合是列表页**筛选后的可见部分**：被搜索词、「已安装/未安装」、「加载系统应用」
+     * 等过滤掉的已选项会继续留在勾选状态。备份侧表现为「看不见却照样被备份」，恢复侧更危险
+     * —— 用户以为清空了，引导页却仍显示体积，点「继续」就会把隐藏的应用恢复覆盖本机。
+     *
+     * 保持 [selectAll] / [reverseAll] 按可见集合：它们是「对当前看到的项做选择」，语义上
+     * 就该跟随筛选；且少选不会造成误操作，漏清才会。
+     */
     fun unselectAll() {
         viewModelScope.launchOnDefault {
             when (uiState.value) {
-                is Success.Apps -> {
-                    val state = uiState.value.castTo<Success.Apps>()
-                    appsRepo.unselectAll(state.appList.map { it.id })
-                }
-
-                is Success.Files -> {
-                    val state = uiState.value.castTo<Success.Files>()
-                    filesRepo.unselectAll(state.fileList.map { it.id })
-                }
-
+                is Success.Apps -> appsRepo.clearAllActivated(opType)
+                is Success.Files -> filesRepo.clearAllActivated(opType)
                 else -> {}
             }
-
         }
     }
 

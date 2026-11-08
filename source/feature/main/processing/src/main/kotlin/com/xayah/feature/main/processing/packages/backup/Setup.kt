@@ -62,6 +62,7 @@ import com.xayah.core.ui.route.MainRoutes
 import com.xayah.core.ui.token.SizeTokens
 import com.xayah.core.ui.util.LocalNavController
 import com.xayah.core.ui.util.icon
+import com.xayah.core.util.ifEmptyEncodeURLWithSpace
 import com.xayah.core.util.navigateSingle
 import com.xayah.feature.main.processing.FinishSetup
 import com.xayah.feature.main.processing.ProcessingSetupScaffold
@@ -202,7 +203,18 @@ fun PagePackagesBackupProcessingSetup(localNavController: NavHostController, vie
                     },
                     // 点进备份列表微调勾选（一键备份=已全选，可取消不必要的应用）；「继续」返回本页重新扫描
                     onClick = {
-                        navController.navigateSingle(MainRoutes.List.getRoute(Target.Apps, OpType.BACKUP, returnToSetup = true))
+                        // 与恢复侧同口径：把当前存储源传给列表页，供「是否存在备份」等按源过滤的判定使用。
+                        // 本地源传空（列表页会兜底成本地目录），云端源传账号名/远端目录。
+                        val cloud = if (uiState.storageType == StorageMode.Cloud) uiState.cloudEntity else null
+                        navController.navigateSingle(
+                            MainRoutes.List.getRoute(
+                                target = Target.Apps,
+                                opType = OpType.BACKUP,
+                                cloudName = cloud?.name.orEmpty().ifEmptyEncodeURLWithSpace(),
+                                backupDir = cloud?.remote.orEmpty().ifEmptyEncodeURLWithSpace(),
+                                returnToSetup = true,
+                            )
+                        )
                     },
                 )
                 // 「文件」行仅一键备份流程显示：手动备份应用时文件不参与，显示出来会误导
@@ -228,7 +240,16 @@ fun PagePackagesBackupProcessingSetup(localNavController: NavHostController, vie
                         interactionSource = filesInteractionSource,
                         // 点进文件备份列表微调勾选；「继续」返回本页重新扫描（而非进入文件备份流程）
                         onClick = {
-                            navController.navigateSingle(MainRoutes.List.getRoute(Target.Files, OpType.BACKUP, returnToSetup = true))
+                            val cloud = if (uiState.storageType == StorageMode.Cloud) uiState.cloudEntity else null
+                            navController.navigateSingle(
+                                MainRoutes.List.getRoute(
+                                    target = Target.Files,
+                                    opType = OpType.BACKUP,
+                                    cloudName = cloud?.name.orEmpty().ifEmptyEncodeURLWithSpace(),
+                                    backupDir = cloud?.remote.orEmpty().ifEmptyEncodeURLWithSpace(),
+                                    returnToSetup = true,
+                                )
+                            )
                         },
                     )
                     // 一键备份：系统数据与应用/文件同款 Clickable，点进去逐项勾选。

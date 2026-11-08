@@ -53,6 +53,8 @@ import com.xayah.core.ui.component.select
 import com.xayah.core.ui.route.MainRoutes
 import com.xayah.core.ui.token.SizeTokens
 import com.xayah.core.ui.util.LocalNavController
+import com.xayah.core.util.decodeURL
+import com.xayah.core.util.ifEmptyEncodeURLWithSpace
 import com.xayah.core.util.navigateSingle
 import com.xayah.feature.main.processing.FinishSetup
 import com.xayah.feature.main.processing.GetUsers
@@ -155,7 +157,19 @@ fun PagePackagesRestoreProcessingSetup(localNavController: NavHostController, vi
                         PackageIcons(modifier = Modifier.paddingTop(SizeTokens.Level8), packages = packages)
                     },
                     onClick = {
-                        mainNavController.navigateSingle(MainRoutes.List.getRoute(Target.Apps, OpType.RESTORE, returnToSetup = true))
+                        // 必须把当前备份源带给列表页，否则列表按默认空源过滤，会显示本地备份记录
+                        // （表现为引导页显示云端应用、点进去却只剩本地的「暗区突围」）。
+                        // 复用接续链路的规范化写法：SavedStateHandle 里的参数已被 Navigation decode，
+                        // 直接拼回 route 会被路径中的 "/" 切碎（真机实测崩溃）。
+                        mainNavController.navigateSingle(
+                            MainRoutes.List.getRoute(
+                                target = Target.Apps,
+                                opType = OpType.RESTORE,
+                                cloudName = viewModel.cloudNameArg.decodeURL().trim().ifEmptyEncodeURLWithSpace(),
+                                backupDir = viewModel.backupDirArg.decodeURL().ifEmptyEncodeURLWithSpace(),
+                                returnToSetup = true,
+                            )
+                        )
                     },
                 )
                 // 一键恢复：文件与系统数据两行仅在接续流程显示，与备份引导页对称，均可点进去微调
@@ -165,7 +179,15 @@ fun PagePackagesRestoreProcessingSetup(localNavController: NavHostController, vi
                         leadingIcon = ImageVector.vectorResource(id = R.drawable.ic_rounded_folder_open),
                         trailingIcon = Icons.Rounded.KeyboardArrowRight,
                         onClick = {
-                            mainNavController.navigateSingle(MainRoutes.List.getRoute(Target.Files, OpType.RESTORE, returnToSetup = true))
+                            mainNavController.navigateSingle(
+                                MainRoutes.List.getRoute(
+                                    target = Target.Files,
+                                    opType = OpType.RESTORE,
+                                    cloudName = viewModel.cloudNameArg.decodeURL().trim().ifEmptyEncodeURLWithSpace(),
+                                    backupDir = viewModel.backupDirArg.decodeURL().ifEmptyEncodeURLWithSpace(),
+                                    returnToSetup = true,
+                                )
+                            )
                         },
                     )
                     val sdSelected by viewModel.systemDataSelected.collectAsStateWithLifecycle()

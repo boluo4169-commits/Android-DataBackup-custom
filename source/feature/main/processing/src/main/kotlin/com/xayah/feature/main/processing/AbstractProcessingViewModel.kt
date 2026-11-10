@@ -16,7 +16,10 @@ import com.xayah.core.service.util.ChecksumConfirmation
 import com.xayah.core.service.util.ChecksumMismatch
 import com.xayah.core.service.util.IntegrityConfirmation
 import com.xayah.core.service.util.IntegrityReport
+import com.xayah.core.service.util.RestorePreviewConfirmation
+import com.xayah.core.service.util.RestorePreviewRequest
 import com.xayah.core.service.util.SsaidRestoreReminder
+import com.xayah.core.model.ConflictPreview
 import com.xayah.core.ui.model.ProcessingCardItem
 import com.xayah.core.ui.model.ProcessingDataCardItem
 import com.xayah.core.ui.util.addInfo
@@ -191,4 +194,19 @@ abstract class AbstractProcessingViewModel(
      * 用户在「备份不完整」弹窗上选择后调用。[continueRestore] = true 表示继续恢复。
      */
     fun decideIntegrity(continueRestore: Boolean) = IntegrityConfirmation.decide(continueRestore)
+
+    /**
+     * 恢复前冲突预览（由 medium 恢复 Service 在解压前挂起等待，UI 层弹清单后回传决定）。
+     * 非空表示需要向用户展示「将被覆盖 / 跳过 / 留档」的清单。
+     */
+    val restorePreviewRequest: StateFlow<RestorePreviewRequest?> = RestorePreviewConfirmation.request
+
+    /** 用户在预览弹窗上点「确认 / 取消」。 */
+    fun decideRestorePreview(confirmed: Boolean) = RestorePreviewConfirmation.decide(confirmed)
+
+    /** 本次恢复累计的逐项统计，供完成页展示（不只是「成功 1/1」）。 */
+    val restorePreviewTotal: StateFlow<ConflictPreview> = RestorePreviewConfirmation.total
+
+    /** 因预览处取消而跳过的目录数。 */
+    val restorePreviewSkippedDirs: StateFlow<Int> = RestorePreviewConfirmation.skippedDirs
 }

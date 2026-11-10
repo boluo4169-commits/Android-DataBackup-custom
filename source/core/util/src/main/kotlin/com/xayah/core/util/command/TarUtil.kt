@@ -11,6 +11,25 @@ object Tar {
     /** 列出归档内的路径清单（只读，不解压）。用于恢复前报告哪些文件会被跳过。 */
     suspend fun list(src: String): ShellResult = execute("-tf", SymbolUtil.shellQuote(src))
 
+    /**
+     * 同上，但支持压缩归档。[extra] 为 `CompressionType.decompressPara`（"zstd" 等），
+     * 非空时走 `zstd -d -c "$src" | tar -tf -`，与 [decompress] / [test] 的压缩分支同口径。
+     */
+    suspend fun list(src: String, extra: String): ShellResult = if (extra.isEmpty()) {
+        list(src)
+    } else {
+        BaseUtil.execute(
+            "zstd",
+            "-d",
+            "-c",
+            SymbolUtil.shellQuote(src),
+            "|",
+            "tar",
+            "-tf",
+            "-",
+        )
+    }
+
     suspend fun compressInCur(cur: String, src: String, dst: String, extra: String): ShellResult {
         // Move to $cur path.
         BaseUtil.execute("cd", SymbolUtil.shellQuote(cur))

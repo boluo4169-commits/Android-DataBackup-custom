@@ -5,6 +5,19 @@
     <string name="checksum_mismatch_text">归档 %1$s 的 MD5 校验失败，文件可能已损坏。是否强制恢复？</string>
     <string name="backup_incomplete_title">备份文件不完整</string>
     <string name="backup_incomplete_text">以下应用的备份文件不完整（归档缺失），恢复将失败：\n%1$s\n\n是否仍要继续？</string>
+
+    <!-- 恢复前冲突预览（Phase 2） -->
+    <string name="restore_preview_title">恢复前确认</string>
+    <string name="restore_preview_dir">目录：%1$s</string>
+    <string name="restore_preview_overwrite">将被覆盖：%1$d 个文件</string>
+    <string name="restore_preview_skip">将被跳过：%1$d 个文件</string>
+    <string name="restore_preview_keep_both">两份都留：%1$d 个文件（旧文件改名 .~1~）</string>
+    <string name="restore_preview_added">将新增：%1$d 个文件</string>
+    <string name="restore_preview_removed">干净恢复将删除：%1$d 个本机独有文件</string>
+    <string name="restore_preview_excluded">排除回收站 / 写入中文件：%1$d 个</string>
+    <string name="restore_preview_hint">取消则跳过本目录及其余目录，不解压任何内容；确认则按当前冲突策略继续。</string>
+    <string name="restore_preview_summary">覆盖 %1$d · 跳过 %2$d · 留档 %3$d · 新增 %4$d · 删除 %5$d · 排除 %6$d</string>
+    <string name="restore_preview_skipped_dirs">按你的要求跳过了 %1$d 个目录</string>
     <string name="_continue">继续</string>
     <string name="_protected">受保护</string>
     <string name="account">账户</string>

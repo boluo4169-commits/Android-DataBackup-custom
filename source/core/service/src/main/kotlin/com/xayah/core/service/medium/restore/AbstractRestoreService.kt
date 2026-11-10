@@ -17,6 +17,7 @@ import com.xayah.core.service.R
 import com.xayah.core.service.medium.AbstractMediumService
 import com.xayah.core.service.util.ChecksumConfirmation
 import com.xayah.core.service.util.MediumRestoreUtil
+import com.xayah.core.service.util.RestorePreviewConfirmation
 import com.xayah.core.util.DateUtil
 import com.xayah.core.util.NotificationUtil
 import kotlinx.coroutines.flow.first
@@ -86,6 +87,7 @@ internal abstract class AbstractRestoreService : AbstractMediumService() {
 
     override suspend fun onProcessing() {
         ChecksumConfirmation.reset()
+        RestorePreviewConfirmation.reset()
         mTaskEntity.update(rawBytes = mTaskRepo.getRawBytes(TaskType.MEDIA), availableBytes = mTaskRepo.getAvailableBytes(OpType.RESTORE), totalBytes = mTaskRepo.getTotalBytes(OpType.RESTORE), totalCount = mMediaEntities.size)
         log { "Task count: ${mMediaEntities.size}." }
 
@@ -112,7 +114,15 @@ internal abstract class AbstractRestoreService : AbstractMediumService() {
                 } else {
                     mTaskEntity.update(failureCount = mTaskEntity.failureCount + 1)
                 }
-                media.update(state = if (media.isSuccess) OperationState.DONE else OperationState.ERROR)
+                // 预览处用户取消 → mediaInfo.state = SKIP；不算失败也不算「成功恢复」，
+                // 卡片保持 SKIP 状态，避免完成页把「跳过」误显示成「已恢复」。
+                media.update(
+                    state = when {
+                        media.mediaInfo.state == OperationState.SKIP -> OperationState.SKIP
+                        media.isSuccess -> OperationState.DONE
+                        else -> OperationState.ERROR
+                    }
+                )
             }
             mTaskEntity.update(processingIndex = mTaskEntity.processingIndex + 1)
         }

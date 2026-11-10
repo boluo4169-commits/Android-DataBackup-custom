@@ -114,6 +114,9 @@ fun PageProcessing(
     val ssaidReminder by viewModel.ssaidReminder.collectAsStateWithLifecycle()
     val ssaidReminderTitle by viewModel.ssaidReminderTitle.collectAsStateWithLifecycle()
     val integrityRequest by viewModel.integrityRequest.collectAsStateWithLifecycle()
+    val restorePreviewRequest by viewModel.restorePreviewRequest.collectAsStateWithLifecycle()
+    val restorePreviewTotal by viewModel.restorePreviewTotal.collectAsStateWithLifecycle()
+    val restorePreviewSkippedDirs by viewModel.restorePreviewSkippedDirs.collectAsStateWithLifecycle()
 
     LaunchedEffect(null) {
         viewModel.emitIntentOnIO(ProcessingUiIntent.Initialize)
@@ -148,6 +151,28 @@ fun PageProcessing(
                 block = { _ -> Text(text = message) }
             ).first.isConfirm
             viewModel.decideSsaidReminder(confirmed)
+        }
+    }
+
+    LaunchedEffect(restorePreviewRequest) {
+        restorePreviewRequest?.let { request ->
+            val p = request.preview
+            val text = buildString {
+                appendLine(context.getString(R.string.restore_preview_dir, request.name))
+                if (p.overwrite > 0) appendLine(context.getString(R.string.restore_preview_overwrite, p.overwrite))
+                if (p.skip > 0) appendLine(context.getString(R.string.restore_preview_skip, p.skip))
+                if (p.keepBoth > 0) appendLine(context.getString(R.string.restore_preview_keep_both, p.keepBoth))
+                if (p.added > 0) appendLine(context.getString(R.string.restore_preview_added, p.added))
+                if (p.removed > 0) appendLine(context.getString(R.string.restore_preview_removed, p.removed))
+                if (p.excluded > 0) appendLine(context.getString(R.string.restore_preview_excluded, p.excluded))
+                appendLine()
+                append(context.getString(R.string.restore_preview_hint))
+            }
+            val confirmed = dialogState.confirm(
+                title = context.getString(R.string.restore_preview_title),
+                text = text,
+            )
+            viewModel.decideRestorePreview(confirmed)
         }
     }
 
@@ -378,6 +403,30 @@ fun PageProcessing(
                         .paddingTop(SizeTokens.Level4)
                         .paddingBottom(SizeTokens.Level24), text = subtitle, color = ThemedColorSchemeKeyTokens.OnSurfaceVariant.value
                 )
+                // 恢复完成后的逐项统计：让「这次到底动了多少文件」一目了然，
+                // 而不只是「成功 1/1」。备份任务没有预览统计，restorePreviewTotal 为空自然不显示。
+                if (uiState.state == OperationState.DONE && restorePreviewTotal.isEmpty.not()) {
+                    BodyLargeText(
+                        modifier = Modifier.paddingBottom(SizeTokens.Level12),
+                        text = context.getString(
+                            R.string.restore_preview_summary,
+                            restorePreviewTotal.overwrite,
+                            restorePreviewTotal.skip,
+                            restorePreviewTotal.keepBoth,
+                            restorePreviewTotal.added,
+                            restorePreviewTotal.removed,
+                            restorePreviewTotal.excluded,
+                        ),
+                        color = ThemedColorSchemeKeyTokens.Primary.value,
+                    )
+                }
+                if (uiState.state == OperationState.DONE && restorePreviewSkippedDirs > 0) {
+                    BodyLargeText(
+                        modifier = Modifier.paddingBottom(SizeTokens.Level12),
+                        text = context.getString(R.string.restore_preview_skipped_dirs, restorePreviewSkippedDirs),
+                        color = ThemedColorSchemeKeyTokens.OnSurfaceVariant.value,
+                    )
+                }
             }
 
             Surface(modifier = Modifier.fillMaxSize(), shape = RoundedCornerShape(SizeTokens.Level12), color = ThemedColorSchemeKeyTokens.SurfaceContainerLowest.value, shadowElevation = SizeTokens.Level1) {

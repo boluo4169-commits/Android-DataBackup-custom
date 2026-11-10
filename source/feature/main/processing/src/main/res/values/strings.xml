@@ -4,4 +4,17 @@
     <string name="checksum_mismatch_text">Archive %1$s failed MD5 verification and may be corrupted. Force restore anyway?</string>
     <string name="backup_incomplete_title">Backup files incomplete</string>
     <string name="backup_incomplete_text">The following apps have incomplete backup files (archives missing) and will fail to restore:\n%1$s\n\nContinue anyway?</string>
+
+    <!-- Restore conflict preview (Phase 2) -->
+    <string name="restore_preview_title">Confirm before restoring</string>
+    <string name="restore_preview_dir">Directory: %1$s</string>
+    <string name="restore_preview_overwrite">To be overwritten: %1$d file(s)</string>
+    <string name="restore_preview_skip">To be skipped: %1$d file(s)</string>
+    <string name="restore_preview_keep_both">Keep both: %1$d file(s) (old file renamed .~1~)</string>
+    <string name="restore_preview_added">To be added: %1$d file(s)</string>
+    <string name="restore_preview_removed">Clean restore will delete: %1$d local-only file(s)</string>
+    <string name="restore_preview_excluded">Excluded trashed/pending files: %1$d</string>
+    <string name="restore_preview_hint">Cancel to skip this and all remaining directories. Confirm to continue with the current conflict strategy.</string>
+    <string name="restore_preview_summary">Overwritten %1$d · Skipped %2$d · Kept both %3$d · Added %4$d · Deleted %5$d · Excluded %6$d</string>
+    <string name="restore_preview_skipped_dirs">%1$d directory(-ies) skipped at your request</string>
 </resources>

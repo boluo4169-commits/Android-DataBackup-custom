@@ -8,12 +8,16 @@ import com.xayah.core.data.repository.MediaRepository
 import com.xayah.core.database.dao.TaskDao
 import com.xayah.core.datastore.readCleanRestoring
 import com.xayah.core.datastore.readMediaRestoreConflictStrategy
+import com.xayah.core.model.ConflictPreview
 import com.xayah.core.model.DataType
+import com.xayah.core.model.MAX_PREVIEW_ENTRIES
 import com.xayah.core.model.OperationState
 import com.xayah.core.model.RestoreConflictStrategy
+import com.xayah.core.model.computeConflictPreview
 import com.xayah.core.model.database.MediaEntity
 import com.xayah.core.model.database.TaskDetailMediaEntity
 import com.xayah.core.model.resolveRestoreConflictArgs
+import com.xayah.core.model.util.formatSize
 import com.xayah.core.model.util.formatSize
 import com.xayah.core.network.client.CloudClient
 import com.xayah.core.rootservice.service.RemoteRootService
@@ -94,17 +98,53 @@ class MediumRestoreUtil @Inject constructor(
                 }
             }
 
-        // 冲突策略：干净恢复优先（开启时策略选择器置灰，参数退化为 --recursive-unlink）。
-        // 参数一律由纯函数从枚举生成，绝不拼接外部自由文本进 root shell 命令。
-        val cleanRestoring = context.readCleanRestoring().first()
-        val strategy = RestoreConflictStrategy.fromId(context.readMediaRestoreConflictStrategy().first())
-        val conflictArgs = resolveRestoreConflictArgs(cleanRestoring = cleanRestoring, strategy = strategy)
-        log { "Conflict strategy: $strategy (cleanRestoring=$cleanRestoring), tar args: $conflictArgs" }
+            // 冲突策略：干净恢复优先（开启时策略选择器置灰，参数退化为 --recursive-unlink）。
+            // 参数一律由纯函数从枚举生成，绝不拼接外部自由文本进 root shell 命令。
+            val cleanRestoring = context.readCleanRestoring().first()
+            val strategy = RestoreConflictStrategy.fromId(context.readMediaRestoreConflictStrategy().first())
+            val conflictArgs = resolveRestoreConflictArgs(cleanRestoring = cleanRestoring, strategy = strategy)
+            log { "Conflict strategy: $strategy (cleanRestoring=$cleanRestoring), tar args: $conflictArgs" }
 
-        // Decompress the archive.
-        log { "ExclusionList: $TrashedFilePatterns." }
-            // 被跳过的文件不会落到目标目录，只能从归档清单里找
-            TrashedUtil.logExcluded(scene = " from archive", paths = TrashedUtil.scanArchive(src))
+            // 恢复前预览：列归档条目（只读）与本机目录比对，算出会被覆盖 / 跳过 / 留档的数量。
+            // 列不出来时降级为「照常恢复」，绝不因为预览失败阻断恢复。
+            val archiveEntries = runCatching {
+                Tar.list(src, ct.decompressPara).takeIf { it.isSuccess }?.out.orEmpty()
+            }.onFailure { log { "Failed to list archive for preview: ${it.message}" } }.getOrDefault(emptyList())
+            val preview = buildConflictPreview(
+                archiveEntries = archiveEntries,
+                dst = dst,
+                dstDir = dstDir,
+                strategy = strategy,
+                cleanRestoring = cleanRestoring,
+            )
+            if (preview != null) {
+                RestorePreviewConfirmation.accumulate(preview)
+                out.add(log { "Conflict preview: $preview" })
+            }
+
+            // 用户在上一个目录点了取消 → 本次任务后续目录一律跳过（不弹第二次窗）。
+            // 只有「真的有冲突 / 会删文件 / 有排除项」时才需要弹清单确认。
+            val request = preview?.takeIf { it.needsConfirmation }?.let {
+                RestorePreviewRequest(name = m.name, preview = it, strategy = strategy, cleanRestoring = cleanRestoring)
+            }
+            val confirmed = if (RestorePreviewConfirmation.isCancelled()) {
+                false
+            } else if (request != null) {
+                RestorePreviewConfirmation.awaitConfirm(request)
+            } else {
+                true
+            }
+            if (confirmed.not()) {
+                RestorePreviewConfirmation.markSkipped()
+                out.add(log { "Restore skipped by user at preview: ${m.name}" })
+                t.updateInfo(state = OperationState.SKIP, log = out.toLineString())
+                return@run ShellResult(code = 0, input = listOf(), out = out)
+            }
+
+            // Decompress the archive.
+            log { "ExclusionList: $TrashedFilePatterns." }
+            // 被跳过的文件不会落到目标目录，只能从归档清单里找；复用上面那次 tar -tf，不再列一遍。
+            TrashedUtil.logExcluded(scene = " from archive", paths = archiveEntries)
             Tar.decompress(
                 // 旧归档里可能混着回收站/写入中的文件（备份时它们还在那个状态）。恢复时
                 // 一并跳过：放出来照样被 MediaScanner 标成已删除，相册看不到、到期被清掉，
@@ -134,6 +174,34 @@ class MediumRestoreUtil @Inject constructor(
 
         ShellResult(code = if (isSuccess) 0 else -1, input = listOf(), out = out)
     }
+
+    /**
+     * 用归档条目与本机已有文件算出预览统计。任一步失败都返回 null，让调用方照常恢复。
+     *
+     * 归档条目相对解压 `-C` 的 [dstDir]（如 `DCIM/a.jpg`），本机文件是绝对路径，
+     * 必须去掉 `dstDir/` 前缀后才是同一口径，否则「同名」永远判定不出来。
+     */
+    private suspend fun buildConflictPreview(
+        archiveEntries: List<String>,
+        dst: String,
+        dstDir: String,
+        strategy: RestoreConflictStrategy,
+        cleanRestoring: Boolean,
+    ): ConflictPreview? = runCatching {
+        if (archiveEntries.isEmpty()) return null
+        val existing = rootService.walkFileTree(dst)
+            .take(MAX_PREVIEW_ENTRIES)
+            .map { it.pathString.removePrefix("$dstDir/") }
+            .toSet()
+        computeConflictPreview(
+            archiveEntries = archiveEntries.take(MAX_PREVIEW_ENTRIES),
+            existingRelativePaths = existing,
+            strategy = strategy,
+            cleanRestoring = cleanRestoring,
+        )
+    }.onFailure {
+        log { "Failed to build conflict preview: ${it.message}" }
+    }.getOrNull()
 
     /**
      * 触发 MediaStore 重新扫描指定目录，让相册/图库/音乐等应用立即索引到恢复的文件。

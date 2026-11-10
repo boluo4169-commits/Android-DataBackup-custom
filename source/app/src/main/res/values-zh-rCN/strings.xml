@@ -372,8 +372,8 @@
     <string name="choose_a_custom_path">选择一个自定义路径</string>
     <string name="delete_desc">这将会被删除</string>
     <string name="files">文件</string>
-    <string name="args_files_backed_up">已备份%1$s个文件</string>
-    <string name="args_files_restored">已恢复%1$s个文件</string>
+    <string name="args_files_backed_up">已备份%1$s个目录</string>
+    <string name="args_files_restored">已恢复%1$s个目录</string>
     <string name="backed_up_files">已备份文件</string>
     <string name="specify_a_path">请指定路径</string>
     <string name="anonymous">匿名</string>
@@ -436,8 +436,8 @@
     <string name="denied">未授予</string>
     <string name="args_apps_backed_up_and_failed">已备份%1$s个应用，%2$s个应用备份失败</string>
     <string name="args_apps_restored_and_failed">已恢复%1$s个应用，%2$s个应用恢复失败</string>
-    <string name="args_files_backed_up_and_failed">已备份%1$s个文件，%2$s个文件备份失败</string>
-    <string name="args_files_restored_and_failed">已恢复%1$s个文件，%2$s个文件恢复失败</string>
+    <string name="args_files_backed_up_and_failed">已备份%1$s个目录，%2$s个目录备份失败</string>
+    <string name="args_files_restored_and_failed">已恢复%1$s个目录，%2$s个目录恢复失败</string>
     <string name="history">历史记录</string>
     <string name="history_desc">查看每次备份与恢复的任务记录</string>
     <string name="data_migration">数据迁移</string>

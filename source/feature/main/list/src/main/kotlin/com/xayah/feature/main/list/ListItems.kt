@@ -148,6 +148,7 @@ fun LazyListScope.listItems(
                         name = item.name,
                         path = item.path,
                         preserveId = item.preserveId,
+                        preserveIndex = item.preserveIndex,
                         selected = item.selected,
                         onClick = {
                             navController.navigateSingle(MainRoutes.Details.getRoute(Target.Files, uiState.opType, item.id))
@@ -340,6 +341,7 @@ fun FileItem(
     name: String,
     path: String,
     preserveId: Long,
+    preserveIndex: Int = 0,
     selected: Boolean,
     onSelectedChanged: (Long, Boolean) -> Unit,
     onClick: () -> Unit,
@@ -361,7 +363,23 @@ fun FileItem(
 
             Row(modifier = Modifier.height(IntrinsicSize.Min)) {
                 if (preserveId != 0L) {
-                    Icon(modifier = Modifier.fillMaxHeight(), imageVector = Icons.Outlined.Shield, contentDescription = null)
+                    // 与应用侧 AppItem 同款：盾牌中央叠加版本序号，多个历史版本不再长得一样
+                    Box(modifier = Modifier.fillMaxHeight(), contentAlignment = Alignment.Center) {
+                        Icon(
+                            modifier = Modifier.fillMaxHeight(),
+                            imageVector = Icons.Outlined.Shield,
+                            contentDescription = null,
+                            tint = ThemedColorSchemeKeyTokens.YellowPrimary.value,
+                        )
+                        if (preserveIndex > 0) {
+                            Text(
+                                text = preserveIndex.toString(),
+                                color = ThemedColorSchemeKeyTokens.YellowPrimary.value,
+                                fontSize = 10.sp,
+                                fontWeight = FontWeight.Bold,
+                            )
+                        }
+                    }
                 }
             }
             VerticalDivider(

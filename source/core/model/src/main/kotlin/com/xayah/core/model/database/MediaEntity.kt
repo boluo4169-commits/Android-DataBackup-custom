@@ -67,10 +67,11 @@ data class MediaEntity(
         get() = extraInfo.existed && path.isNotEmpty()
 }
 
-fun MediaEntity.asExternalModel() = File(
+fun MediaEntity.asExternalModel(preserveIndex: Int = 0) = File(
     id = id,
     name = name,
     path = path,
     preserveId = preserveId,
-    selected = extraInfo.activated
+    selected = extraInfo.activated,
+    preserveIndex = preserveIndex,
 )

@@ -16,6 +16,8 @@ import com.xayah.core.model.database.MediaExtraInfo
 import com.xayah.core.model.database.MediaIndexInfo
 import com.xayah.core.model.database.MediaInfo
 import com.xayah.core.model.database.asExternalModel
+import com.xayah.core.model.util.PreserveItem
+import com.xayah.core.model.util.buildPreserveIndexMap
 import com.xayah.core.rootservice.service.RemoteRootService
 import com.xayah.core.util.ConfigsMediaRestoreName
 import com.xayah.core.util.DateUtil
@@ -69,7 +71,25 @@ class FilesRepo @Inject constructor(
             .filter { if (lLabels.isNotEmpty()) lRefs.find { ref -> it.path == ref.path && it.preserveId == ref.preserveId } != null else true }
             .sortedWith(mediaRepo.getSortComparatorNew(sortIndex = data.sortIndex, sortType = data.sortType))
             .sortedByDescending { p -> p.extraInfo.activated }.toList()
-            .map(MediaEntity::asExternalModel)
+            .let { list ->
+                // 文件侧「保护」只改写 indexInfo.preserveId，lastBackupTime 整组保持原值，
+                // 因此序号按 preserveId 排而不是时间；分组把不同路径 / 不同备份源隔开。
+                val indexMap = buildPreserveIndexMap(
+                    list.map { entity ->
+                        PreserveItem(
+                            id = entity.id,
+                            groupKey = listOf(
+                                entity.name,
+                                entity.path,
+                                entity.indexInfo.cloud,
+                                entity.indexInfo.backupDir,
+                            ),
+                            preserveId = entity.preserveId,
+                        )
+                    }
+                )
+                list.map { it.asExternalModel(preserveIndex = indexMap[it.id] ?: 0) }
+            }
     }.flowOn(defaultDispatcher)
 
     /** 恢复页按当前备份源限定计数（与 [getFiles] 的 RESTORE 分支同口径）；备份页传 null 保持全库。 */
@@ -377,10 +397,18 @@ class FilesRepo @Inject constructor(
     }
 
     private suspend fun protectLocalFile(file: MediaEntity) {
-        val protectedFile = file.copy(indexInfo = file.indexInfo.copy(preserveId = DateUtil.getTimestamp()))
         val fileDir = pathUtil.getLocalBackupFilesDir()
         val src = "${fileDir}/${file.archivesRelativeDir}"
-        val dst = "${fileDir}/${protectedFile.archivesRelativeDir}"
+        // 与应用侧 archiveMainBackup 同口径：14 位 yyyyMMddHHmmss，而不是毫秒戳。
+        // 目录已存在（同一秒连续保护等）时递增，避免 rename 覆盖掉已有版本。
+        var preserveId = DateUtil.getPreserveTimestamp()
+        var protectedFile = file.copy(indexInfo = file.indexInfo.copy(preserveId = preserveId))
+        var dst = "${fileDir}/${protectedFile.archivesRelativeDir}"
+        while (rootService.exists(dst)) {
+            preserveId++
+            protectedFile = file.copy(indexInfo = file.indexInfo.copy(preserveId = preserveId))
+            dst = "${fileDir}/${protectedFile.archivesRelativeDir}"
+        }
         rootService.writeJson(data = protectedFile, dst = PathUtil.getMediaRestoreConfigDst(src))
         rootService.renameTo(src, dst)
         filesDao.update(protectedFile)
@@ -388,17 +416,26 @@ class FilesRepo @Inject constructor(
 
     private suspend fun protectCloudFile(cloudName: String, file: MediaEntity) = runCatching {
         cloudRepo.withClient(cloudName) { client, entity ->
-            val protectedFile = file.copy(indexInfo = file.indexInfo.copy(preserveId = DateUtil.getTimestamp()))
             val remote = entity.remote
             val remoteFilesDir = pathUtil.getCloudRemoteFilesDir(remote)
             val src = "${remoteFilesDir}/${file.archivesRelativeDir}"
-            val dst = "${remoteFilesDir}/${protectedFile.archivesRelativeDir}"
+            var preserveId = DateUtil.getPreserveTimestamp()
+            var protectedFile = file.copy(indexInfo = file.indexInfo.copy(preserveId = preserveId))
+            var dst = "${remoteFilesDir}/${protectedFile.archivesRelativeDir}"
+            while (client.exists(dst)) {
+                preserveId++
+                protectedFile = file.copy(indexInfo = file.indexInfo.copy(preserveId = preserveId))
+                dst = "${remoteFilesDir}/${protectedFile.archivesRelativeDir}"
+            }
             val tmpDir = pathUtil.getCloudTmpDir()
             val tmpJsonPath = PathUtil.getMediaRestoreConfigDst(tmpDir)
             rootService.writeJson(data = protectedFile, dst = tmpJsonPath)
             cloudRepo.upload(client = client, src = tmpJsonPath, dstDir = src)
             rootService.deleteRecursively(tmpDir)
             client.renameTo(src, dst)
+            // 云端此前只改了远端目录与 config，没同步数据库记录；下次扫描会再插一条
+            // 主版本，旧记录变成「有记录但无目录」的幽灵版本，序号也会多算一个。
+            filesDao.update(protectedFile)
         }
     }.withLog()
 

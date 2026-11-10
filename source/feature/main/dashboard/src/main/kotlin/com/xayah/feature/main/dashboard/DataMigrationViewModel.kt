@@ -7,6 +7,7 @@ import com.xayah.core.data.repository.AppsRepo
 import com.xayah.core.data.repository.CloudRepository
 import com.xayah.core.data.repository.FilesRepo
 import com.xayah.core.data.repository.TaskRepository
+import com.xayah.core.datastore.saveCloudActivatedAccountName
 import com.xayah.core.model.database.CloudEntity
 import com.xayah.feature.main.system.SystemDataCoordinator
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -62,6 +63,12 @@ class DataMigrationViewModel @Inject constructor(
     suspend fun finishOneClickRestore(cloudName: String, backupDir: String): String? =
         withContext(Dispatchers.Default) {
             if (taskRepo.hasProcessingTask()) return@withContext "BUSY"
+            // 云端恢复服务 RestoreServiceCloudImpl.getMedium() 走 CloudRepository.getClient()，
+            // 读的是 DataStore 里的「全局激活账号」，而不是一键恢复弹窗选中的源。恢复主页
+            // 手动选账号时 SetCloudEntity 会同步这个值，一键恢复绕过了那一页，必须在这里补上，
+            // 否则多账号场景下会连到上一个账号（本轮只有一个「家」所以没暴露）。
+            // 本地源传空串，与恢复主页选「本地」的口径一致。
+            runCatching { context.saveCloudActivatedAccountName(cloudName) }
             // 云端/本地备份清单可能还没扫进数据库：此时下面的「全选」是对着空表执行，
             // 引导页会显示 0.00 Bytes，用户必须进列表页手点「刷新」才看得到条目。
             // 应用与文件必须各自判断：源里已有应用记录不代表文件清单也扫过（例如之前只

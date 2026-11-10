@@ -21,6 +21,7 @@ const val CHANGELOG_ASSET = "CHANGELOG.md"
 private val VERSION_REGEX = Regex("""^##\s+v?([0-9][0-9A-Za-z.\-_]*)\s*(?:[（(]\s*([^）)]*?)\s*[）)])?\s*$""")
 private val SECTION_REGEX = Regex("""^###+\s+(.+?)\s*$""")
 private val ITEM_REGEX = Regex("""^[-*]\s+(.+?)\s*$""")
+private val RULE_REGEX = Regex("""^([-*_]\s*){3,}$""")
 
 /**
  * 解析 CHANGELOG.md 文本。
@@ -32,8 +33,16 @@ private val ITEM_REGEX = Regex("""^[-*]\s+(.+?)\s*$""")
  * - **标题**：说明                ← 条目
  * ```
  * 首个 `## ` 之前的内容（文件标题、说明段落）忽略；条目下的续行会并回上一条目。
+ * 引用块（`>`）、Obsidian 注释（`%%`）、HTML 注释、代码块、表格与分隔线都会跳过，
+ * 不会被当成续行吞进上一条条目正文里。
  * 返回顺序与文件一致（文件是**新版本在上**）。
  */
+private fun needsSpaceBetween(prev: String, next: String): Boolean {
+    fun isAsciiWord(c: Char?) = c != null && c.code < 128 && (c.isLetterOrDigit() || c == '_')
+    // 中文之间直接连，英文/数字之间补空格，避免 "word"+"next" 变成 "wordnext"
+    return isAsciiWord(prev.lastOrNull()) || isAsciiWord(next.firstOrNull())
+}
+
 fun parseChangelog(markdown: String): List<ChangelogVersion> {
     val versions = mutableListOf<ChangelogVersion>()
     var version: String? = null
@@ -41,6 +50,7 @@ fun parseChangelog(markdown: String): List<ChangelogVersion> {
     var sections = mutableListOf<ChangelogSection>()
     var sectionTitle: String? = null
     var items = mutableListOf<String>()
+    var inCodeBlock = false
 
     fun flushSection() {
         val title = sectionTitle ?: return
@@ -61,6 +71,19 @@ fun parseChangelog(markdown: String): List<ChangelogVersion> {
     markdown.lineSequence().forEach { rawLine ->
         val line = rawLine.trim()
         if (line.isEmpty()) return@forEach
+
+        // 代码块围栏成对出现，块内任何内容都不解析
+        if (line.startsWith("```")) {
+            inCodeBlock = !inCodeBlock
+            return@forEach
+        }
+        if (inCodeBlock) return@forEach
+
+        // 这些是版式标记，不是条目也不是续行。旧实现会把 `> [!warning]` 之类
+        // 引用块直接拼到上一条条目末尾，更新日志页里出现一坨方括号提示。
+        if (line.startsWith(">") || line.startsWith("%%") || line.startsWith("<!--")
+            || line.endsWith("-->") || line.startsWith("|") || RULE_REGEX.matches(line)
+        ) return@forEach
 
         val versionMatch = VERSION_REGEX.find(line)
         if (versionMatch != null) {
@@ -87,7 +110,9 @@ fun parseChangelog(markdown: String): List<ChangelogVersion> {
 
         // 续行：并回上一条目（避免硬换行的长条目被拆断）
         if (items.isNotEmpty()) {
-            items[items.lastIndex] = "${items.last()}$line"
+            val prev = items.last()
+            val separator = if (needsSpaceBetween(prev, line)) " " else ""
+            items[items.lastIndex] = "$prev$separator$line"
         }
     }
     flushVersion()

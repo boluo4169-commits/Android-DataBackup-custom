@@ -107,17 +107,20 @@ class CloudRepository @Inject constructor(
                 out.add(log { stringWriter.toString() })
         }
 
-        // 临时分卷清理同样与上传结果解耦：卷都已上传后清理失败只是残留，不该把业务判为失败
-        parts.forEach { part ->
-            rootService.deleteRecursively(part).also { result ->
-                if (result.not()) out.add(log { "Failed to delete $part." })
+        // 清理必须在「上传成功」之后：旧实现无条件删 src 与分卷，上传失败时本地归档也没了，
+        // 既无法重试也无法排查，与注释「包已完整上传后」不符。
+        // 清理动作本身与结果解耦：删不掉只是残留，不把业务判为失败。
+        if (isSuccess) {
+            parts.forEach { part ->
+                rootService.deleteRecursively(part).also { result ->
+                    if (result.not()) out.add(log { "Failed to delete $part." })
+                }
             }
-        }
-
-        // 临时包清理与上传结果解耦：包已完整上传后，本地清理失败只是残留，
-        // 不该把业务判为失败（迁移导出曾因此出现「云端已有完整包、界面却报导出失败」）。
-        rootService.deleteRecursively(src).also { result ->
-            if (result.not()) out.add(log { "Failed to delete $src." })
+            rootService.deleteRecursively(src).also { result ->
+                if (result.not()) out.add(log { "Failed to delete $src." })
+            }
+        } else {
+            out.add(log { "Upload failed, kept local archive for retry: $src" })
         }
 
         ShellResult(code = if (isSuccess) 0 else -1, input = listOf(), out = out)

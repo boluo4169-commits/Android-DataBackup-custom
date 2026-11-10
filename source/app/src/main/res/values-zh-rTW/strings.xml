@@ -356,8 +356,8 @@
     <string name="choose_a_custom_path">選擇一個自定義路徑</string>
     <string name="delete_desc">這將會被刪除</string>
     <string name="files">文件</string>
-    <string name="args_files_backed_up">已備份%1$s個文件</string>
-    <string name="args_files_restored">已恢復%1$s個文件</string>
+    <string name="args_files_backed_up">已備份%1$s個目錄</string>
+    <string name="args_files_restored">已恢復%1$s個目錄</string>
     <string name="backed_up_files">已備份文件</string>
     <string name="specify_a_path">請指定路徑</string>
     <string name="anonymous">匿名</string>
@@ -413,8 +413,8 @@
     <string name="denied">未授予</string>
     <string name="args_apps_backed_up_and_failed">已備份%1$s個應用，%2$s個應用備份失敗</string>
     <string name="args_apps_restored_and_failed">已復原%1$s個應用，%2$s個應用復原失敗</string>
-    <string name="args_files_backed_up_and_failed">已備份%1$s個文件，%2$s個文件備份失敗</string>
-    <string name="args_files_restored_and_failed">已恢復%1$s個文件，%2$s個文件恢復失敗</string>
+    <string name="args_files_backed_up_and_failed">已備份%1$s個目錄，%2$s個目錄備份失敗</string>
+    <string name="args_files_restored_and_failed">已恢復%1$s個目錄，%2$s個目錄恢復失敗</string>
     <string name="history">歷史記錄</string>
     <string name="history_desc">查看每次備份與還原的任務記錄</string>
     <string name="args_backed_up_at">備份于%1$s</string>

@@ -79,4 +79,48 @@ class ChangelogUtilTest {
         assertTrue(parseChangelog("").isEmpty())
         assertTrue(parseChangelog("# 只有标题\n\n没有版本段").isEmpty())
     }
+
+    @Test
+    fun `callouts comments code blocks and tables are never joined into items`() {
+        val md = """
+            ## v3.15.3（2026-11-10）
+            ### 修复
+            - **修了一个缺陷**：说明。
+            > [!warning] 这是给维护者看的提示
+            > 第二行引用
+            %%维护约定：别改历史%%
+            <!-- HTML 注释 -->
+            | 能力 | 状态 |
+            |---|---|
+            ---
+            ```
+            ## v9.9.9 代码块里的假版本
+            - 假条目
+            ```
+              被硬换行的续行
+            - 第二条
+        """.trimIndent()
+        val items = parseChangelog(md).single().sections.single().items
+
+        assertEquals(2, items.size)
+        assertEquals("**修了一个缺陷**：说明。被硬换行的续行", items[0])
+        assertEquals("第二条", items[1])
+        assertTrue(items.none { it.contains("[!warning]") || it.contains("v9.9.9") || it.contains("维护约定") })
+    }
+
+    @Test
+    fun `wrapped lines add a space only between ascii words`() {
+        val md = """
+            ## v1.0
+            ### 修复
+            - 中文开头
+              中文续行
+            - word
+              next
+        """.trimIndent()
+        val items = parseChangelog(md).single().sections.single().items
+
+        assertEquals("中文开头中文续行", items[0])
+        assertEquals("word next", items[1])
+    }
 }

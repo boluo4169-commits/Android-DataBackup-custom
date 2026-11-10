@@ -380,8 +380,8 @@ Off by default. If your drive limits a single file to 4 GB, 2 GB is a safe choic
     <string name="choose_a_custom_path">Choose a custom path</string>
     <string name="delete_desc">This will be deleted</string>
     <string name="files">Files</string>
-    <string name="args_files_backed_up">%1$s files backed up</string>
-    <string name="args_files_restored">%1$s files restored</string>
+    <string name="args_files_backed_up">%1$s directories backed up</string>
+    <string name="args_files_restored">%1$s directories restored</string>
     <string name="backed_up_files">Backed up files</string>
     <string name="specify_a_path">Please specify a path</string>
     <string name="anonymous">Anonymous</string>
@@ -447,8 +447,8 @@ Off by default. If your drive limits a single file to 4 GB, 2 GB is a safe choic
     <string name="denied">Denied</string>
     <string name="args_apps_backed_up_and_failed">%1$s apps backed up, %2$s failed</string>
     <string name="args_apps_restored_and_failed">%1$s apps restored, %2$s failed</string>
-    <string name="args_files_backed_up_and_failed">%1$s files backed up, %2$s failed</string>
-    <string name="args_files_restored_and_failed">%1$s files restored, %2$s failed</string>
+    <string name="args_files_backed_up_and_failed">%1$s directories backed up, %2$s failed</string>
+    <string name="args_files_restored_and_failed">%1$s directories restored, %2$s failed</string>
     <string name="history">History</string>
     <string name="history_desc">Review past backup and restore tasks</string>
     <string name="data_migration">Data migration</string>

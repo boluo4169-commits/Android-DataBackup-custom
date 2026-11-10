@@ -8,6 +8,7 @@ import com.xayah.core.model.database.LabelEntity
 import com.xayah.core.model.database.LabelFileCrossRefEntity
 import kotlinx.coroutines.CoroutineDispatcher
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.distinctUntilChanged
 import kotlinx.coroutines.flow.flowOn
 import javax.inject.Inject
 
@@ -15,9 +16,12 @@ class LabelsRepo @Inject constructor(
     @Dispatcher(Default) private val defaultDispatcher: CoroutineDispatcher,
     private val labelDao: LabelDao,
 ) {
-    fun getLabelsFlow(): Flow<List<LabelEntity>> = labelDao.queryLabelsFlow().flowOn(defaultDispatcher)
-    fun getAppRefsFlow(): Flow<List<LabelAppCrossRefEntity>> = labelDao.queryAppRefsFlow()
-    fun getFileRefsFlow(): Flow<List<LabelFileCrossRefEntity>> = labelDao.queryFileRefsFlow()
+    // 列表页 / 筛选面板 / 详情页会各自订阅关联表；Room Flow 每次订阅都查一次库，
+    // 且数据库无关写入也会重复发射。先做去重 + 切到默认调度器，避免重复刷新列表。
+    // （进一步共享成 StateFlow 需要 Repo 单例与作用域设计，等真机能验证标签即时刷新后再做。）
+    fun getLabelsFlow(): Flow<List<LabelEntity>> = labelDao.queryLabelsFlow().distinctUntilChanged().flowOn(defaultDispatcher)
+    fun getAppRefsFlow(): Flow<List<LabelAppCrossRefEntity>> = labelDao.queryAppRefsFlow().distinctUntilChanged().flowOn(defaultDispatcher)
+    fun getFileRefsFlow(): Flow<List<LabelFileCrossRefEntity>> = labelDao.queryFileRefsFlow().distinctUntilChanged().flowOn(defaultDispatcher)
     suspend fun getLabels(): List<LabelEntity> = labelDao.queryLabels()
     suspend fun getAppRefs(labelIds: Set<String>): List<LabelAppCrossRefEntity> = labelDao.queryAppRefs(labelIds)
     suspend fun getAppRefs(): List<LabelAppCrossRefEntity> = labelDao.queryAppRefs()
@@ -25,9 +29,17 @@ class LabelsRepo @Inject constructor(
     suspend fun getFileRefs(): List<LabelFileCrossRefEntity> = labelDao.queryFileRefs()
 
     /**
-     * Add a unique label
+     * Add a unique label.
+     *
+     * 调用方不一定会 trim（详情页做了，别的入口未必），空串或纯空格落库会变成一个
+     * 看不见的标签。这里统一规范化；空白名返回 -1L，与 upsert 冲突时的返回值同义，
+     * 调用方现有的 `== -1L` 失败判断不用改。
      */
-    suspend fun addLabel(label: String) = labelDao.upsert(LabelEntity(label = label))
+    suspend fun addLabel(rawLabel: String): Long {
+        val label = rawLabel.trim()
+        if (label.isEmpty()) return -1L
+        return labelDao.upsert(LabelEntity(label = label))
+    }
 
     suspend fun addLabels(items: List<LabelEntity>) = labelDao.upsertLabels(items)
 

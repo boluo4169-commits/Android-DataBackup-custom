@@ -72,8 +72,14 @@ class FilesRepo @Inject constructor(
             .map(MediaEntity::asExternalModel)
     }.flowOn(defaultDispatcher)
 
-    fun countFiles(opType: OpType) = filesDao.countFilesFlow(opType = opType, existed = true, blocked = false)
-    fun countSelectedFiles(opType: OpType) = filesDao.countActivatedFilesFlow(opType = opType, existed = true, blocked = false)
+    /** 恢复页按当前备份源限定计数（与 [getFiles] 的 RESTORE 分支同口径）；备份页传 null 保持全库。 */
+    fun countFiles(opType: OpType, cloud: String? = null, backupDir: String? = null): Flow<Long> =
+        if (cloud != null && backupDir != null) filesDao.countFilesBySourceFlow(opType, cloud, backupDir)
+        else filesDao.countFilesFlow(opType = opType, existed = true, blocked = false)
+
+    fun countSelectedFiles(opType: OpType, cloud: String? = null, backupDir: String? = null): Flow<Long> =
+        if (cloud != null && backupDir != null) filesDao.countActivatedFilesBySourceFlow(opType, cloud, backupDir)
+        else filesDao.countActivatedFilesFlow(opType = opType, existed = true, blocked = false)
 
     /** 备份引导页用：取激活中的文件备份条目（与文件备份页全选同集合语义）。 */
     suspend fun queryActivatedBackupFiles() = filesDao.queryActivated(OpType.BACKUP).filter { it.extraInfo.existed }

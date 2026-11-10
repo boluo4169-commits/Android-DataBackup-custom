@@ -204,6 +204,38 @@ interface PackageDao {
     )
     fun countActivatedNonSystemPackagesFlow(opType: OpType, blocked: Boolean, systemFlag: Int): Flow<Long>
 
+    /**
+     * 恢复页顶部计数（按当前备份源）。与 `queryPackagesFlow(opType, cloud, backupDir)` 同口径：
+     * 只按 opType + cloud + backupDir，不附加 blocked —— 否则源内被拉黑的记录会出现在列表却不进计数。
+     * 「加载系统应用」维度由下面排除系统应用的配对查询处理。
+     */
+    @Query(
+        "SELECT COUNT(*) FROM PackageEntity WHERE" +
+                " indexInfo_opType = :opType AND indexInfo_cloud = :cloud AND indexInfo_backupDir = :backupDir"
+    )
+    fun countPackagesBySourceFlow(opType: OpType, cloud: String, backupDir: String): Flow<Long>
+
+    @Query(
+        "SELECT COUNT(*) FROM PackageEntity WHERE" +
+                " indexInfo_opType = :opType AND indexInfo_cloud = :cloud AND indexInfo_backupDir = :backupDir AND" +
+                " (packageInfo_flags & :systemFlag) = 0"
+    )
+    fun countNonSystemPackagesBySourceFlow(opType: OpType, systemFlag: Int, cloud: String, backupDir: String): Flow<Long>
+
+    @Query(
+        "SELECT COUNT(*) FROM PackageEntity WHERE" +
+                " indexInfo_opType = :opType AND indexInfo_cloud = :cloud AND indexInfo_backupDir = :backupDir AND" +
+                " extraInfo_activated = 1"
+    )
+    fun countActivatedPackagesBySourceFlow(opType: OpType, cloud: String, backupDir: String): Flow<Long>
+
+    @Query(
+        "SELECT COUNT(*) FROM PackageEntity WHERE" +
+                " indexInfo_opType = :opType AND indexInfo_cloud = :cloud AND indexInfo_backupDir = :backupDir AND" +
+                " extraInfo_activated = 1 AND (packageInfo_flags & :systemFlag) = 0"
+    )
+    fun countActivatedNonSystemPackagesBySourceFlow(opType: OpType, systemFlag: Int, cloud: String, backupDir: String): Flow<Long>
+
     @Query(
         "SELECT indexInfo_userId, COUNT(*) as iCount FROM PackageEntity WHERE" +
                 " indexInfo_opType = :opType AND extraInfo_blocked = :blocked AND" +

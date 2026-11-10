@@ -157,6 +157,20 @@ interface MediaDao {
     )
     fun countActivatedFilesFlow(opType: OpType, existed: Boolean, blocked: Boolean): Flow<Long>
 
+    /** 恢复页顶部计数（按当前备份源），与 `queryFilesFlow(opType, cloud, backupDir)` 同口径：existed=1 + 源，不带 blocked。 */
+    @Query(
+        "SELECT COUNT(*) FROM MediaEntity WHERE" +
+                " indexInfo_opType = :opType AND extraInfo_existed = 1 AND indexInfo_cloud = :cloud AND indexInfo_backupDir = :backupDir"
+    )
+    fun countFilesBySourceFlow(opType: OpType, cloud: String, backupDir: String): Flow<Long>
+
+    @Query(
+        "SELECT COUNT(*) FROM MediaEntity WHERE" +
+                " indexInfo_opType = :opType AND extraInfo_existed = 1 AND indexInfo_cloud = :cloud AND indexInfo_backupDir = :backupDir AND" +
+                " extraInfo_activated = 1"
+    )
+    fun countActivatedFilesBySourceFlow(opType: OpType, cloud: String, backupDir: String): Flow<Long>
+
     @Query("UPDATE MediaEntity SET extraInfo_activated = :activated WHERE id = :id")
     suspend fun activateById(id: Long, activated: Boolean)
 

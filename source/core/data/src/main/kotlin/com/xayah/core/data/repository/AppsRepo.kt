@@ -169,18 +169,27 @@ class AppsRepo @Inject constructor(
      * 必须用 combine 持续订阅 datastore 开关 —— 若用 first() 只读一次，在过滤面板里翻转开关后
      * 计数分支不会重选，表现为「开了加载系统应用总数不变、勾选系统应用计数不动」。
      */
-    fun countApps(opType: OpType): Flow<Long> = combine(
+    /**
+     * 恢复页额外按当前备份源限定（cloud/backupDir 非空时）：列表内容走
+     * `queryPackagesFlow(opType, cloud, backupDir)` 按源过滤，计数若仍按 opType 全库数，
+     * 会出现「云端源 (3/3) 却只列 2 条」。备份页列表不按源，传 null 保持全库口径。
+     */
+    fun countApps(opType: OpType, cloud: String? = null, backupDir: String? = null): Flow<Long> = combine(
         context.readLoadSystemApps(),
-        appsDao.countPackagesFlow(opType = opType, blocked = false),
-        appsDao.countNonSystemPackagesFlow(opType = opType, blocked = false, systemFlag = ApplicationInfo.FLAG_SYSTEM),
+        if (cloud != null && backupDir != null) appsDao.countPackagesBySourceFlow(opType, cloud, backupDir)
+        else appsDao.countPackagesFlow(opType = opType, blocked = false),
+        if (cloud != null && backupDir != null) appsDao.countNonSystemPackagesBySourceFlow(opType, ApplicationInfo.FLAG_SYSTEM, cloud, backupDir)
+        else appsDao.countNonSystemPackagesFlow(opType = opType, blocked = false, systemFlag = ApplicationInfo.FLAG_SYSTEM),
     ) { loadSystemApps, all, nonSystem ->
         if (loadSystemApps) all else nonSystem
     }.flowOn(defaultDispatcher)
 
-    fun countSelectedApps(opType: OpType): Flow<Long> = combine(
+    fun countSelectedApps(opType: OpType, cloud: String? = null, backupDir: String? = null): Flow<Long> = combine(
         context.readLoadSystemApps(),
-        appsDao.countActivatedPackagesFlow(opType = opType, blocked = false),
-        appsDao.countActivatedNonSystemPackagesFlow(opType = opType, blocked = false, systemFlag = ApplicationInfo.FLAG_SYSTEM),
+        if (cloud != null && backupDir != null) appsDao.countActivatedPackagesBySourceFlow(opType, cloud, backupDir)
+        else appsDao.countActivatedPackagesFlow(opType = opType, blocked = false),
+        if (cloud != null && backupDir != null) appsDao.countActivatedNonSystemPackagesBySourceFlow(opType, ApplicationInfo.FLAG_SYSTEM, cloud, backupDir)
+        else appsDao.countActivatedNonSystemPackagesFlow(opType = opType, blocked = false, systemFlag = ApplicationInfo.FLAG_SYSTEM),
     ) { loadSystemApps, all, nonSystem ->
         if (loadSystemApps) all else nonSystem
     }.flowOn(defaultDispatcher)

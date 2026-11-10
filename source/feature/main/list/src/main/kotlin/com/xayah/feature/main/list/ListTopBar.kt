@@ -71,7 +71,9 @@ internal fun ListTopBar(
                 }
             }
 
-            if (uiState.selected != 0L && uiState.total != 0L) {
+            // 只在「没有任何可选项」时隐藏；selected=0 仍要显示 (0/N)，否则点「全部不选」后
+            // 计数会整个消失，用户无法确认是「0 个已选」还是计数没刷新。
+            if (uiState.total != 0L) {
                 subtitle = "(${uiState.selected}/${uiState.total})"
             }
         }

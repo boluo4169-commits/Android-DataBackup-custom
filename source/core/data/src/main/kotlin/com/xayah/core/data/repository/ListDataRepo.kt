@@ -162,8 +162,11 @@ class ListDataRepo @Inject constructor(
         currentBackupDir = backupDir
         when (target) {
             Target.Apps -> {
-                selected = appsRepo.countSelectedApps(opType)
-                total = appsRepo.countApps(opType)
+                // 恢复页列表按当前备份源过滤，顶部计数必须同口径；备份页列表不按源，计数保持全库。
+                val countCloud = if (opType == OpType.RESTORE) cloudName else null
+                val countDir = if (opType == OpType.RESTORE) backupDir else null
+                selected = appsRepo.countSelectedApps(opType, countCloud, countDir)
+                total = appsRepo.countApps(opType, countCloud, countDir)
                 searchQuery = MutableStateFlow("")
                 showFilterSheet = MutableStateFlow(false)
                 val (savedIndex, savedType) = readSortPrefs(target)
@@ -210,8 +213,11 @@ class ListDataRepo @Inject constructor(
             }
 
             Target.Files -> {
-                selected = filesRepo.countSelectedFiles(opType)
-                total = filesRepo.countFiles(opType)
+                // 同应用侧：仅恢复页按源统计，备份页保持全库口径。
+                val countCloud = if (opType == OpType.RESTORE) cloudName else null
+                val countDir = if (opType == OpType.RESTORE) backupDir else null
+                selected = filesRepo.countSelectedFiles(opType, countCloud, countDir)
+                total = filesRepo.countFiles(opType, countCloud, countDir)
                 searchQuery = MutableStateFlow("")
                 showFilterSheet = MutableStateFlow(false)
                 val (savedIndex, savedType) = readSortPrefs(target)

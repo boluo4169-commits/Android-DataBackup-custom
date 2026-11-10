@@ -67,6 +67,16 @@ abstract class AbstractProcessingViewModel(
 ) {
     open suspend fun onOtherEvent(state: IndexUiState, intent: ProcessingUiIntent) {}
 
+    /**
+     * 绑定服务前补全备份源。
+     *
+     * 一键恢复会在文件图上带 `skipSetup=true` 直接进入处理页，而 `SetCloudEntity`
+     * 只写在 Setup 页的 LaunchedEffect 里 —— 路由参数明明带了云端账号，却没人把它
+     * 读进 storageType，处理页就会按默认的 Local 绑定本地服务，云端文件恢复得到 0 项。
+     * 需要读 SavedStateHandle 的子类重写本方法，在 Initialize 之前把状态补齐。
+     */
+    protected open suspend fun ensureStorageSource() {}
+
     init {
         mRootService.onFailure = {
             val msg = it.message
@@ -78,6 +88,7 @@ abstract class AbstractProcessingViewModel(
     override suspend fun onEvent(state: IndexUiState, intent: ProcessingUiIntent) {
         when (intent) {
             is ProcessingUiIntent.Initialize -> {
+                ensureStorageSource()
                 _taskId.value = if (uiState.value.storageType == StorageMode.Cloud) mCloudService.initialize() else mLocalService.initialize()
             }
 

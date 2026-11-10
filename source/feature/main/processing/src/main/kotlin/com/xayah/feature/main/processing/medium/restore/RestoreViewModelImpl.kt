@@ -52,6 +52,27 @@ class RestoreViewModelImpl @Inject constructor(
     mCloudService: ProcessingServiceProxyCloudImpl,
     private val args: SavedStateHandle,
 ) : AbstractMediumProcessingViewModel(mContext, mRootService, mTaskRepo, mLocalService, mCloudService) {
+    /**
+     * 一键恢复的文件图带 `skipSetup=true`，Setup 页不会执行，也就没人发 SetCloudEntity。
+     * 这里在绑定服务之前直接从路由参数把 storageType 补齐，否则云端源会被当成本地源。
+     */
+    override suspend fun ensureStorageSource() = applyCloudSourceFromArgs()
+
+    private suspend fun applyCloudSourceFromArgs() {
+        val name = args.get<String>(MainRoutes.ARG_ACCOUNT_NAME)?.decodeURL()?.trim().orEmpty()
+        emitState(
+            if (name.isNotEmpty()) {
+                uiState.value.copy(
+                    storageIndex = 1,
+                    storageType = StorageMode.Cloud,
+                    cloudEntity = mCloudRepo.queryByName(name),
+                )
+            } else {
+                uiState.value.copy(storageIndex = 0, storageType = StorageMode.Local, cloudEntity = null)
+            }
+        )
+    }
+
     override suspend fun onOtherEvent(state: IndexUiState, intent: ProcessingUiIntent) {
         when (intent) {
             is UpdateFiles -> {
@@ -75,14 +96,7 @@ class RestoreViewModelImpl @Inject constructor(
                 _mediumSize.value = bytes.formatSize()
             }
 
-            is SetCloudEntity -> {
-                val name = args.get<String>(MainRoutes.ARG_ACCOUNT_NAME)?.decodeURL()?.trim() ?: ""
-                if (name.isNotEmpty()) {
-                    emitState(state.copy(storageIndex = 1, storageType = StorageMode.Cloud, cloudEntity = mCloudRepo.queryByName(name)))
-                } else {
-                    emitState(state.copy(storageIndex = 0, storageType = StorageMode.Local, cloudEntity = null))
-                }
-            }
+            is SetCloudEntity -> applyCloudSourceFromArgs()
 
             is FinishSetup -> {
                 if (state.storageType == StorageMode.Cloud) {

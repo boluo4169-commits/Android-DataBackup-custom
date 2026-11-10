@@ -121,21 +121,29 @@ class FilesRepo @Inject constructor(
         filesDao.activateByIds(files.map { it.id }, true)
     }
 
+    /** 一键恢复用：当前备份源是否已有恢复记录（没有说明云端/本地清单还没扫进数据库）。 */
+    suspend fun hasRestoreRecords(cloud: String, backupDir: String): Boolean =
+        filesDao.query(opType = OpType.RESTORE, blocked = false)
+            .any { it.indexInfo.cloud == cloud && it.indexInfo.backupDir == backupDir }
+
     /**
-     * 一键恢复用：全选恢复列表里的文件目录。
+     * 一键恢复用：全选「所选备份源」的文件目录。
      *
      * 这里刻意不过滤 `extraInfo.existed`：备份侧过滤是因为本地目录可能暂时不存在，
      * 而恢复记录来自归档扫描，existed 反映的是本机目录状态，不该决定能否从备份恢复。
-     * 调用方须先按所选源重载恢复列表。
+     * 按 [cloud] + [backupDir] 限定是必须的：整表全选会把其它备份源的目录也勾上，
+     * 而恢复服务只查当前源，结果就是「看着勾选了、实际一个都不恢复」。
      */
-    suspend fun activateAllForRestore() {
+    suspend fun activateAllForRestore(cloud: String, backupDir: String) {
         val files = filesDao.query(opType = OpType.RESTORE, blocked = false)
+            .filter { it.indexInfo.cloud == cloud && it.indexInfo.backupDir == backupDir }
         filesDao.activateByIds(files.map { it.id }, true)
     }
 
-    /** 一键恢复按勾选重建选择前先清空，避免上一次流程的残留勾选混进来。 */
-    suspend fun clearAllForRestore() {
+    /** 一键恢复按勾选重建选择前先清空，同样只作用在当前备份源。 */
+    suspend fun clearAllForRestore(cloud: String, backupDir: String) {
         val files = filesDao.query(opType = OpType.RESTORE, blocked = false)
+            .filter { it.indexInfo.cloud == cloud && it.indexInfo.backupDir == backupDir }
         filesDao.activateByIds(files.map { it.id }, false)
     }
 

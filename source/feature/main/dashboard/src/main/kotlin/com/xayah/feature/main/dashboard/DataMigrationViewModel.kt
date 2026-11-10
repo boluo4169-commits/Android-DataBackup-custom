@@ -63,21 +63,25 @@ class DataMigrationViewModel @Inject constructor(
         withContext(Dispatchers.Default) {
             if (taskRepo.hasProcessingTask()) return@withContext "BUSY"
             // 云端/本地备份清单可能还没扫进数据库：此时下面的「全选」是对着空表执行，
-            // 引导页会显示 0.00 Bytes，用户必须进列表页手点「刷新」才看得到应用。
-            // 源内没有任何恢复记录时先同步扫一次，扫完再全选。扫描失败不阻断流程，
-            // 列表页进入时还会按当前源自动再刷一次。
+            // 引导页会显示 0.00 Bytes，用户必须进列表页手点「刷新」才看得到条目。
+            // 应用与文件必须各自判断：源里已有应用记录不代表文件清单也扫过（例如之前只
+            // 备份过应用），共用 appsRepo 的判断会让文件恢复永远查不到记录。
+            // 扫描失败不阻断流程，列表页进入时还会按当前源自动再刷一次。
             runCatching {
                 if (appsRepo.hasRestoreRecords(cloudName, backupDir).not()) {
                     appsRepo.load(cloudName.ifEmpty { null }) { _, _, _ -> }
+                }
+                if (filesRepo.hasRestoreRecords(cloudName, backupDir).not()) {
                     filesRepo.load(cloudName.ifEmpty { null }) { _, _, _ -> }
                 }
             }
             runCatching {
-                // 先清空再全选，避免上一次流程的残留勾选混进来；具体微调在恢复引导页里做
+                // 先清空再全选，避免上一次流程的残留勾选混进来；具体微调在恢复引导页里做。
+                // 两侧都按所选源过滤，不整表操作。
                 appsRepo.clearAllForRestore(cloudName, backupDir)
-                filesRepo.clearAllForRestore()
+                filesRepo.clearAllForRestore(cloudName, backupDir)
                 appsRepo.activateAllForRestore(cloudName, backupDir)
-                filesRepo.activateAllForRestore()
+                filesRepo.activateAllForRestore(cloudName, backupDir)
                 // 与一键备份同口径：恢复引导页的系统数据也回到默认全选，不沿用上一轮的关闭状态
                 systemData.resetSelection()
                 null

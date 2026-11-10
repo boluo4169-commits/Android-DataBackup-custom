@@ -140,6 +140,11 @@ object Tar {
         }
     }
 
+    /**
+     * [clear] 现在是「恢复冲突参数」，由 `resolveRestoreConflictArgs()` 从枚举生成：
+     * `--overwrite` / `--skip-old-files` / `--backup=numbered` / `--recursive-unlink` 之一。
+     * 调用方不得传入外部自由文本（会拼进 root shell 命令）。
+     */
     suspend fun decompress(exclusionList: List<String>, clear: String, m: Boolean, src: String, dst: String, extra: String): ShellResult = run {
         val exclusion = exclusionList.trim().map { "--exclude=${SymbolUtil.shellQuote(it)}" }.toSpaceString()
         if (extra.isEmpty()) {

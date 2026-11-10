@@ -114,6 +114,12 @@
     <string name="compatible_mode_desc" tools:ignore="TypographyDashes">使用管道而非参作为tar的输入。当遇到\"tar: zstd -r -T0 --ultra -1 -q --priority=rt: Cannot exec: No such file or directory\"时开启它</string>
     <string name="clean_restoring">干净恢复</string>
     <string name="clean_restoring_desc">恢复前清空目标目录</string>
+    <string name="media_restore_conflict_strategy">本机已有同名文件</string>
+    <string name="media_restore_conflict_strategy_desc">恢复文件时，若本机已有同名文件的处理方式（与备份侧策略相互独立）</string>
+    <string name="media_restore_conflict_strategy_disabled">「干净恢复」已开启并优先，此项当前不生效</string>
+    <string name="media_restore_conflict_overwrite">替换（备份覆盖本机）</string>
+    <string name="media_restore_conflict_skip">跳过（保留本机，只补备份多出的文件）</string>
+    <string name="media_restore_conflict_keep_both">两份都留（本机旧文件改名 .~1~）</string>
     <string name="installed">已安装</string>
     <string name="sooner_or_later">即将到来</string>
     <string name="delete">删除</string>

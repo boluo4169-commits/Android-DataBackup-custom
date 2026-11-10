@@ -1,6 +1,14 @@
 <resources>
     <item name="clean_restoring" type="string" />
     <item name="clean_restoring_desc" type="string" />
+    <!-- 文件恢复冲突策略：与 app 模块同名资源对应，运行时由 app 覆盖 -->
+    <item name="media_restore_conflict_strategy" type="string" />
+    <item name="media_restore_conflict_strategy_desc" type="string" />
+    <item name="media_restore_conflict_strategy_disabled" type="string" />
+    <item name="media_restore_conflict_overwrite" type="string" />
+    <item name="media_restore_conflict_skip" type="string" />
+    <item name="media_restore_conflict_keep_both" type="string" />
+    <item name="media_restore_conflict_strategy_options" type="array" />
     <item name="backup_itself" type="string" />
     <item name="backup_itself_desc" type="string" />
     <item name="compatible_mode" type="string" />

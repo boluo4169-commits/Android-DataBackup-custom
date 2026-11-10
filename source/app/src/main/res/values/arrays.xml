@@ -38,4 +38,10 @@
         <item>@string/cloud_split_size_2g</item>
         <item>@string/cloud_split_size_4g</item>
     </string-array>
+    <!-- 顺序必须与 RestoreConflictStrategy.id 一致：0 替换 / 1 跳过 / 2 两份都留 -->
+    <string-array name="media_restore_conflict_strategy_options">
+        <item>@string/media_restore_conflict_overwrite</item>
+        <item>@string/media_restore_conflict_skip</item>
+        <item>@string/media_restore_conflict_keep_both</item>
+    </string-array>
 </resources>

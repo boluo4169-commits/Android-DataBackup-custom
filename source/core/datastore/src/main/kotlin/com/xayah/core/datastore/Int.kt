@@ -13,6 +13,8 @@ val KeyCompressionThreads = intPreferencesKey("compression_threads")
 val KeyMaxPreserveCount = intPreferencesKey("max_preserve_count")
 val KeySortIndexApps = intPreferencesKey("sort_index_apps")
 val KeySortIndexFiles = intPreferencesKey("sort_index_files")
+/** 文件恢复遇到本机已有同名文件时的策略，存 [RestoreConflictStrategy.id]（默认 0 = 替换）。 */
+val KeyMediaRestoreConflictStrategy = intPreferencesKey("media_restore_conflict_strategy")
 
 
 // -----------------------------------------Read-----------------------------------------
@@ -25,6 +27,8 @@ fun Context.readCompressionThreads() = readStoreInt(key = KeyCompressionThreads,
 fun Context.readMaxPreserveCount() = readStoreInt(key = KeyMaxPreserveCount, defValue = 3)
 fun Context.readSortIndexApps() = readStoreInt(key = KeySortIndexApps, defValue = 0)
 fun Context.readSortIndexFiles() = readStoreInt(key = KeySortIndexFiles, defValue = 0)
+/** 返回策略 id；用 `RestoreConflictStrategy.fromId()` 转换，未知值自动回落到「替换」。 */
+fun Context.readMediaRestoreConflictStrategy() = readStoreInt(key = KeyMediaRestoreConflictStrategy, defValue = 0)
 
 
 // -----------------------------------------Write-----------------------------------------
@@ -37,3 +41,4 @@ suspend fun Context.saveMaxPreserveCount(value: Int) = saveStoreInt(key = KeyMax
 
 suspend fun Context.saveSortIndexApps(value: Int) = saveStoreInt(key = KeySortIndexApps, value = value)
 suspend fun Context.saveSortIndexFiles(value: Int) = saveStoreInt(key = KeySortIndexFiles, value = value)
+suspend fun Context.saveMediaRestoreConflictStrategy(id: Int) = saveStoreInt(key = KeyMediaRestoreConflictStrategy, value = id)

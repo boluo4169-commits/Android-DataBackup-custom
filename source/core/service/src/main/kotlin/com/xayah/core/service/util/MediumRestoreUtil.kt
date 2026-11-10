@@ -7,10 +7,13 @@ import com.xayah.core.data.repository.CloudRepository
 import com.xayah.core.data.repository.MediaRepository
 import com.xayah.core.database.dao.TaskDao
 import com.xayah.core.datastore.readCleanRestoring
+import com.xayah.core.datastore.readMediaRestoreConflictStrategy
 import com.xayah.core.model.DataType
 import com.xayah.core.model.OperationState
+import com.xayah.core.model.RestoreConflictStrategy
 import com.xayah.core.model.database.MediaEntity
 import com.xayah.core.model.database.TaskDetailMediaEntity
+import com.xayah.core.model.resolveRestoreConflictArgs
 import com.xayah.core.model.util.formatSize
 import com.xayah.core.network.client.CloudClient
 import com.xayah.core.rootservice.service.RemoteRootService
@@ -91,8 +94,15 @@ class MediumRestoreUtil @Inject constructor(
                 }
             }
 
-            // Decompress the archive.
-            log { "ExclusionList: $TrashedFilePatterns." }
+        // 冲突策略：干净恢复优先（开启时策略选择器置灰，参数退化为 --recursive-unlink）。
+        // 参数一律由纯函数从枚举生成，绝不拼接外部自由文本进 root shell 命令。
+        val cleanRestoring = context.readCleanRestoring().first()
+        val strategy = RestoreConflictStrategy.fromId(context.readMediaRestoreConflictStrategy().first())
+        val conflictArgs = resolveRestoreConflictArgs(cleanRestoring = cleanRestoring, strategy = strategy)
+        log { "Conflict strategy: $strategy (cleanRestoring=$cleanRestoring), tar args: $conflictArgs" }
+
+        // Decompress the archive.
+        log { "ExclusionList: $TrashedFilePatterns." }
             // 被跳过的文件不会落到目标目录，只能从归档清单里找
             TrashedUtil.logExcluded(scene = " from archive", paths = TrashedUtil.scanArchive(src))
             Tar.decompress(
@@ -100,7 +110,7 @@ class MediumRestoreUtil @Inject constructor(
                 // 一并跳过：放出来照样被 MediaScanner 标成已删除，相册看不到、到期被清掉，
                 // 反而让用户以为照片丢了。判据与备份侧同源（TrashedFilePatterns）。
                 exclusionList = TrashedFilePatterns,
-                clear = if (context.readCleanRestoring().first()) "--recursive-unlink" else "",
+                clear = conflictArgs,
                 m = false,
                 src = src,
                 dst = dstDir,

@@ -118,6 +118,12 @@
     <string name="compatible_mode_desc" tools:ignore="TypographyDashes">Use pipe instead of parameter for input of tar. Switch it when it says \"tar: zstd -r -T0 --ultra -1 -q --priority=rt: Cannot exec: No such file or directory\"</string>
     <string name="clean_restoring">Clean restoring</string>
     <string name="clean_restoring_desc">Clear the target directory before restoring</string>
+    <string name="media_restore_conflict_strategy">Existing files on device</string>
+    <string name="media_restore_conflict_strategy_desc">What to do when restoring a file that already exists on this device</string>
+    <string name="media_restore_conflict_strategy_disabled">Clean restoring is on and takes priority — this setting has no effect</string>
+    <string name="media_restore_conflict_overwrite">Replace</string>
+    <string name="media_restore_conflict_skip">Skip</string>
+    <string name="media_restore_conflict_keep_both">Keep both</string>
     <string name="installed">Installed</string>
     <string name="sooner_or_later">Sooner or later</string>
     <string name="delete">Delete</string>

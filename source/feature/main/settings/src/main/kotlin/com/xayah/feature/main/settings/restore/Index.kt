@@ -41,11 +41,15 @@ import com.xayah.core.datastore.KeyRandomizeGaid
 import com.xayah.core.datastore.KeyRandomizeSsaid
 import com.xayah.core.datastore.KeyRestorePermissions
 import com.xayah.core.datastore.KeyRestoreSsaid
+import com.xayah.core.datastore.readCleanRestoring
 import com.xayah.core.datastore.readKillAppOption
+import com.xayah.core.datastore.readMediaRestoreConflictStrategy
 import com.xayah.core.datastore.saveKillAppOption
+import com.xayah.core.datastore.saveMediaRestoreConflictStrategy
 import com.xayah.core.datastore.saveRandomizeSsaid
 import com.xayah.core.datastore.saveRestoreSsaid
 import com.xayah.core.model.KillAppOption
+import com.xayah.core.model.RestoreConflictStrategy
 import com.xayah.core.model.util.indexOf
 import com.xayah.core.ui.component.InnerBottomSpacer
 import com.xayah.core.ui.component.LabelMediumText
@@ -115,6 +119,36 @@ fun PageRestoreSettings() {
                     title = stringResource(id = R.string.clean_restoring),
                     checkedText = stringResource(id = R.string.clean_restoring_desc),
                 )
+
+                // 文件恢复遇到本机已有同名文件时的策略（决策 A：干净恢复优先，开启时置灰）
+                val cleanRestoring by context.readCleanRestoring().collectAsStateWithLifecycle(initialValue = false)
+                val conflictItems = stringArrayResource(id = R.array.media_restore_conflict_strategy_options)
+                val conflictDialogItems by remember(conflictItems) {
+                    mutableStateOf(conflictItems.mapIndexed { index, s ->
+                        DialogRadioItem(enum = RestoreConflictStrategy.fromId(index), title = s, desc = null)
+                    })
+                }
+                val conflictId by context.readMediaRestoreConflictStrategy().collectAsStateWithLifecycle(initialValue = 0)
+                val conflictIndex by remember(conflictId) { mutableIntStateOf(RestoreConflictStrategy.fromId(conflictId).id) }
+                Selectable(
+                    enabled = cleanRestoring.not(),
+                    title = stringResource(id = R.string.media_restore_conflict_strategy),
+                    value = if (cleanRestoring) {
+                        stringResource(id = R.string.media_restore_conflict_strategy_disabled)
+                    } else {
+                        stringResource(id = R.string.media_restore_conflict_strategy_desc)
+                    },
+                    current = conflictItems[conflictIndex]
+                ) {
+                    val (state, selectedIndex) = dialogState.select(
+                        title = context.getString(R.string.media_restore_conflict_strategy),
+                        defIndex = conflictIndex,
+                        items = conflictDialogItems,
+                    )
+                    if (state.isConfirm) {
+                        context.saveMediaRestoreConflictStrategy(conflictDialogItems[selectedIndex].enum!!.id)
+                    }
+                }
 
                 Switchable(
                     key = KeyRestorePermissions,

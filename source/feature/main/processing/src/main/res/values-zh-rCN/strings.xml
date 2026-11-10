@@ -11,7 +11,7 @@
     <string name="restore_preview_dir">目录：%1$s</string>
     <string name="restore_preview_overwrite">将被覆盖：%1$d 个文件</string>
     <string name="restore_preview_skip">将被跳过：%1$d 个文件</string>
-    <string name="restore_preview_keep_both">两份都留：%1$d 个文件（旧文件改名 .~1~）</string>
+    <string name="restore_preview_keep_both">将把 %1$d 个本机旧文件打包成可恢复的快照（在恢复页切到「本地」源查看护盾版本）</string>
     <string name="restore_preview_added">将新增：%1$d 个文件</string>
     <string name="restore_preview_removed">干净恢复将删除：%1$d 个本机独有文件</string>
     <string name="restore_preview_excluded">排除回收站 / 写入中文件：%1$d 个</string>

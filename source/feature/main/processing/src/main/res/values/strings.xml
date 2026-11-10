@@ -10,7 +10,7 @@
     <string name="restore_preview_dir">Directory: %1$s</string>
     <string name="restore_preview_overwrite">To be overwritten: %1$d file(s)</string>
     <string name="restore_preview_skip">To be skipped: %1$d file(s)</string>
-    <string name="restore_preview_keep_both">Keep both: %1$d file(s) (old file renamed .~1~)</string>
+    <string name="restore_preview_keep_both">Keep both: %1$d local file(s) will be packed into a restorable snapshot (switch the restore source to Local to see it)</string>
     <string name="restore_preview_added">To be added: %1$d file(s)</string>
     <string name="restore_preview_removed">Clean restore will delete: %1$d local-only file(s)</string>
     <string name="restore_preview_excluded">Excluded trashed/pending files: %1$d</string>

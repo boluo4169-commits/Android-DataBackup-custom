@@ -67,6 +67,45 @@ object Tar {
         return result
     }
 
+    /**
+     * 方案② 本机快照：只打 [listFile] 里列出的条目，不整目录打包。
+     *
+     * [listFile] 每行一条相对 [srcDir] 的路径（如 `DCIM/a.jpg`），由调用方用
+     * `rootService.writeText` 写好；命令行先 `cd` 到 [srcDir]，所以归档里的路径
+     * 与 `MediumBackupUtil` 打包出来的完全同构，现有恢复链路不用改。
+     * 只打冲突文件而不是整个相册目录，是为了避免几十 GB 的无谓 IO。
+     */
+    suspend fun compressFromList(srcDir: String, listFile: String, dst: String, extra: String): ShellResult {
+        BaseUtil.execute("cd", SymbolUtil.shellQuote(srcDir))
+        val result = if (extra.isEmpty()) {
+            // tar --totals -cpf - -T "$listFile" > "$dst"
+            execute(
+                "--totals",
+                "-cpf",
+                "-",
+                "-T",
+                SymbolUtil.shellQuote(listFile),
+                ">",
+                SymbolUtil.shellQuote(dst),
+            )
+        } else {
+            // tar --totals -cpf - -T "$listFile" | $extra > "$dst"
+            execute(
+                "--totals",
+                "-cpf",
+                "-",
+                "-T",
+                SymbolUtil.shellQuote(listFile),
+                "|",
+                extra,
+                ">",
+                SymbolUtil.shellQuote(dst),
+            )
+        }
+        BaseUtil.execute("cd", "/")
+        return result
+    }
+
     suspend fun compress(exclusionList: List<String>, h: String, srcDir: String, src: String, dst: String, extra: String): ShellResult =
         run {
             val exclusion = exclusionList.trim().map { "--exclude=${SymbolUtil.shellQuote(it)}" }.toSpaceString()

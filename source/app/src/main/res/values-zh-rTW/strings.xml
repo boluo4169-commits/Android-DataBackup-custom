@@ -110,13 +110,13 @@
     <string name="media_restore_conflict_strategy_disabled">「乾淨復原」已開啟並優先，此項目前不生效</string>
     <string name="media_restore_conflict_overwrite">取代（備份覆蓋本機）</string>
     <string name="media_restore_conflict_skip">略過（保留本機，只補備份多出的檔案）</string>
-    <string name="media_restore_conflict_keep_both">兩份都留（本機舊檔改名 .~1~）</string>
+    <string name="media_restore_conflict_keep_both">兩份都留（本機舊檔打包成可還原的快照）</string>
     <!-- 恢復前衝突預覽（Phase 2） -->
     <string name="restore_preview_title">復原前確認</string>
     <string name="restore_preview_dir">目錄：%1$s</string>
     <string name="restore_preview_overwrite">將被覆蓋：%1$d 個檔案</string>
     <string name="restore_preview_skip">將被略過：%1$d 個檔案</string>
-    <string name="restore_preview_keep_both">兩份都留：%1$d 個檔案（舊檔改名 .~1~）</string>
+    <string name="restore_preview_keep_both">將把 %1$d 個本機舊檔打包成可還原的快照（在復原頁切到「本地」來源查看護盾版本）</string>
     <string name="restore_preview_added">將新增：%1$d 個檔案</string>
     <string name="restore_preview_removed">乾淨復原將刪除：%1$d 個本機獨有檔案</string>
     <string name="restore_preview_excluded">排除回收站 / 寫入中檔案：%1$d 個</string>

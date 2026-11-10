@@ -101,6 +101,10 @@ class AppsRepo @Inject constructor(
     fun getActivatedAppsFlow(opType: OpType, cloud: String, backupDir: String): Flow<List<PackageEntity>> =
         appsDao.queryActivatedFlow(opType, cloud, backupDir).flowOn(defaultDispatcher)
 
+    /** 一键恢复用：当前备份源是否已有恢复记录（没有说明云端/本地清单还没扫进数据库）。 */
+    suspend fun hasRestoreRecords(cloud: String, backupDir: String): Boolean =
+        appsDao.queryPackagesFlow(OpType.RESTORE, cloud, backupDir).first().isNotEmpty()
+
     fun getInstalledApps(users: Flow<List<UserInfo>>): Flow<Set<String>> = users.map { u ->
         val set = mutableSetOf<String>()
         u.forEach {
@@ -676,14 +680,18 @@ class AppsRepo @Inject constructor(
                                 p?.indexInfo?.userId = uId
                             }
                         }
-                        // 无论是否剥离，都按目录名查删旧实体（幂等）
+                        // 无论是否剥离，都按目录名查删旧实体（幂等）。
+                        // 删之前继承勾选状态：扫描只是「刷新清单」，不该清空用户已做的选择。
                         if (p != null && dirName != null) {
                             val old = appsDao.query(
                                 dirName, OpType.RESTORE,
                                 p.indexInfo.userId, p.indexInfo.preserveId,
                                 p.indexInfo.compressionType, p.indexInfo.cloud, p.indexInfo.backupDir
                             )
-                            if (old != null) appsDao.delete(old.id)
+                            if (old != null) {
+                                p.extraInfo.activated = old.extraInfo.activated
+                                appsDao.delete(old.id)
+                            }
                         }
                         // 剥离成功时写回 json 修复被污染的数据
                         if (recovered && p != null) {
@@ -735,14 +743,17 @@ class AppsRepo @Inject constructor(
                                         p.indexInfo.preserveId = pId
                                         p.indexInfo.userId = uId
                                     }
-                                    // 无论是否剥离，都按目录名查删旧实体（幂等）
+                                    // 删之前继承勾选状态：刷新清单不该清空用户已做的选择
                                     if (dirName != null) {
                                         val old = appsDao.query(
                                             dirName, OpType.RESTORE,
                                             p.indexInfo.userId, p.indexInfo.preserveId,
                                             p.indexInfo.compressionType, p.indexInfo.cloud, p.indexInfo.backupDir
                                         )
-                                        if (old != null) appsDao.delete(old.id)
+                                        if (old != null) {
+                                            p.extraInfo.activated = old.extraInfo.activated
+                                            appsDao.delete(old.id)
+                                        }
                                     }
                                     if (appsDao.query(p.packageName, p.indexInfo.opType, p.userId, p.preserveId, p.indexInfo.compressionType, p.indexInfo.cloud, p.indexInfo.backupDir) == null) {
                                         appsDao.upsert(p)

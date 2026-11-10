@@ -62,6 +62,16 @@ class DataMigrationViewModel @Inject constructor(
     suspend fun finishOneClickRestore(cloudName: String, backupDir: String): String? =
         withContext(Dispatchers.Default) {
             if (taskRepo.hasProcessingTask()) return@withContext "BUSY"
+            // 云端/本地备份清单可能还没扫进数据库：此时下面的「全选」是对着空表执行，
+            // 引导页会显示 0.00 Bytes，用户必须进列表页手点「刷新」才看得到应用。
+            // 源内没有任何恢复记录时先同步扫一次，扫完再全选。扫描失败不阻断流程，
+            // 列表页进入时还会按当前源自动再刷一次。
+            runCatching {
+                if (appsRepo.hasRestoreRecords(cloudName, backupDir).not()) {
+                    appsRepo.load(cloudName.ifEmpty { null }) { _, _, _ -> }
+                    filesRepo.load(cloudName.ifEmpty { null }) { _, _, _ -> }
+                }
+            }
             runCatching {
                 // 先清空再全选，避免上一次流程的残留勾选混进来；具体微调在恢复引导页里做
                 appsRepo.clearAllForRestore(cloudName, backupDir)

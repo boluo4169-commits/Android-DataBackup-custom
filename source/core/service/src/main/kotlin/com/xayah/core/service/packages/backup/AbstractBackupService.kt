@@ -431,6 +431,8 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
                             deleteArchiveDir(old)
                         }
                     }
+                }.onFailure {
+                    log { "Failed to clean preserved backups for ${p.packageName}: ${it.message}" }
                 }
             }
         }

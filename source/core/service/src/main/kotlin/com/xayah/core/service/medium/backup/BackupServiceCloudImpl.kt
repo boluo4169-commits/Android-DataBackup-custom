@@ -148,7 +148,13 @@ internal class BackupServiceCloudImpl @Inject constructor() : AbstractBackupServ
 
     override suspend fun deleteMediaArchiveDir(old: MediaEntity) {
         val dir = getRemoteFileDir(old.archivesRelativeDir)
-        if (mClient.exists(dir)) mClient.deleteRecursively(dir)
+        // afterPostProcessing() 排在 clear()（mClient.disconnect()）之后，那时 mClient 已断连；
+        // 而 FTPClientImpl.exists() 是 runCatching{...}.isSuccess，断连会静默返回 false，
+        // 结果是远端旧目录没删、数据库记录却被删掉 → 下次扫描又把该目录当成新版本读回来，
+        // 上限永远清不掉。这里按本次任务选中的账号重建一条短连接，与调用时机解耦。
+        mCloudRepo.withClient(name = mCloudEntity.name) { client, _ ->
+            if (client.exists(dir)) client.deleteRecursively(dir)
+        }
         mMediaDao.delete(old.id)
     }
 

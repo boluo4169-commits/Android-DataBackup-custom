@@ -214,9 +214,11 @@ internal class BackupServiceCloudImpl @Inject constructor() : AbstractBackupServ
     // 修复：清理超量旧归档需在远程执行删除，否则远程旧版本不会被真正删除
     override suspend fun deleteArchiveDir(old: PackageEntity) {
         val dirNew = "${mRemoteAppsDir}/${old.archivesRelativeDir}"
-        val dir = if (mClient.exists(dirNew)) dirNew else "${mRemoteAppsDir}/${old.legacyArchivesRelativeDir}"
-        if (mClient.exists(dir)) {
-            mClient.deleteRecursively(dir)
+        // 同 medium 侧：afterPostProcessing() 在 clear() 之后执行，mClient 已 disconnect，
+        // FTP 的 exists() 断连时静默返回 false 会让远端旧目录变成幽灵。重建短连接再删。
+        mCloudRepo.withClient(name = mCloudEntity.name) { client, _ ->
+            val dir = if (client.exists(dirNew)) dirNew else "${mRemoteAppsDir}/${old.legacyArchivesRelativeDir}"
+            if (client.exists(dir)) client.deleteRecursively(dir)
         }
         mPackageDao.delete(old.id)
     }

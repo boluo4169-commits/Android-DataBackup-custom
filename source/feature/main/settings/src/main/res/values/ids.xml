@@ -118,6 +118,11 @@
     <item name="preserve_backups" type="string" />
     <item name="preserve_backups_desc" type="string" />
     <item name="preserve_backups_help" type="string" />
+    <!-- 文件备份自动留历史：与 app 模块同名资源对应，运行时由 app 覆盖 -->
+    <item name="preserve_media_backups" type="string" />
+    <item name="preserve_media_backups_desc" type="string" />
+    <item name="max_preserve_media_count" type="string" />
+    <item name="max_preserve_media_count_desc" type="string" />
     <item name="cloud_pkg_only_dir" type="string" />
     <item name="cloud_pkg_only_dir_desc" type="string" />
     <item name="cloud_pkg_only_dir_help" type="string" />

@@ -80,8 +80,18 @@ class MediumBackupUtil @Inject constructor(
      * @param allowIncremental false = 不参与增量（云端）：既不判「未变化」也不写清单。
      *   云端是「先写本地暂存目录 → 再上传」，暂存若因上次任务中断而残留旧归档，
      *   跳过判定会命中并连带跳过上传 → 远端主备份缺该类型。
+     * @param beforeCompress 只在「确实要重打」时调用（「保留历史备份」在此归档旧主版本）。
+     *   放在这里而不是 Service 层，是为了让归档与增量判定天然同步：内容没变走 SKIP 时
+     *   绝不归档，否则 `.manifest` 被搬走，下次必然全量重打。
      */
-    suspend fun backupMedia(m: MediaEntity, t: TaskDetailMediaEntity, r: MediaEntity?, dstDir: String, allowIncremental: Boolean = true): ShellResult = run {
+    suspend fun backupMedia(
+        m: MediaEntity,
+        t: TaskDetailMediaEntity,
+        r: MediaEntity?,
+        dstDir: String,
+        allowIncremental: Boolean = true,
+        beforeCompress: suspend () -> Unit = {},
+    ): ShellResult = run {
         log { "Backing up ${DataType.MEDIA_MEDIA.type}..." }
 
         val name = m.name
@@ -129,6 +139,15 @@ class MediumBackupUtil @Inject constructor(
             t.updateInfo(state = OperationState.SKIP)
             out.add(log { "Data has not changed." })
         } else {
+            // 归档失败不能阻断备份：旧主备份仍在原位，新包照常覆盖它即可（安全降级）。
+            runCatching { beforeCompress() }.onFailure {
+                out.add(log { "Failed to archive previous media backup: ${it.message}" })
+            }
+            // 「保留历史备份」会把主目录 rename 成 name@ts，而 Service 层的 mkdirs(dstDir)
+            // 发生在归档之前。这里必须重建主目录，否则 Tar.compress 无目录可写、整项备份失败。
+            // 云端归档动的是远端目录（子类已自行 mkdirRecursively），这里重建的是本地暂存目录，
+            // 两条链路都需要，互不冲突。
+            rootService.mkdirs(dstDir)
             // Compress and test.
             log { "ExclusionList: $TrashedFilePatterns." }
             // 光报模式用户看不出跳了哪些文件（一个相册目录实测几百个），顺手把命中项捞出来报一下

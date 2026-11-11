@@ -11,6 +11,8 @@ val KeyRestoreUser = intPreferencesKey("restore_user")
 val KeyCompressionLevel = intPreferencesKey("compression_level")
 val KeyCompressionThreads = intPreferencesKey("compression_threads")
 val KeyMaxPreserveCount = intPreferencesKey("max_preserve_count")
+/** 文件历史版本数量上限，默认 2（与应用侧的 3 独立）。 */
+val KeyMaxPreserveMediaCount = intPreferencesKey("max_preserve_media_count")
 val KeySortIndexApps = intPreferencesKey("sort_index_apps")
 val KeySortIndexFiles = intPreferencesKey("sort_index_files")
 /** 文件恢复遇到本机已有同名文件时的策略，存 [RestoreConflictStrategy.id]（默认 0 = 替换）。 */
@@ -25,6 +27,7 @@ fun Context.readCompressionLevel() = readStoreInt(key = KeyCompressionLevel, def
 /** 默认 1 线程：压缩更慢但发热最低，避免备份大应用时被系统温控打断（用户可在设置里自定义） */
 fun Context.readCompressionThreads() = readStoreInt(key = KeyCompressionThreads, defValue = 2)
 fun Context.readMaxPreserveCount() = readStoreInt(key = KeyMaxPreserveCount, defValue = 3)
+fun Context.readMaxPreserveMediaCount() = readStoreInt(key = KeyMaxPreserveMediaCount, defValue = 2)
 fun Context.readSortIndexApps() = readStoreInt(key = KeySortIndexApps, defValue = 0)
 fun Context.readSortIndexFiles() = readStoreInt(key = KeySortIndexFiles, defValue = 0)
 /** 返回策略 id；用 `RestoreConflictStrategy.fromId()` 转换，未知值自动回落到「替换」。 */
@@ -38,6 +41,7 @@ suspend fun Context.saveRestoreUser(value: Int) = saveStoreInt(key = KeyRestoreU
 suspend fun Context.saveCompressionLevel(value: Int) = saveStoreInt(key = KeyCompressionLevel, value = value)
 suspend fun Context.saveCompressionThreads(value: Int) = saveStoreInt(key = KeyCompressionThreads, value = value)
 suspend fun Context.saveMaxPreserveCount(value: Int) = saveStoreInt(key = KeyMaxPreserveCount, value = value)
+suspend fun Context.saveMaxPreserveMediaCount(value: Int) = saveStoreInt(key = KeyMaxPreserveMediaCount, value = value)
 
 suspend fun Context.saveSortIndexApps(value: Int) = saveStoreInt(key = KeySortIndexApps, value = value)
 suspend fun Context.saveSortIndexFiles(value: Int) = saveStoreInt(key = KeySortIndexFiles, value = value)

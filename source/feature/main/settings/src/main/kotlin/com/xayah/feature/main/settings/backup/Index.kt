@@ -40,18 +40,22 @@ import com.xayah.core.datastore.KeyCloudPkgOnlyDir
 import com.xayah.core.datastore.KeyCompressionTest
 import com.xayah.core.datastore.KeyFollowSymlinks
 import com.xayah.core.datastore.KeyPreserveBackups
+import com.xayah.core.datastore.KeyPreserveMediaBackups
 import com.xayah.core.datastore.readCompressionLevel
 import com.xayah.core.datastore.readCompressionThreads
 import com.xayah.core.datastore.readCompressionType
 import com.xayah.core.datastore.readCloudSplitSize
 import com.xayah.core.datastore.readKillAppOption
 import com.xayah.core.datastore.readMaxPreserveCount
+import com.xayah.core.datastore.readMaxPreserveMediaCount
 import com.xayah.core.datastore.readPreserveBackups
+import com.xayah.core.datastore.readPreserveMediaBackups
 import com.xayah.core.datastore.saveCompressionLevel
 import com.xayah.core.datastore.saveCompressionThreads
 import com.xayah.core.datastore.saveCloudSplitSize
 import com.xayah.core.datastore.saveKillAppOption
 import com.xayah.core.datastore.saveMaxPreserveCount
+import com.xayah.core.datastore.saveMaxPreserveMediaCount
 import com.xayah.core.model.CompressionType
 import com.xayah.core.model.CloudSplitSize
 import com.xayah.core.model.KillAppOption
@@ -284,6 +288,35 @@ fun PageBackupSettings() {
                     ) {
                         scope.launch {
                             context.saveMaxPreserveCount(it.roundToInt())
+                        }
+                    }
+                }
+
+                // 文件备份留历史：独立开关（默认关、上限默认 2），不复用上面应用侧那个
+                // 默认开、上限 3 的开关 —— 文件目录动辄几十 GB，不能升级后悄悄多占几倍空间。
+                val preserveMediaBackups by context.readPreserveMediaBackups().collectAsStateWithLifecycle(initialValue = false)
+                Switchable(
+                    key = KeyPreserveMediaBackups,
+                    defValue = false,
+                    title = stringResource(id = R.string.preserve_media_backups),
+                    checkedText = stringResource(id = R.string.preserve_media_backups_desc),
+                )
+
+                AnimatedVisibility(
+                    visible = preserveMediaBackups,
+                    enter = expandVertically() + fadeIn(),
+                    exit = shrinkVertically() + fadeOut(),
+                ) {
+                    val maxPreserveMediaCount by context.readMaxPreserveMediaCount().collectAsStateWithLifecycle(initialValue = 2)
+                    Slideable(
+                        title = stringResource(id = R.string.max_preserve_media_count),
+                        value = maxPreserveMediaCount.toFloat(),
+                        valueRange = 1F..5F,
+                        steps = 3,
+                        desc = remember(maxPreserveMediaCount) { "${context.getString(R.string.args_current_count, maxPreserveMediaCount)}\n${context.getString(R.string.max_preserve_media_count_desc)}" }
+                    ) {
+                        scope.launch {
+                            context.saveMaxPreserveMediaCount(it.roundToInt())
                         }
                     }
                 }

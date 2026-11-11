@@ -550,7 +550,11 @@
     <string name="compression_threads_desc">執行緒越多壓縮越快，但發熱越高。備份微信等大應用建議用較少的執行緒避免被系統溫控中斷。關閉只是摺疊此項，壓縮仍按目前執行緒數進行，預設 2</string>
     <string name="compression_threads_tar_disabled">目前壓縮方式為 TAR（不壓縮），此設定不生效</string>
     <string name="args_current_threads">目前執行緒數：%1$s</string>
-    <string name="preserve_backups">保留歷史備份</string>
+    <string name="preserve_backups">保留歷史備份（應用）</string>
+    <string name="preserve_media_backups">檔案保留歷史備份</string>
+    <string name="preserve_media_backups_desc">檔案目錄可能很大，預設關閉。雲端來源不參與增量備份，每備份一次都會多留一個歷史版本（不超過下方上限），請注意雲端容量。</string>
+    <string name="max_preserve_media_count">檔案歷史版本上限</string>
+    <string name="max_preserve_media_count_desc">超出此數量的最舊版本會自動刪除</string>
     <string name="preserve_backups_desc">開啟後每次備份自動保留歷史版本，不覆蓋之前的備份</string>
     <string name="preserve_backups_help">開啟後，每次備份都會保留歷史版本：\n\n• 最新一次備份 = 正常版本（無護盾標記）\n• 之前的備份 = 受保護版本，護盾內顯示序號，護盾 1 是最近一次被覆蓋的版本，數字越大越舊\n• 超過「最大保留版本數」時，最舊的版本會自動刪除</string>
     <string name="cloud_pkg_only_dir">雲端目錄僅用套件名稱</string>

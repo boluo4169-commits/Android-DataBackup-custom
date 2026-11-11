@@ -48,8 +48,8 @@ internal class BackupServiceLocalImpl @Inject constructor() : AbstractBackupServ
         )
     }
 
-    override suspend fun backup(m: MediaEntity, r: MediaEntity?, t: TaskDetailMediaEntity, dstDir: String) {
-        mMediumBackupUtil.backupMedia(m = m, t = t, r = r, dstDir = dstDir)
+    override suspend fun backup(m: MediaEntity, r: MediaEntity?, t: TaskDetailMediaEntity, dstDir: String, beforeCompress: suspend () -> Unit) {
+        mMediumBackupUtil.backupMedia(m = m, t = t, r = r, dstDir = dstDir, beforeCompress = beforeCompress)
         t.update(progress = 1f)
         t.update(processingIndex = t.processingIndex + 1)
     }

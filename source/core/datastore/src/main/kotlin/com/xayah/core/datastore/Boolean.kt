@@ -27,6 +27,8 @@ val KeyRandomizeSsaid = booleanPreferencesKey("randomize_ssaid")
 val KeyRandomizeGaid = booleanPreferencesKey("randomize_gaid")
 val KeyClearDeviceFingerprint = booleanPreferencesKey("clear_device_fingerprint")
 val KeyPreserveBackups = booleanPreferencesKey("preserve_backups")
+/** 文件备份是否自动留历史版本：与应用侧独立，默认关（文件体积可能极大）。 */
+val KeyPreserveMediaBackups = booleanPreferencesKey("preserve_media_backups")
 val KeyCustomCompressionLevel = booleanPreferencesKey("custom_compression_level")
 val KeyCustomCompressionThreads = booleanPreferencesKey("custom_compression_threads")
     val KeyFixDataOwnership = booleanPreferencesKey("fix_data_ownership")
@@ -67,6 +69,8 @@ fun Context.readRandomizeSsaid() = readStoreBoolean(key = KeyRandomizeSsaid, def
 fun Context.readRandomizeGaid() = readStoreBoolean(key = KeyRandomizeGaid, defValue = false)
 fun Context.readClearDeviceFingerprint() = readStoreBoolean(key = KeyClearDeviceFingerprint, defValue = false)
 fun Context.readPreserveBackups() = readStoreBoolean(key = KeyPreserveBackups, defValue = true)
+/** 默认 false：文件目录动辄几十 GB，绝不能升级后悄悄多占几倍空间。 */
+fun Context.readPreserveMediaBackups() = readStoreBoolean(key = KeyPreserveMediaBackups, defValue = false)
 
 /** 「压缩等级」是否展开自定义滑块（默认展开，与折叠开关上线前行为一致） */
 fun Context.readCustomCompressionLevel() = readStoreBoolean(key = KeyCustomCompressionLevel, defValue = true)
@@ -97,6 +101,7 @@ suspend fun Context.saveRandomizeSsaid(value: Boolean) = saveStoreBoolean(key = 
 suspend fun Context.saveRandomizeGaid(value: Boolean) = saveStoreBoolean(key = KeyRandomizeGaid, value = value)
 suspend fun Context.saveClearDeviceFingerprint(value: Boolean) = saveStoreBoolean(key = KeyClearDeviceFingerprint, value = value)
 suspend fun Context.savePreserveBackups(value: Boolean) = saveStoreBoolean(key = KeyPreserveBackups, value = value)
+suspend fun Context.savePreserveMediaBackups(value: Boolean) = saveStoreBoolean(key = KeyPreserveMediaBackups, value = value)
 suspend fun Context.saveFixDataOwnership(value: Boolean) = saveStoreBoolean(key = KeyFixDataOwnership, value = value)
 suspend fun Context.saveDefaultBackupAll(value: Boolean) = saveStoreBoolean(key = KeyDefaultBackupAll, value = value)
 

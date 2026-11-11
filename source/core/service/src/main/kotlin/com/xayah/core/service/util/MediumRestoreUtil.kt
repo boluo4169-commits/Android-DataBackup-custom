@@ -19,6 +19,7 @@ import com.xayah.core.model.computeSnapshotPaths
 import com.xayah.core.model.database.MediaEntity
 import com.xayah.core.model.database.TaskDetailMediaEntity
 import com.xayah.core.model.resolveRestoreConflictArgs
+import com.xayah.core.model.shouldAskForStrategy
 import com.xayah.core.model.shouldCreateLocalSnapshot
 import com.xayah.core.model.util.formatSize
 import com.xayah.core.network.client.CloudClient
@@ -106,9 +107,20 @@ class MediumRestoreUtil @Inject constructor(
             // 冲突策略：干净恢复优先（开启时策略选择器置灰，参数退化为 --recursive-unlink）。
             // 参数一律由纯函数从枚举生成，绝不拼接外部自由文本进 root shell 命令。
             val cleanRestoring = context.readCleanRestoring().first()
-            val strategy = RestoreConflictStrategy.fromId(context.readMediaRestoreConflictStrategy().first())
-            var conflictArgs = resolveRestoreConflictArgs(cleanRestoring = cleanRestoring, strategy = strategy)
-            log { "Conflict strategy: $strategy (cleanRestoring=$cleanRestoring), tar args: $conflictArgs" }
+            val configuredStrategy = RestoreConflictStrategy.fromId(context.readMediaRestoreConflictStrategy().first())
+            log { "Conflict strategy: $configuredStrategy (cleanRestoring=$cleanRestoring)" }
+
+            // 「逐个问」：上一次弹窗点了取消 → 本次任务剩余目录一律跳过。
+            // 必须在算预览之前判断：没冲突的目录也要跳过，否则取消后又被恢复了一半。
+            if (configuredStrategy == RestoreConflictStrategy.ASK
+                && cleanRestoring.not()
+                && RestorePreviewConfirmation.isAskCancelled()
+            ) {
+                RestorePreviewConfirmation.markSkipped()
+                out.add(log { "Restore skipped by user (ask cancelled earlier): ${m.name}" })
+                t.updateInfo(state = OperationState.SKIP, log = out.toLineString())
+                return@run ShellResult(code = 0, input = listOf(), out = out)
+            }
 
             // 恢复前预览：列归档条目（只读）与本机目录比对，算出会被覆盖 / 跳过 / 留档的数量。
             // 列不出来时降级为「照常恢复」，绝不因为预览失败阻断恢复。
@@ -119,33 +131,74 @@ class MediumRestoreUtil @Inject constructor(
                 archiveEntries = archiveEntries,
                 dst = dst,
                 dstDir = dstDir,
-                strategy = strategy,
+                strategy = configuredStrategy,
                 cleanRestoring = cleanRestoring,
             )
-            val preview = previewData.preview
-            if (preview != null) {
-                RestorePreviewConfirmation.accumulate(preview)
-                out.add(log { "Conflict preview: $preview" })
+            // ASK 还没定策略，这份是「中性预览」：只用于弹窗展示冲突总数，不能直接进完成页统计。
+            val neutralPreview = previewData.preview
+
+            // 定下本目录真正生效的策略：ASK 临时问一次，其余沿用设置里的固定策略。
+            var effectiveStrategy = configuredStrategy
+            if (shouldAskForStrategy(configuredStrategy, cleanRestoring, neutralPreview)) {
+                val decision = RestorePreviewConfirmation.awaitStrategyDecision(
+                    RestoreAskRequest(
+                        name = m.name,
+                        preview = neutralPreview!!,
+                        lastStrategy = RestorePreviewConfirmation.lastChosenStrategy(),
+                    )
+                )
+                if (decision == null) {
+                    RestorePreviewConfirmation.markSkipped()
+                    out.add(log { "Restore skipped by user at ask: ${m.name}" })
+                    t.updateInfo(state = OperationState.SKIP, log = out.toLineString())
+                    return@run ShellResult(code = 0, input = listOf(), out = out)
+                }
+                effectiveStrategy = decision.strategy
+                out.add(log { "ASK decision: ${m.name} -> ${decision.strategy} (applyToAll=${decision.applyToAll})" })
+            } else {
+                // 用户在上一个目录点了取消 → 本次任务后续目录一律跳过（不弹第二次窗）。
+                // 只有「真的有冲突 / 会删文件 / 有排除项」时才需要弹清单确认。
+                val request = neutralPreview?.takeIf { it.needsConfirmation }?.let {
+                    RestorePreviewRequest(name = m.name, preview = it, strategy = configuredStrategy, cleanRestoring = cleanRestoring)
+                }
+                val confirmed = if (RestorePreviewConfirmation.isCancelled()) {
+                    false
+                } else if (request != null) {
+                    RestorePreviewConfirmation.awaitConfirm(request)
+                } else {
+                    true
+                }
+                if (confirmed.not()) {
+                    RestorePreviewConfirmation.markSkipped()
+                    out.add(log { "Restore skipped by user at preview: ${m.name}" })
+                    t.updateInfo(state = OperationState.SKIP, log = out.toLineString())
+                    return@run ShellResult(code = 0, input = listOf(), out = out)
+                }
             }
 
-            // 用户在上一个目录点了取消 → 本次任务后续目录一律跳过（不弹第二次窗）。
-            // 只有「真的有冲突 / 会删文件 / 有排除项」时才需要弹清单确认。
-            val request = preview?.takeIf { it.needsConfirmation }?.let {
-                RestorePreviewRequest(name = m.name, preview = it, strategy = strategy, cleanRestoring = cleanRestoring)
-            }
-            val confirmed = if (RestorePreviewConfirmation.isCancelled()) {
-                false
-            } else if (request != null) {
-                RestorePreviewConfirmation.awaitConfirm(request)
+            // 按最终生效的策略重算统计：ASK 时用户可能把「覆盖」改成「跳过 / 留档」，
+            // 直接用中性预览会让完成页数字与实际结果不符。
+            // ASK 未走询问通道时 tar 参数兜底是 --skip-old-files，统计也按跳过口径。
+            val statsStrategy = if (effectiveStrategy == RestoreConflictStrategy.ASK) {
+                RestoreConflictStrategy.SKIP
             } else {
-                true
+                effectiveStrategy
             }
-            if (confirmed.not()) {
-                RestorePreviewConfirmation.markSkipped()
-                out.add(log { "Restore skipped by user at preview: ${m.name}" })
-                t.updateInfo(state = OperationState.SKIP, log = out.toLineString())
-                return@run ShellResult(code = 0, input = listOf(), out = out)
+            val finalPreview = neutralPreview?.let {
+                computeConflictPreview(
+                    archiveEntries = archiveEntries.take(MAX_PREVIEW_ENTRIES),
+                    existingRelativePaths = previewData.existingRelativePaths,
+                    strategy = statsStrategy,
+                    cleanRestoring = cleanRestoring,
+                )
             }
+            if (finalPreview != null) {
+                RestorePreviewConfirmation.accumulate(finalPreview)
+                out.add(log { "Conflict preview: $finalPreview" })
+            }
+
+            var conflictArgs = resolveRestoreConflictArgs(cleanRestoring = cleanRestoring, strategy = effectiveStrategy)
+            log { "Effective conflict strategy: $effectiveStrategy, tar args: $conflictArgs" }
 
             // 方案②「本机快照版本」：两份都留时，先把会被覆盖的本机旧文件打包成一份归档并
             // 登记成护盾版本，再按普通覆盖解压。快照失败一律降级回 --backup=numbered，
@@ -154,10 +207,10 @@ class MediumRestoreUtil @Inject constructor(
             // 超过预览上限时只能看到前 MAX_PREVIEW_ENTRIES 条，部分打包会让后面的旧文件
             // 被覆盖却没进快照（用户以为「两份都留」实际丢了一半）。这种目录整体降级。
             val entriesTruncated = archiveEntries.size > MAX_PREVIEW_ENTRIES
-            if (entriesTruncated && shouldCreateLocalSnapshot(strategy, cleanRestoring, snapshotPaths)) {
+            if (entriesTruncated && shouldCreateLocalSnapshot(effectiveStrategy, cleanRestoring, snapshotPaths)) {
                 out.add(log { "Archive exceeds $MAX_PREVIEW_ENTRIES entries; skip local snapshot to avoid partial capture, fallback to --backup=numbered" })
             }
-            if (shouldCreateLocalSnapshot(strategy, cleanRestoring, snapshotPaths) && entriesTruncated.not()) {
+            if (shouldCreateLocalSnapshot(effectiveStrategy, cleanRestoring, snapshotPaths) && entriesTruncated.not()) {
                 if (createLocalSnapshot(m = m, dstDir = dstDir, snapshotPaths = snapshotPaths, out = out)) {
                     conflictArgs = ""
                     out.add(log { "KEEP_BOTH handled by local snapshot; tar args: (default overwrite)" })

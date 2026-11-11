@@ -46,6 +46,16 @@ class RestoreConflictStrategyTest {
         assertEquals(RestoreConflictStrategy.OVERWRITE, RestoreConflictStrategy.fromId(99))
         assertEquals(RestoreConflictStrategy.SKIP, RestoreConflictStrategy.fromId(1))
         assertEquals(RestoreConflictStrategy.KEEP_BOTH, RestoreConflictStrategy.fromId(2))
+        assertEquals(RestoreConflictStrategy.ASK, RestoreConflictStrategy.fromId(3))
+    }
+
+    @Test
+    fun ask_usesNonDestructiveFallback() {
+        // ASK 正常路径会被弹窗选出的策略覆盖；兜底必须是「不覆盖本机旧文件」的最保守参数
+        assertEquals(
+            "--skip-old-files",
+            resolveRestoreConflictArgs(false, RestoreConflictStrategy.ASK),
+        )
     }
 
     @Test

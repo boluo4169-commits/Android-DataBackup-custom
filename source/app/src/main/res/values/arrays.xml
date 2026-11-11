@@ -43,5 +43,6 @@
         <item>@string/media_restore_conflict_overwrite</item>
         <item>@string/media_restore_conflict_skip</item>
         <item>@string/media_restore_conflict_keep_both</item>
+        <item>@string/media_restore_conflict_ask</item>
     </string-array>
 </resources>

@@ -17,4 +17,13 @@
     <string name="restore_preview_hint">Cancel to skip this and all remaining directories. Confirm to continue with the current conflict strategy.</string>
     <string name="restore_preview_summary">Overwritten %1$d · Skipped %2$d · Kept both %3$d · Added %4$d · Deleted %5$d · Excluded %6$d</string>
     <string name="restore_preview_skipped_dirs">%1$d directory(-ies) skipped at your request</string>
+
+    <!-- Restore conflict: ask per directory (Phase 2 second batch / ASK) -->
+    <string name="restore_ask_title">Choose how to handle conflicts</string>
+    <string name="restore_ask_conflicts">%1$d conflicting file(s) already on this device</string>
+    <string name="restore_ask_overwrite">Replace (backup overwrites device)</string>
+    <string name="restore_ask_skip">Skip (keep device files)</string>
+    <string name="restore_ask_keep_both">Keep both (pack old files into a snapshot)</string>
+    <string name="restore_ask_apply_all">Apply to all remaining directories this time</string>
+    <string name="restore_ask_hint">Pick a rule for this directory. Cancel skips this directory and all remaining ones without extracting anything.</string>
 </resources>

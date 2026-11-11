@@ -124,6 +124,7 @@
     <string name="media_restore_conflict_overwrite">Replace</string>
     <string name="media_restore_conflict_skip">Skip</string>
     <string name="media_restore_conflict_keep_both">Keep both (pack old files into a restorable snapshot)</string>
+    <string name="media_restore_conflict_ask">Ask me every time (choose a rule per directory)</string>
     <string name="installed">Installed</string>
     <string name="sooner_or_later">Sooner or later</string>
     <string name="delete">Delete</string>

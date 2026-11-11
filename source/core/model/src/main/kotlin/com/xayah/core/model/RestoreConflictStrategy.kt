@@ -15,6 +15,13 @@ enum class RestoreConflictStrategy(val id: Int) {
 
     /** 旧文件改名成 `xxx.~1~` 保留，恢复出来的用原名。 */
     KEEP_BOTH(2),
+
+    /**
+     * 每次恢复遇到同名冲突时**临时问我**，让我给不同目录选不同规则。
+     * 这是「询问模式」而不是固定策略：实际 tar 参数由弹窗里选出的具体策略决定，
+     * 见 [RestoreAskDecision]。弹窗带「本次全部按这个来」，避免目录多时反复问。
+     */
+    ASK(3),
     ;
 
     companion object {
@@ -42,4 +49,8 @@ fun resolveRestoreConflictArgs(cleanRestoring: Boolean, strategy: RestoreConflic
         RestoreConflictStrategy.OVERWRITE -> "--overwrite"
         RestoreConflictStrategy.SKIP -> "--skip-old-files"
         RestoreConflictStrategy.KEEP_BOTH -> "--backup=numbered"
+        // ASK 是「询问模式」，正常路径下调用方会拿弹窗选出的具体策略重新生成本参数。
+        // 万一弹窗没走到（预览失败 / 决策通道异常），必须保住本机旧文件：
+        // 兜底用 --skip-old-files 而不是 --overwrite，宁可少覆盖也绝不静默覆盖用户数据。
+        RestoreConflictStrategy.ASK -> "--skip-old-files"
     }

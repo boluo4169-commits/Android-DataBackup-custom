@@ -91,7 +91,9 @@ fun computeConflictPreview(
 
     return when {
         cleanRestoring -> ConflictPreview(overwrite = conflicts, added = added, removed = removed, excluded = excluded)
-        strategy == RestoreConflictStrategy.OVERWRITE ->
+        // ASK 尚未选定策略，预览按「覆盖」口径给出冲突总数供弹窗展示；
+        // 用户选定后调用方会用具体策略重算一次，完成页统计不会用这份中性结果。
+        strategy == RestoreConflictStrategy.OVERWRITE || strategy == RestoreConflictStrategy.ASK ->
             ConflictPreview(overwrite = conflicts, added = added, excluded = excluded)
         strategy == RestoreConflictStrategy.SKIP ->
             ConflictPreview(skip = conflicts, added = added, excluded = excluded)

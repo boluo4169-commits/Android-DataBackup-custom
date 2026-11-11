@@ -120,6 +120,7 @@
     <string name="media_restore_conflict_overwrite">替换（备份覆盖本机）</string>
     <string name="media_restore_conflict_skip">跳过（保留本机，只补备份多出的文件）</string>
     <string name="media_restore_conflict_keep_both">两份都留（本机旧文件打包成可恢复的快照）</string>
+    <string name="media_restore_conflict_ask">每次问我（可为不同目录选不同规则）</string>
     <string name="installed">已安装</string>
     <string name="sooner_or_later">即将到来</string>
     <string name="delete">删除</string>

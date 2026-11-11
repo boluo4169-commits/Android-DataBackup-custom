@@ -18,6 +18,15 @@
     <string name="restore_preview_hint">取消则跳过本目录及其余目录，不解压任何内容；确认则按当前冲突策略继续。</string>
     <string name="restore_preview_summary">覆盖 %1$d · 跳过 %2$d · 留档 %3$d · 新增 %4$d · 删除 %5$d · 排除 %6$d</string>
     <string name="restore_preview_skipped_dirs">按你的要求跳过了 %1$d 个目录</string>
+
+    <!-- 恢复冲突「逐个问」（Phase 2 第二批 / ASK） -->
+    <string name="restore_ask_title">选择本目录的处理方式</string>
+    <string name="restore_ask_conflicts">本目录有 %1$d 个本机同名冲突文件</string>
+    <string name="restore_ask_overwrite">替换（备份覆盖本机）</string>
+    <string name="restore_ask_skip">跳过（保留本机文件）</string>
+    <string name="restore_ask_keep_both">两份都留（本机旧文件打包成快照）</string>
+    <string name="restore_ask_apply_all">本次剩余目录全部按这个来</string>
+    <string name="restore_ask_hint">为这个目录挑一条规则；取消则跳过本目录及其余目录，不解压任何内容。</string>
     <string name="_continue">继续</string>
     <string name="_protected">受保护</string>
     <string name="account">账户</string>

@@ -46,12 +46,16 @@ import androidx.compose.ui.res.vectorResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xayah.core.datastore.saveScreenOffCountDown
 import com.xayah.core.model.OperationState
+import com.xayah.core.model.RestoreAskDecision
+import com.xayah.core.model.RestoreConflictStrategy
 import com.xayah.core.ui.component.AnimatedTextContainer
 import com.xayah.core.ui.component.BodyLargeText
+import com.xayah.core.ui.component.CheckBoxItem
 import com.xayah.core.ui.component.HeadlineMediumText
 import com.xayah.core.ui.component.LocalSlotScope
 import com.xayah.core.ui.component.PackageIconImage
 import com.xayah.core.ui.component.ProcessingCard
+import com.xayah.core.ui.component.RadioItem
 import com.xayah.core.ui.component.SegmentCircularProgressIndicator
 import com.xayah.core.ui.component.Surface
 import com.xayah.core.ui.component.confirm
@@ -73,6 +77,9 @@ import com.xayah.core.util.navigateSingle
 import com.xayah.core.util.withMainContext
 import kotlinx.coroutines.ExperimentalCoroutinesApi
 import kotlinx.coroutines.delay
+
+/** 「逐个问」弹窗内的临时状态：选中的策略 id + 是否套用到本次剩余目录。 */
+private data class AskUiState(val strategyId: Int, val applyToAll: Boolean)
 
 @OptIn(ExperimentalAnimationGraphicsApi::class)
 @SuppressLint("StringFormatInvalid")
@@ -115,6 +122,7 @@ fun PageProcessing(
     val ssaidReminderTitle by viewModel.ssaidReminderTitle.collectAsStateWithLifecycle()
     val integrityRequest by viewModel.integrityRequest.collectAsStateWithLifecycle()
     val restorePreviewRequest by viewModel.restorePreviewRequest.collectAsStateWithLifecycle()
+    val restoreAskRequest by viewModel.restoreAskRequest.collectAsStateWithLifecycle()
     val restorePreviewTotal by viewModel.restorePreviewTotal.collectAsStateWithLifecycle()
     val restorePreviewSkippedDirs by viewModel.restorePreviewSkippedDirs.collectAsStateWithLifecycle()
 
@@ -173,6 +181,71 @@ fun PageProcessing(
                 text = text,
             )
             viewModel.decideRestorePreview(confirmed)
+        }
+    }
+
+    // 「逐个问」（策略 = ASK）：每个有冲突的目录弹一次，让用户临时挑规则。
+    // 与上面的预览确认互斥（同一时刻只会有一个请求非空），共用同一个 dialogSlot。
+    LaunchedEffect(restoreAskRequest) {
+        restoreAskRequest?.let { request ->
+            val p = request.preview
+            val options = listOf(
+                RestoreConflictStrategy.OVERWRITE to R.string.restore_ask_overwrite,
+                RestoreConflictStrategy.SKIP to R.string.restore_ask_skip,
+                RestoreConflictStrategy.KEEP_BOTH to R.string.restore_ask_keep_both,
+            )
+            val (dismissState, ui) = dialogState.open(
+                initialState = AskUiState(strategyId = request.lastStrategy.id, applyToAll = false),
+                title = context.getString(R.string.restore_ask_title),
+                contentHorizontalPadding = false,
+                block = { uiState ->
+                    Column {
+                        Text(
+                            modifier = Modifier.paddingHorizontal(SizeTokens.Level24),
+                            text = context.getString(R.string.restore_preview_dir, request.name),
+                        )
+                        Text(
+                            modifier = Modifier.paddingHorizontal(SizeTokens.Level24),
+                            text = context.getString(R.string.restore_ask_conflicts, p.conflicts),
+                        )
+                        if (p.added > 0) {
+                            Text(
+                                modifier = Modifier.paddingHorizontal(SizeTokens.Level24),
+                                text = context.getString(R.string.restore_preview_added, p.added),
+                            )
+                        }
+                        Spacer(modifier = Modifier.paddingTop(SizeTokens.Level8))
+                        options.forEach { (strategy, titleId) ->
+                            RadioItem(
+                                selected = uiState.value.strategyId == strategy.id,
+                                title = context.getString(titleId),
+                                desc = null,
+                            ) { uiState.value = uiState.value.copy(strategyId = strategy.id) }
+                        }
+                        CheckBoxItem(
+                            checked = uiState.value.applyToAll,
+                            title = context.getString(R.string.restore_ask_apply_all),
+                            desc = null,
+                        ) { uiState.value = uiState.value.copy(applyToAll = uiState.value.applyToAll.not()) }
+                        Text(
+                            modifier = Modifier
+                                .paddingHorizontal(SizeTokens.Level24)
+                                .paddingTop(SizeTokens.Level8),
+                            text = context.getString(R.string.restore_ask_hint),
+                        )
+                    }
+                },
+            )
+            viewModel.decideRestoreAsk(
+                if (dismissState.isConfirm) {
+                    RestoreAskDecision(
+                        strategy = RestoreConflictStrategy.fromId(ui.strategyId),
+                        applyToAll = ui.applyToAll,
+                    )
+                } else {
+                    null
+                }
+            )
         }
     }
 

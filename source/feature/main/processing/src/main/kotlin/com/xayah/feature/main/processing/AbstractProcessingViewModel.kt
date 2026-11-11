@@ -7,6 +7,7 @@ import com.xayah.core.data.repository.TaskRepository
 import com.xayah.core.datastore.readScreenOffCountDown
 import com.xayah.core.model.OperationState
 import com.xayah.core.model.ProcessingType
+import com.xayah.core.model.RestoreAskDecision
 import com.xayah.core.model.StorageMode
 import com.xayah.core.model.database.CloudEntity
 import com.xayah.core.model.database.TaskEntity
@@ -16,6 +17,7 @@ import com.xayah.core.service.util.ChecksumConfirmation
 import com.xayah.core.service.util.ChecksumMismatch
 import com.xayah.core.service.util.IntegrityConfirmation
 import com.xayah.core.service.util.IntegrityReport
+import com.xayah.core.service.util.RestoreAskRequest
 import com.xayah.core.service.util.RestorePreviewConfirmation
 import com.xayah.core.service.util.RestorePreviewRequest
 import com.xayah.core.service.util.SsaidRestoreReminder
@@ -214,6 +216,12 @@ abstract class AbstractProcessingViewModel(
 
     /** 用户在预览弹窗上点「确认 / 取消」。 */
     fun decideRestorePreview(confirmed: Boolean) = RestorePreviewConfirmation.decide(confirmed)
+
+    /** 「逐个问」弹窗请求（策略 = ASK 时由 medium 恢复 Service 在解压前挂起等待）。 */
+    val restoreAskRequest: StateFlow<RestoreAskRequest?> = RestorePreviewConfirmation.askRequest
+
+    /** 用户在「逐个问」弹窗里选了策略，或点了取消（null）。 */
+    fun decideRestoreAsk(decision: RestoreAskDecision?) = RestorePreviewConfirmation.decideStrategy(decision)
 
     /** 本次恢复累计的逐项统计，供完成页展示（不只是「成功 1/1」）。 */
     val restorePreviewTotal: StateFlow<ConflictPreview> = RestorePreviewConfirmation.total

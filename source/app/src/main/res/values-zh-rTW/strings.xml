@@ -111,6 +111,7 @@
     <string name="media_restore_conflict_overwrite">取代（備份覆蓋本機）</string>
     <string name="media_restore_conflict_skip">略過（保留本機，只補備份多出的檔案）</string>
     <string name="media_restore_conflict_keep_both">兩份都留（本機舊檔打包成可還原的快照）</string>
+    <string name="media_restore_conflict_ask">每次問我（可為不同目錄選不同規則）</string>
     <!-- 恢復前衝突預覽（Phase 2） -->
     <string name="restore_preview_title">復原前確認</string>
     <string name="restore_preview_dir">目錄：%1$s</string>
@@ -123,6 +124,14 @@
     <string name="restore_preview_hint">取消則跳過本目錄及其餘目錄，不解壓任何內容；確認則按目前衝突策略繼續。</string>
     <string name="restore_preview_summary">覆蓋 %1$d · 略過 %2$d · 留檔 %3$d · 新增 %4$d · 刪除 %5$d · 排除 %6$d</string>
     <string name="restore_preview_skipped_dirs">依你的要求跳過了 %1$d 個目錄</string>
+    <!-- 恢復衝突「逐個問」（Phase 2 第二批 / ASK） -->
+    <string name="restore_ask_title">選擇本目錄的處理方式</string>
+    <string name="restore_ask_conflicts">本目錄有 %1$d 個本機同名衝突檔案</string>
+    <string name="restore_ask_overwrite">取代（備份覆蓋本機）</string>
+    <string name="restore_ask_skip">略過（保留本機檔案）</string>
+    <string name="restore_ask_keep_both">兩份都留（本機舊檔打包成快照）</string>
+    <string name="restore_ask_apply_all">本次剩餘目錄全部按這個來</string>
+    <string name="restore_ask_hint">為這個目錄挑一條規則；取消則跳過本目錄及其餘目錄，不解壓任何內容。</string>
     <string name="installed">已安裝</string>
     <string name="sooner_or_later">即將到來</string>
     <string name="delete">刪除</string>

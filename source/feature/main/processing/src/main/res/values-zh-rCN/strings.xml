@@ -111,4 +111,12 @@
     <plurals name="items" formatted="false">
         <item quantity="other"><xliff:g id="COUNT_1">%d</xliff:g> 项</item>
     </plurals>
+    <!-- 一键流程完成页：系统数据逐项结果 -->
+    <string name="system_data_summary_title">系统数据</string>
+    <string name="system_data_summary_running">系统数据上传中…</string>
+    <string name="system_data_summary_ok">成功</string>
+    <string name="system_data_summary_failed">失败</string>
+    <string name="system_data_summary_item">%1$s：%2$s</string>
+    <string name="system_data_summary_count">%1$d / %2$d 项成功</string>
+    <string name="system_data_summary_no_cloud">未配置云端账号，系统数据未上传</string>
 </resources>

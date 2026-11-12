@@ -42,7 +42,8 @@ fun MediumRestoreProcessingGraph(skipSetup: Boolean = false) {
                 finishedTitleId = R.string.restore_completed,
                 finishedSubtitleId = R.string.args_files_restored,
                 finishedWithErrorsSubtitleId = R.string.args_files_restored_and_failed,
-                viewModel = viewModel
+                viewModel = viewModel,
+                showSystemDataSummary = skipSetup,
             )
         }
         composable(MainRoutes.MediumRestoreProcessingSetup.route) {

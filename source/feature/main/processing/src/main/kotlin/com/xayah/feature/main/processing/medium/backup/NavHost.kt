@@ -42,7 +42,8 @@ fun MediumBackupProcessingGraph(skipSetup: Boolean = false) {
                 finishedTitleId = R.string.backup_completed,
                 finishedSubtitleId = R.string.args_files_backed_up,
                 finishedWithErrorsSubtitleId = R.string.args_files_backed_up_and_failed,
-                viewModel = viewModel
+                viewModel = viewModel,
+                showSystemDataSummary = skipSetup,
             )
         }
         composable(MainRoutes.MediumBackupProcessingSetup.route) {

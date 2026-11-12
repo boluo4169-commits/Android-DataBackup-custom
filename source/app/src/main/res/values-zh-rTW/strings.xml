@@ -613,4 +613,12 @@
     <string name="system_data_call_log">通話記錄</string>
     <string name="system_data_sms">簡訊</string>
     <string name="system_data_wifi">WiFi 設定</string>
+    <!-- 一鍵流程完成頁：系統資料逐項結果 -->
+    <string name="system_data_summary_title">系統資料</string>
+    <string name="system_data_summary_running">系統資料上傳中…</string>
+    <string name="system_data_summary_ok">成功</string>
+    <string name="system_data_summary_failed">失敗</string>
+    <string name="system_data_summary_item">%1$s：%2$s</string>
+    <string name="system_data_summary_count">%1$d / %2$d 項成功</string>
+    <string name="system_data_summary_no_cloud">未設定雲端帳號，系統資料未上傳</string>
 </resources>

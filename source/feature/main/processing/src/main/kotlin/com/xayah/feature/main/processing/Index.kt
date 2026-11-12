@@ -45,6 +45,7 @@ import androidx.compose.ui.res.stringResource
 import androidx.compose.ui.res.vectorResource
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.xayah.core.datastore.saveScreenOffCountDown
+import dagger.hilt.android.EntryPointAccessors
 import com.xayah.core.model.OperationState
 import com.xayah.core.model.RestoreAskDecision
 import com.xayah.core.model.RestoreConflictStrategy
@@ -96,6 +97,8 @@ fun PageProcessing(
     finishedWithErrorsSubtitleId: Int,
     viewModel: AbstractProcessingViewModel,
     onFinished: () -> Unit = {},
+    /** 仅一键流程（skipSetup=true）的最终完成页为 true；普通流程不读系统数据状态，避免残留误显。 */
+    showSystemDataSummary: Boolean = false,
 ) {
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
@@ -125,6 +128,14 @@ fun PageProcessing(
     val restoreAskRequest by viewModel.restoreAskRequest.collectAsStateWithLifecycle()
     val restorePreviewTotal by viewModel.restorePreviewTotal.collectAsStateWithLifecycle()
     val restorePreviewSkippedDirs by viewModel.restorePreviewSkippedDirs.collectAsStateWithLifecycle()
+
+    // 一键流程的系统数据由 @Singleton 协调器在引导页 / FinishSetup 时启动，结果不进 TaskEntity。
+    // 完成页直接读它，逐项如实显示；普通流程（showSystemDataSummary=false）不会渲染这块。
+    val systemDataCoordinator = remember(context) {
+        EntryPointAccessors.fromApplication(context.applicationContext, SystemDataEntryPoint::class.java).coordinator()
+    }
+    val sdBackup by systemDataCoordinator.backupState.collectAsStateWithLifecycle()
+    val sdRestore by systemDataCoordinator.restoreState.collectAsStateWithLifecycle()
 
     LaunchedEffect(null) {
         viewModel.emitIntentOnIO(ProcessingUiIntent.Initialize)
@@ -499,6 +510,61 @@ fun PageProcessing(
                         text = context.getString(R.string.restore_preview_skipped_dirs, restorePreviewSkippedDirs),
                         color = ThemedColorSchemeKeyTokens.OnSurfaceVariant.value,
                     )
+                }
+                // 一键流程完成页：系统数据（短信/通话/WiFi）的逐项结果。
+                // 只有一键流程的最终完成页传 true，普通备份/恢复不渲染，避免把上一次流程的残留结果误报成本次。
+                if (showSystemDataSummary && uiState.state == OperationState.DONE) {
+                    val isRestoreTask = task?.opType == com.xayah.core.model.OpType.RESTORE
+                    val items = if (isRestoreTask) {
+                        sdRestore.results.map { it.item.labelResId() to (it.success && it.pending == null) }
+                    } else {
+                        sdBackup.results.map { it.item.labelResId() to it.success }
+                    }
+                    val running = if (isRestoreTask) sdRestore.running else sdBackup.running
+                    val noCloud = !isRestoreTask && sdBackup.error != null
+                    if (running || items.isNotEmpty() || noCloud) {
+                        BodyLargeText(
+                            modifier = Modifier.paddingBottom(SizeTokens.Level4),
+                            text = stringResource(id = R.string.system_data_summary_title),
+                            color = ThemedColorSchemeKeyTokens.Primary.value,
+                        )
+                        when {
+                            running -> BodyLargeText(
+                                modifier = Modifier.paddingBottom(SizeTokens.Level12),
+                                text = stringResource(id = R.string.system_data_summary_running),
+                                color = ThemedColorSchemeKeyTokens.OnSurfaceVariant.value,
+                            )
+
+                            noCloud -> BodyLargeText(
+                                modifier = Modifier.paddingBottom(SizeTokens.Level12),
+                                text = stringResource(id = R.string.system_data_summary_no_cloud),
+                                color = ThemedColorSchemeKeyTokens.Error.value,
+                            )
+
+                            else -> {
+                                items.forEach { (nameResId, success) ->
+                                    BodyLargeText(
+                                        modifier = Modifier.paddingBottom(SizeTokens.Level4),
+                                        text = stringResource(
+                                            id = R.string.system_data_summary_item,
+                                            stringResource(id = nameResId),
+                                            stringResource(id = if (success) R.string.system_data_summary_ok else R.string.system_data_summary_failed),
+                                        ),
+                                        color = if (success) ThemedColorSchemeKeyTokens.OnSurfaceVariant.value else ThemedColorSchemeKeyTokens.Error.value,
+                                    )
+                                }
+                                BodyLargeText(
+                                    modifier = Modifier.paddingBottom(SizeTokens.Level12),
+                                    text = stringResource(
+                                        id = R.string.system_data_summary_count,
+                                        items.count { it.second },
+                                        items.size,
+                                    ),
+                                    color = ThemedColorSchemeKeyTokens.Primary.value,
+                                )
+                            }
+                        }
+                    }
                 }
             }
 

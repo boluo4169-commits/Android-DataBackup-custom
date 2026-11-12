@@ -123,6 +123,17 @@
     <item name="preserve_media_backups_desc" type="string" />
     <item name="max_preserve_media_count" type="string" />
     <item name="max_preserve_media_count_desc" type="string" />
+    <!-- 文件备份策略（Phase 2）：三选一 + 每项说明，运行时由 app 模块同名资源覆盖 -->
+    <item name="media_backup_strategy" type="string" />
+    <item name="media_backup_strategy_desc" type="string" />
+    <item name="media_backup_strategy_replace" type="string" />
+    <item name="media_backup_strategy_skip" type="string" />
+    <item name="media_backup_strategy_copy" type="string" />
+    <item name="media_backup_strategy_replace_desc" type="string" />
+    <item name="media_backup_strategy_skip_desc" type="string" />
+    <item name="media_backup_strategy_copy_desc" type="string" />
+    <item name="media_backup_strategy_options" type="array" />
+    <item name="media_backup_strategy_descs" type="array" />
     <item name="cloud_pkg_only_dir" type="string" />
     <item name="cloud_pkg_only_dir_desc" type="string" />
     <item name="cloud_pkg_only_dir_help" type="string" />

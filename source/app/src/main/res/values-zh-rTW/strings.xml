@@ -554,7 +554,16 @@
     <string name="preserve_media_backups">檔案保留歷史備份</string>
     <string name="preserve_media_backups_desc">檔案目錄可能很大，預設關閉。雲端來源不參與增量備份，每備份一次都會多留一個歷史版本（不超過下方上限），請注意雲端容量。</string>
     <string name="max_preserve_media_count">檔案歷史版本上限</string>
-    <string name="max_preserve_media_count_desc">超出此數量的最舊版本會自動刪除</string>
+    <string name="max_preserve_media_count_desc">僅「複製」策略生效。超出此數量的最舊版本會自動刪除</string>
+    <!-- 檔案備份策略（Phase 2）：順序與 MediaBackupStrategy.id 一致 -->
+    <string name="media_backup_strategy">檔案備份策略</string>
+    <string name="media_backup_strategy_desc">該目錄已有備份時怎麼處理。注意：內容沒變化時無論選哪種策略都會自動跳過打包（增量備份），與下面的「跳過」不是一回事；雲端來源不參與增量，選「複製」時每備份一次都會多一個歷史版本，請注意雲端容量。</string>
+    <string name="media_backup_strategy_replace">取代</string>
+    <string name="media_backup_strategy_skip">跳過</string>
+    <string name="media_backup_strategy_copy">複製</string>
+    <string name="media_backup_strategy_replace_desc">每次都用最新內容覆蓋舊備份，佔用最小，行為與之前一致。</string>
+    <string name="media_backup_strategy_skip_desc">該目錄已有備份就跳過本次，保留已有的那份；與「內容沒變自動跳過」不是一回事。</string>
+    <string name="media_backup_strategy_copy_desc">把舊備份留成歷史版本，新的作為主版本，恢復時可任選版本；佔用最多，上限見下方設定。</string>
     <string name="preserve_backups_desc">開啟後每次備份自動保留歷史版本，不覆蓋之前的備份</string>
     <string name="preserve_backups_help">開啟後，每次備份都會保留歷史版本：\n\n• 最新一次備份 = 正常版本（無護盾標記）\n• 之前的備份 = 受保護版本，護盾內顯示序號，護盾 1 是最近一次被覆蓋的版本，數字越大越舊\n• 超過「最大保留版本數」時，最舊的版本會自動刪除</string>
     <string name="cloud_pkg_only_dir">雲端目錄僅用套件名稱</string>

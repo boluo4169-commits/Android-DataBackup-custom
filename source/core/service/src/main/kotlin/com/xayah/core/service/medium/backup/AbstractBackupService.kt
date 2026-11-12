@@ -5,14 +5,17 @@ import com.xayah.core.common.util.toLineString
 import com.xayah.core.datastore.readBackupConfigs
 import com.xayah.core.datastore.readBackupItself
 import com.xayah.core.datastore.readMaxPreserveMediaCount
-import com.xayah.core.datastore.readPreserveMediaBackups
+import com.xayah.core.datastore.readMediaBackupStrategy
 import com.xayah.core.datastore.readResetBackupList
 import com.xayah.core.datastore.saveLastBackupTime
 import com.xayah.core.model.DataType
+import com.xayah.core.model.MediaBackupStrategy
 import com.xayah.core.model.OpType
 import com.xayah.core.model.OperationState
 import com.xayah.core.model.pickExpiredPreserves
 import com.xayah.core.model.sanitizeMaxPreserveMediaCount
+import com.xayah.core.model.shouldArchiveMainBackup
+import com.xayah.core.model.shouldSkipExistingBackup
 import com.xayah.core.model.ProcessingInfoType
 import com.xayah.core.model.ProcessingType
 import com.xayah.core.model.TaskType
@@ -156,8 +159,8 @@ internal abstract class AbstractBackupService : AbstractMediumService() {
         // createTargetDirs() before readStatFs().
         mTaskEntity.update(rawBytes = mTaskRepo.getRawBytes(TaskType.MEDIA), availableBytes = mTaskRepo.getAvailableBytes(OpType.BACKUP), totalBytes = mTaskRepo.getTotalBytes(OpType.BACKUP), totalCount = mMediaEntities.size)
         log { "Task count: ${mMediaEntities.size}." }
-        val preserveMediaBackups = mContext.readPreserveMediaBackups().first()
-        log { "Preserve media backups: $preserveMediaBackups" }
+        val strategy = mContext.readMediaBackupStrategy().first()
+        log { "Media backup strategy: $strategy" }
 
         mMediaEntities.forEachIndexed { index, media ->
             executeAtLeast {
@@ -173,17 +176,25 @@ internal abstract class AbstractBackupService : AbstractMediumService() {
 
                 media.update(state = OperationState.PROCESSING)
                 val m = media.mediaEntity
+
+                // 三种策略共用「是否已有主备份」判定。SKIP 必须在创建目录 / 打包 / 上传之前
+                // 早退，否则云端会白建一次远端目录、本地也会留下空的暂存目录。
+                val mainRestore = mMediaDao.query(
+                    OpType.RESTORE, 0L, m.name, m.indexInfo.compressionType, mTaskEntity.cloud, mTaskEntity.backupDir,
+                )
+                if (shouldSkipExistingBackup(strategy, mainRestore != null)) {
+                    media.update(state = OperationState.SKIP)
+                    log { "Skipped by SKIP strategy: ${m.name} (existing main backup kept)" }
+                    return@executeAtLeast
+                }
+
                 val dstDir = "${mFilesDir}/${m.archivesRelativeDir}"
                 var restoreEntity = mMediaDao.query(OpType.RESTORE, m.preserveId, m.name, m.indexInfo.compressionType, mTaskEntity.cloud, mTaskEntity.backupDir)
                 mRootService.mkdirs(dstDir)
                 if (onFileDirCreated(archivesRelativeDir = m.archivesRelativeDir)) {
-                    // 只在开关打开且数据库里确实有主版本记录时归档。没有记录（首次备份 /
-                    // 手动拷入的目录）就照常覆盖，避免凭空造出历史版本。
-                    val existingMain = if (preserveMediaBackups) {
-                        mMediaDao.query(OpType.RESTORE, 0L, m.name, m.indexInfo.compressionType, mTaskEntity.cloud, mTaskEntity.backupDir)
-                    } else {
-                        null
-                    }
+                    // 只有 COPY 且数据库里确实有主版本记录时归档。首次备份 / 手动拷入的目录
+                    // 照常覆盖，避免凭空造出历史版本。
+                    val existingMain = if (shouldArchiveMainBackup(strategy, mainRestore != null)) mainRestore else null
                     val beforeCompress: suspend () -> Unit = {
                         if (existingMain != null) archiveMainMediaBackup(existingMain)
                         Unit
@@ -283,7 +294,8 @@ internal abstract class AbstractBackupService : AbstractMediumService() {
     override suspend fun afterPostProcessing() {
         // 文件「保留历史备份」：按上限清理最旧的历史版本（本地 / 云端由子类分流）。
         // 单个目录清理失败只记日志，不影响其它目录与本次备份结果。
-        if (mContext.readPreserveMediaBackups().first()) {
+        // 只有「复制」策略会产生历史版本；替换 / 跳过都没必要跑一次清理。
+        if (mContext.readMediaBackupStrategy().first() == MediaBackupStrategy.COPY) {
             val maxCount = sanitizeMaxPreserveMediaCount(mContext.readMaxPreserveMediaCount().first())
             mMediaEntities.forEach { media ->
                 val m = media.mediaEntity

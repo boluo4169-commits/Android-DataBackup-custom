@@ -558,7 +558,16 @@ Off by default. If your drive limits a single file to 4 GB, 2 GB is a safe choic
     <string name="preserve_media_backups">Preserve file backup history</string>
     <string name="preserve_media_backups_desc">Off by default because file directories can be huge. Cloud sources do not use incremental backup, so every backup adds a version (capped by the limit below) — watch your cloud storage.</string>
     <string name="max_preserve_media_count">Max file history versions</string>
-    <string name="max_preserve_media_count_desc">The oldest file versions beyond this count are deleted automatically</string>
+    <string name="max_preserve_media_count_desc">Only used by the Copy strategy. The oldest versions beyond this count are deleted automatically</string>
+    <!-- 文件备份策略（Phase 2）：顺序与 MediaBackupStrategy.id 一致 -->
+    <string name="media_backup_strategy">File backup strategy</string>
+    <string name="media_backup_strategy_desc">What to do when a directory already has a backup. Regardless of this choice, unchanged content is always skipped by incremental backup; cloud sources do not use incremental backup, so choosing Copy adds a version on every run — watch your cloud storage.</string>
+    <string name="media_backup_strategy_replace">Replace</string>
+    <string name="media_backup_strategy_skip">Skip</string>
+    <string name="media_backup_strategy_copy">Copy</string>
+    <string name="media_backup_strategy_replace_desc">Always overwrite the old backup with the latest content. Uses the least space.</string>
+    <string name="media_backup_strategy_skip_desc">If this directory already has a backup, skip this run and keep the existing one. Different from the automatic skip when content is unchanged.</string>
+    <string name="media_backup_strategy_copy_desc">Keep the old backup as a history version and make the new one the main backup. Restorable by version; uses the most space.</string>
     <string name="preserve_backups_desc">Keep a new version for every backup instead of overwriting the previous one</string>
     <string name="preserve_backups_help">When enabled, every backup keeps a history:\n\n• The latest backup is the normal version (no shield)\n• Older backups become protected, with a shield numbered from 1 (the most recently replaced), larger numbers mean older\n• Versions beyond the max count are deleted automatically</string>
     <string name="cloud_pkg_only_dir">Package name only for cloud directories</string>

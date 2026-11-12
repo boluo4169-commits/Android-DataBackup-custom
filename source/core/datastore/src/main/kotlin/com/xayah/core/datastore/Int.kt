@@ -3,6 +3,8 @@ package com.xayah.core.datastore
 import android.content.Context
 import androidx.datastore.preferences.core.intPreferencesKey
 import com.xayah.core.datastore.ConstantUtil.DEFAULT_IDLE_TIMEOUT
+import com.xayah.core.model.MediaBackupStrategy
+import kotlinx.coroutines.flow.combine
 
 // -----------------------------------------Keys-----------------------------------------
 val KeyScreenOffCountDown = intPreferencesKey("screen_off_count_down")
@@ -17,6 +19,8 @@ val KeySortIndexApps = intPreferencesKey("sort_index_apps")
 val KeySortIndexFiles = intPreferencesKey("sort_index_files")
 /** 文件恢复遇到本机已有同名文件时的策略，存 [RestoreConflictStrategy.id]（默认 0 = 替换）。 */
 val KeyMediaRestoreConflictStrategy = intPreferencesKey("media_restore_conflict_strategy")
+/** 文件备份遇到已有主备份时的策略，存 [MediaBackupStrategy.id]（默认 0 = 替换）。 */
+val KeyMediaBackupStrategy = intPreferencesKey("media_backup_strategy")
 
 
 // -----------------------------------------Read-----------------------------------------
@@ -33,6 +37,22 @@ fun Context.readSortIndexFiles() = readStoreInt(key = KeySortIndexFiles, defValu
 /** 返回策略 id；用 `RestoreConflictStrategy.fromId()` 转换，未知值自动回落到「替换」。 */
 fun Context.readMediaRestoreConflictStrategy() = readStoreInt(key = KeyMediaRestoreConflictStrategy, defValue = 0)
 
+/**
+ * 文件备份策略。Phase 2 之前是布尔开关 `KeyPreserveMediaBackups`；新键从未写入时
+ * 按旧开关兼容读（true → COPY），老用户升级后不会悄悄丢掉「保留历史备份」设置。
+ * 用户在设置页选过一次后新键生效，旧开关便不再参与。
+ */
+fun Context.readMediaBackupStrategy() = combine(
+    readStoreInt(key = KeyMediaBackupStrategy, defValue = -1),
+    readStoreBoolean(key = KeyPreserveMediaBackups, defValue = false),
+) { raw, legacy ->
+    when {
+        raw >= 0 -> MediaBackupStrategy.fromId(raw)
+        legacy -> MediaBackupStrategy.COPY
+        else -> MediaBackupStrategy.REPLACE
+    }
+}
+
 
 // -----------------------------------------Write-----------------------------------------
 suspend fun Context.saveScreenOffCountDown(value: Int) = saveStoreInt(key = KeyScreenOffCountDown, value = value)
@@ -46,3 +66,4 @@ suspend fun Context.saveMaxPreserveMediaCount(value: Int) = saveStoreInt(key = K
 suspend fun Context.saveSortIndexApps(value: Int) = saveStoreInt(key = KeySortIndexApps, value = value)
 suspend fun Context.saveSortIndexFiles(value: Int) = saveStoreInt(key = KeySortIndexFiles, value = value)
 suspend fun Context.saveMediaRestoreConflictStrategy(id: Int) = saveStoreInt(key = KeyMediaRestoreConflictStrategy, value = id)
+suspend fun Context.saveMediaBackupStrategy(id: Int) = saveStoreInt(key = KeyMediaBackupStrategy, value = id)

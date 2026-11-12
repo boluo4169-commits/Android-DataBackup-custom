@@ -40,7 +40,7 @@ import com.xayah.core.datastore.KeyCloudPkgOnlyDir
 import com.xayah.core.datastore.KeyCompressionTest
 import com.xayah.core.datastore.KeyFollowSymlinks
 import com.xayah.core.datastore.KeyPreserveBackups
-import com.xayah.core.datastore.KeyPreserveMediaBackups
+import com.xayah.core.datastore.readMediaBackupStrategy
 import com.xayah.core.datastore.readCompressionLevel
 import com.xayah.core.datastore.readCompressionThreads
 import com.xayah.core.datastore.readCompressionType
@@ -49,7 +49,7 @@ import com.xayah.core.datastore.readKillAppOption
 import com.xayah.core.datastore.readMaxPreserveCount
 import com.xayah.core.datastore.readMaxPreserveMediaCount
 import com.xayah.core.datastore.readPreserveBackups
-import com.xayah.core.datastore.readPreserveMediaBackups
+import com.xayah.core.datastore.saveMediaBackupStrategy
 import com.xayah.core.datastore.saveCompressionLevel
 import com.xayah.core.datastore.saveCompressionThreads
 import com.xayah.core.datastore.saveCloudSplitSize
@@ -59,6 +59,7 @@ import com.xayah.core.datastore.saveMaxPreserveMediaCount
 import com.xayah.core.model.CompressionType
 import com.xayah.core.model.CloudSplitSize
 import com.xayah.core.model.KillAppOption
+import com.xayah.core.model.MediaBackupStrategy
 import com.xayah.core.model.util.indexOf
 import com.xayah.core.ui.component.InnerBottomSpacer
 import com.xayah.core.ui.component.LocalSlotScope
@@ -292,18 +293,37 @@ fun PageBackupSettings() {
                     }
                 }
 
-                // 文件备份留历史：独立开关（默认关、上限默认 2），不复用上面应用侧那个
-                // 默认开、上限 3 的开关 —— 文件目录动辄几十 GB，不能升级后悄悄多占几倍空间。
-                val preserveMediaBackups by context.readPreserveMediaBackups().collectAsStateWithLifecycle(initialValue = false)
-                Switchable(
-                    key = KeyPreserveMediaBackups,
-                    defValue = false,
-                    title = stringResource(id = R.string.preserve_media_backups),
-                    checkedText = stringResource(id = R.string.preserve_media_backups_desc),
-                )
+                // 文件备份策略（Phase 2）：三选一取代 Phase 1 的布尔开关，上限只在「复制」时有意义。
+                val strategyOptions = stringArrayResource(id = R.array.media_backup_strategy_options)
+                val strategyDescs = stringArrayResource(id = R.array.media_backup_strategy_descs)
+                val strategyDialogItems by remember(strategyOptions, strategyDescs) {
+                    mutableStateOf(strategyOptions.mapIndexed { index, s ->
+                        DialogRadioItem(
+                            enum = MediaBackupStrategy.fromId(index),
+                            title = s,
+                            desc = strategyDescs.getOrNull(index),
+                        )
+                    })
+                }
+                val mediaBackupStrategy by context.readMediaBackupStrategy()
+                    .collectAsStateWithLifecycle(initialValue = MediaBackupStrategy.DEFAULT)
+                Selectable(
+                    title = stringResource(id = R.string.media_backup_strategy),
+                    value = stringResource(id = R.string.media_backup_strategy_desc),
+                    current = strategyOptions[mediaBackupStrategy.id],
+                ) {
+                    val (state, selectedIndex) = dialogState.select(
+                        title = context.getString(R.string.media_backup_strategy),
+                        defIndex = mediaBackupStrategy.id,
+                        items = strategyDialogItems,
+                    )
+                    if (state.isConfirm) {
+                        context.saveMediaBackupStrategy(strategyDialogItems[selectedIndex].enum!!.id)
+                    }
+                }
 
                 AnimatedVisibility(
-                    visible = preserveMediaBackups,
+                    visible = mediaBackupStrategy == MediaBackupStrategy.COPY,
                     enter = expandVertically() + fadeIn(),
                     exit = shrinkVertically() + fadeOut(),
                 ) {

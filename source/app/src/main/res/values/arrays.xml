@@ -45,4 +45,15 @@
         <item>@string/media_restore_conflict_keep_both</item>
         <item>@string/media_restore_conflict_ask</item>
     </string-array>
+    <!-- 顺序必须与 MediaBackupStrategy.id 一致：0 替换 / 1 跳过 / 2 复制 -->
+    <string-array name="media_backup_strategy_options">
+        <item>@string/media_backup_strategy_replace</item>
+        <item>@string/media_backup_strategy_skip</item>
+        <item>@string/media_backup_strategy_copy</item>
+    </string-array>
+    <string-array name="media_backup_strategy_descs">
+        <item>@string/media_backup_strategy_replace_desc</item>
+        <item>@string/media_backup_strategy_skip_desc</item>
+        <item>@string/media_backup_strategy_copy_desc</item>
+    </string-array>
 </resources>

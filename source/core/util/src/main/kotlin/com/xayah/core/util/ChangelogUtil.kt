@@ -40,7 +40,9 @@ private val RULE_REGEX = Regex("""^([-*_]\s*){3,}$""")
 private fun needsSpaceBetween(prev: String, next: String): Boolean {
     fun isAsciiWord(c: Char?) = c != null && c.code < 128 && (c.isLetterOrDigit() || c == '_')
     // 中文之间直接连，英文/数字之间补空格，避免 "word"+"next" 变成 "wordnext"
-    return isAsciiWord(prev.lastOrNull()) || isAsciiWord(next.firstOrNull())
+    // 只有两侧都是 ASCII 词字符（英文/数字/下划线）才补空格。用 || 会在
+    // "修复了 v3" + "个问题"、"版本 1.0" + "。说明" 这类混排边界凭空插空格。
+    return isAsciiWord(prev.lastOrNull()) && isAsciiWord(next.firstOrNull())
 }
 
 fun parseChangelog(markdown: String): List<ChangelogVersion> {
@@ -51,6 +53,7 @@ fun parseChangelog(markdown: String): List<ChangelogVersion> {
     var sectionTitle: String? = null
     var items = mutableListOf<String>()
     var inCodeBlock = false
+    var inComment = false
 
     fun flushSection() {
         val title = sectionTitle ?: return
@@ -81,8 +84,24 @@ fun parseChangelog(markdown: String): List<ChangelogVersion> {
 
         // 这些是版式标记，不是条目也不是续行。旧实现会把 `> [!warning]` 之类
         // 引用块直接拼到上一条条目末尾，更新日志页里出现一坨方括号提示。
-        if (line.startsWith(">") || line.startsWith("%%") || line.startsWith("<!--")
-            || line.endsWith("-->") || line.startsWith("|") || RULE_REGEX.matches(line)
+        // 注释可能跨行（`<!--` / `%%` 单独起行），中间行必须一并跳过，
+        // 否则 "- 维护者说明" 会被当成新条目、正文被拼进上一条目。
+        val startsHtml = line.startsWith("<!--")
+        val endsHtml = line.endsWith("-->")
+        val startsObsidian = line.startsWith("%%")
+        val endsObsidian = line.length > 2 && line.endsWith("%%")
+        if (inComment) {
+            // `%%` 单独成行既是常见写法也可能是结束标记，不能用 endsObsidian
+            // （它要求长度 > 2，会把独立的 %% 排除掉，导致注释永不退出）。
+            if (endsHtml || line.endsWith("%%")) inComment = false
+            return@forEach
+        }
+        if ((startsHtml && endsHtml.not()) || (startsObsidian && endsObsidian.not())) {
+            inComment = true
+            return@forEach
+        }
+        if (startsHtml || startsObsidian || endsHtml || line.startsWith(">")
+            || line.startsWith("|") || RULE_REGEX.matches(line)
         ) return@forEach
 
         val versionMatch = VERSION_REGEX.find(line)

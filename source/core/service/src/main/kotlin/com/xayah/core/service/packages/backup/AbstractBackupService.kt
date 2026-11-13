@@ -160,7 +160,7 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
         var archived = existingMain.copy(indexInfo = existingMain.indexInfo.copy(preserveId = preserveId))
         var dst = "${mAppsDir}/${preserveArchiveRelativeDir(srcRel, preserveId)}"
         while (mRootService.exists(dst)) {
-            preserveId++
+            preserveId = DateUtil.nextPreserveTimestamp(preserveId)
             archived = existingMain.copy(indexInfo = existingMain.indexInfo.copy(preserveId = preserveId))
             dst = "${mAppsDir}/${preserveArchiveRelativeDir(srcRel, preserveId)}"
         }
@@ -182,8 +182,12 @@ internal abstract class AbstractBackupService : AbstractPackagesService() {
     protected open suspend fun deleteArchiveDir(old: PackageEntity) {
         val dirNew = "${mAppsDir}/${old.archivesRelativeDir}"
         val dir = if (mRootService.exists(dirNew)) dirNew else "${mAppsDir}/${old.legacyArchivesRelativeDir}"
-        mRootService.deleteRecursively(dir)
-        mPackageDao.delete(old.id)
+        // 删除失败时保留 DB 记录，否则目录还在、记录先没了，下次扫描会把它读回成新版本。
+        if (mRootService.deleteRecursively(dir)) {
+            mPackageDao.delete(old.id)
+        } else {
+            log { "Failed to delete preserved backup dir, keeping DB record: $dir" }
+        }
     }
 
     protected abstract val mPackagesBackupUtil: PackagesBackupUtil

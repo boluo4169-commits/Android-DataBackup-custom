@@ -8,6 +8,7 @@ import java.text.SimpleDateFormat
 import java.time.Instant
 import java.time.LocalDateTime
 import java.time.ZoneId
+import java.time.format.DateTimeFormatter
 import java.time.temporal.ChronoUnit
 import java.util.Date
 import java.util.Locale
@@ -32,8 +33,22 @@ object DateUtil {
      * 秒级精度，避免同一分钟内多次备份导致目录名冲突。
      */
     fun getPreserveTimestamp(): Long = runCatching {
-        SimpleDateFormat("yyyyMMddHHmmss", Locale.getDefault()).format(Date()).toLong()
+        // 强制 Locale.US：部分 Locale（如 ar）会输出非 ASCII 数字，toLong() 抛异常后
+        // 兜底成 13 位毫秒戳，与 14 位戳混排会让版本裁剪按数值排错顺序。
+        SimpleDateFormat("yyyyMMddHHmmss", Locale.US).format(Date()).toLong()
     }.getOrDefault(getTimestamp())
+
+    /**
+     * 同一秒内撞名时取「下一个真实秒」，而不是数值 +1。
+     * 直接 ++ 会把 `20261112125959` 变成 `...60`（秒=60 的非法时间），跨分钟时还会与
+     * 真实备份撞名；按日历加一秒既保证格式合法，也保持与 14 位戳的单调性。
+     */
+    fun nextPreserveTimestamp(current: Long): Long = runCatching {
+        val s = current.toString()
+        if (s.length != 14) return@runCatching current + 1
+        val formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss", Locale.US)
+        LocalDateTime.parse(s, formatter).plusSeconds(1).format(formatter).toLong()
+    }.getOrDefault(current + 1)
 
     /**
      * 把 preserveId 格式化成可读时间。兼容 yyyyMMddHHmmss（秒）、yyyyMMddHHmm（分钟，旧）和毫秒时间戳（旧备份）。

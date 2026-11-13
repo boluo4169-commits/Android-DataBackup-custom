@@ -91,6 +91,8 @@ class DataMigrationViewModel @Inject constructor(
                 filesRepo.activateAllForRestore(cloudName, backupDir)
                 // 与一键备份同口径：恢复引导页的系统数据也回到默认全选，不沿用上一轮的关闭状态
                 systemData.resetSelection()
+                // 同时清掉上一轮恢复的逐项结果，避免完成页把旧流程的结果误报成本次。
+                systemData.resetRestoreState()
                 null
             }.getOrElse { "FAILED" }
         }

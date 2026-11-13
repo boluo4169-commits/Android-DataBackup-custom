@@ -152,7 +152,12 @@ class ListViewModel @Inject constructor(
             Target.Files -> {
                 when (opType) {
                     OpType.BACKUP -> {
-                        navController.navigateSingle(MainRoutes.MediumBackupProcessingGraph.route)
+                        navController.navigateSingle(
+                            MainRoutes.MediumBackupProcessingGraph.getRoute(
+                                cloudName = cloudName.ifEmptyEncodeURLWithSpace(),
+                                backupDir = backupDir.ifEmptyEncodeURLWithSpace()
+                            )
+                        )
                     }
 
                     OpType.RESTORE -> {

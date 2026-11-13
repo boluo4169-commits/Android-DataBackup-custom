@@ -413,7 +413,7 @@ class FilesRepo @Inject constructor(
         var protectedFile = file.copy(indexInfo = file.indexInfo.copy(preserveId = preserveId))
         var dst = "${fileDir}/${protectedFile.archivesRelativeDir}"
         while (rootService.exists(dst)) {
-            preserveId++
+            preserveId = DateUtil.nextPreserveTimestamp(preserveId)
             protectedFile = file.copy(indexInfo = file.indexInfo.copy(preserveId = preserveId))
             dst = "${fileDir}/${protectedFile.archivesRelativeDir}"
         }
@@ -431,7 +431,7 @@ class FilesRepo @Inject constructor(
             var protectedFile = file.copy(indexInfo = file.indexInfo.copy(preserveId = preserveId))
             var dst = "${remoteFilesDir}/${protectedFile.archivesRelativeDir}"
             while (client.exists(dst)) {
-                preserveId++
+                preserveId = DateUtil.nextPreserveTimestamp(preserveId)
                 protectedFile = file.copy(indexInfo = file.indexInfo.copy(preserveId = preserveId))
                 dst = "${remoteFilesDir}/${protectedFile.archivesRelativeDir}"
             }

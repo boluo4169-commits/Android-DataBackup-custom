@@ -25,6 +25,7 @@ import com.xayah.core.ui.route.MainRoutes
 import com.xayah.core.ui.viewmodel.IndexUiEffect
 import com.xayah.core.util.LogUtil
 import com.xayah.core.util.navigateSingle
+import com.xayah.core.util.ifEmptyEncodeURLWithSpace
 import com.xayah.core.util.maybePopBackAndNavigateSingle
 import com.xayah.feature.main.processing.AbstractPackagesProcessingViewModel
 import com.xayah.feature.main.processing.FinishSetup
@@ -65,6 +66,12 @@ class BackupViewModelImpl @Inject constructor(
 
     /** 一键备份流程：应用备份完成后自动接续文件备份（由路由参数传入） */
     val chainFileBackup: Boolean = savedStateHandle.get<Boolean>(MainRoutes.ARG_CHAIN_FILE_BACKUP) ?: false
+
+    /** 接续文件图时把当前选中的备份源传给 medium 侧（skipSetup 场景没人发 SetCloudEntity）。 */
+    fun cloudRouteArgs(): Pair<String, String> {
+        val entity = uiState.value.cloudEntity
+        return entity?.name.orEmpty() to entity?.remote.orEmpty()
+    }
 
     /** 一键备份里系统数据（短信/通话/WiFi）的上传状态，供引导页如实显示。 */
     val systemDataState: StateFlow<SystemDataBackupState> = mSystemData.backupState
@@ -173,7 +180,14 @@ class BackupViewModelImpl @Inject constructor(
                 }
                 if (hasPackages.not()) {
                     withMainContext {
-                        intent.mainNavController?.maybePopBackAndNavigateSingle(MainRoutes.MediumBackupProcessingGraph.getRoute(skipSetup = true))
+                        val entity = state.cloudEntity
+                        intent.mainNavController?.maybePopBackAndNavigateSingle(
+                            MainRoutes.MediumBackupProcessingGraph.getRoute(
+                                cloudName = entity?.name.orEmpty().ifEmptyEncodeURLWithSpace(),
+                                backupDir = entity?.remote.orEmpty().ifEmptyEncodeURLWithSpace(),
+                                skipSetup = true,
+                            )
+                        )
                     }
                     return
                 }

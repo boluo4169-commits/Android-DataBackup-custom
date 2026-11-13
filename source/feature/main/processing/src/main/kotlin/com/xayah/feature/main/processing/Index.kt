@@ -103,6 +103,9 @@ fun PageProcessing(
     val context = LocalContext.current
     val uiState by viewModel.uiState.collectAsStateWithLifecycle()
     val task by viewModel.task.collectAsStateWithLifecycle()
+    // 跳过（用户取消 / 策略 SKIP / 云端下载失败）既不计成功也不计失败，
+    // 用现有 TaskEntity 字段推导，无需给 Room 加列；完成页据此如实显示跳过数。
+    val skippedCount = task?.let { (it.totalCount - it.successCount - it.failureCount).coerceAtLeast(0) } ?: 0
     val preItemsProgress by viewModel.preItemsProgress.collectAsStateWithLifecycle()
     val preItems by viewModel.preItems.collectAsStateWithLifecycle()
     val postItemsProgress by viewModel.postItemsProgress.collectAsStateWithLifecycle()
@@ -127,7 +130,6 @@ fun PageProcessing(
     val restorePreviewRequest by viewModel.restorePreviewRequest.collectAsStateWithLifecycle()
     val restoreAskRequest by viewModel.restoreAskRequest.collectAsStateWithLifecycle()
     val restorePreviewTotal by viewModel.restorePreviewTotal.collectAsStateWithLifecycle()
-    val restorePreviewSkippedDirs by viewModel.restorePreviewSkippedDirs.collectAsStateWithLifecycle()
 
     // 一键流程的系统数据由 @Singleton 协调器在引导页 / FinishSetup 时启动，结果不进 TaskEntity。
     // 完成页直接读它，逐项如实显示；普通流程（showSystemDataSummary=false）不会渲染这块。
@@ -425,14 +427,18 @@ fun PageProcessing(
                                 dataItems.size + 2 -> {
                                     // Finished
                                     title = stringResource(id = finishedTitleId)
+                                    // success + failure + skipped == totalCount。
+                                    // 只有「全部成功」才用 totalCount；有跳过但无失败时按实际成功数显示，
+                                    // 既不谎报全部完成，也不把跳过误报成失败。
                                     subtitle = if (task != null) {
-                                        if (task!!.totalCount == task!!.successCount) {
-                                            remember { context.getString(finishedSubtitleId, task!!.totalCount) }
-                                        } else {
-                                            remember { context.getString(finishedWithErrorsSubtitleId, task!!.successCount, task!!.failureCount) }
+                                        val t = task!!
+                                        when {
+                                            t.totalCount == t.successCount -> context.getString(finishedSubtitleId, t.totalCount)
+                                            t.failureCount == 0 -> context.getString(finishedSubtitleId, t.successCount)
+                                            else -> context.getString(finishedWithErrorsSubtitleId, t.successCount, t.failureCount)
                                         }
                                     } else {
-                                        remember { context.getString(finishedSubtitleId, dataItems.size) }
+                                        context.getString(finishedSubtitleId, dataItems.size)
                                     }
                                 }
 
@@ -504,10 +510,10 @@ fun PageProcessing(
                         color = ThemedColorSchemeKeyTokens.Primary.value,
                     )
                 }
-                if (uiState.state == OperationState.DONE && restorePreviewSkippedDirs > 0) {
+                if (uiState.state == OperationState.DONE && skippedCount > 0) {
                     BodyLargeText(
                         modifier = Modifier.paddingBottom(SizeTokens.Level12),
-                        text = context.getString(R.string.restore_preview_skipped_dirs, restorePreviewSkippedDirs),
+                        text = context.getString(R.string.restore_preview_skipped_dirs, skippedCount),
                         color = ThemedColorSchemeKeyTokens.OnSurfaceVariant.value,
                     )
                 }

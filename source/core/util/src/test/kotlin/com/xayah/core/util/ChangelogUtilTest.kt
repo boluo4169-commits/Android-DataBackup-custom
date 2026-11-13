@@ -123,4 +123,46 @@ class ChangelogUtilTest {
         assertEquals("中文开头中文续行", items[0])
         assertEquals("word next", items[1])
     }
+
+    @Test
+    fun `multiline comments never produce fake items`() {
+        val md = """
+            ## v1.0
+            ### 修复
+            - 第一条
+            <!--
+            - 假条目一
+            维护者说明
+            -->
+            %%
+            - 假条目二
+            %%
+            - 第二条
+        """.trimIndent()
+        val items = parseChangelog(md).single().sections.single().items
+
+        assertEquals(2, items.size)
+        assertEquals("第一条", items[0])
+        assertEquals("第二条", items[1])
+        assertTrue(items.none { it.contains("假条目") || it.contains("维护者说明") })
+    }
+
+    @Test
+    fun `mixed cjk and ascii wrapped lines are not spaced`() {
+        val md = """
+            ## v1.0
+            ### 修复
+            - 修复了 v3
+              个问题
+            - 版本 1.0
+              。说明
+            - word
+              next
+        """.trimIndent()
+        val items = parseChangelog(md).single().sections.single().items
+
+        assertEquals("修复了 v3个问题", items[0])
+        assertEquals("版本 1.0。说明", items[1])
+        assertEquals("word next", items[2])
+    }
 }

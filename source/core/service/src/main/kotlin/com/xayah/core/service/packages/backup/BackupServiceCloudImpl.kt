@@ -195,7 +195,7 @@ internal class BackupServiceCloudImpl @Inject constructor() : AbstractBackupServ
         var archived = existingMain.copy(indexInfo = existingMain.indexInfo.copy(preserveId = preserveId))
         var dst = "${mRemoteAppsDir}/${preserveArchiveRelativeDir(srcRel, preserveId)}"
         while (mClient.exists(dst)) {
-            preserveId++
+            preserveId = DateUtil.nextPreserveTimestamp(preserveId)
             archived = existingMain.copy(indexInfo = existingMain.indexInfo.copy(preserveId = preserveId))
             dst = "${mRemoteAppsDir}/${preserveArchiveRelativeDir(srcRel, preserveId)}"
         }
@@ -216,11 +216,17 @@ internal class BackupServiceCloudImpl @Inject constructor() : AbstractBackupServ
         val dirNew = "${mRemoteAppsDir}/${old.archivesRelativeDir}"
         // 同 medium 侧：afterPostProcessing() 在 clear() 之后执行，mClient 已 disconnect，
         // FTP 的 exists() 断连时静默返回 false 会让远端旧目录变成幽灵。重建短连接再删。
+        var removed = false
         mCloudRepo.withClient(name = mCloudEntity.name) { client, _ ->
             val dir = if (client.exists(dirNew)) dirNew else "${mRemoteAppsDir}/${old.legacyArchivesRelativeDir}"
             if (client.exists(dir)) client.deleteRecursively(dir)
+            removed = client.exists(dir).not()
         }
-        mPackageDao.delete(old.id)
+        if (removed) {
+            mPackageDao.delete(old.id)
+        } else {
+            log { "Failed to delete preserved cloud backup, keeping DB record: $dirNew" }
+        }
     }
 
     @Inject

@@ -77,33 +77,37 @@ object Tar {
      */
     suspend fun compressFromList(srcDir: String, listFile: String, dst: String, extra: String): ShellResult {
         BaseUtil.execute("cd", SymbolUtil.shellQuote(srcDir))
-        val result = if (extra.isEmpty()) {
-            // tar --totals -cpf - -T "$listFile" > "$dst"
-            execute(
-                "--totals",
-                "-cpf",
-                "-",
-                "-T",
-                SymbolUtil.shellQuote(listFile),
-                ">",
-                SymbolUtil.shellQuote(dst),
-            )
-        } else {
-            // tar --totals -cpf - -T "$listFile" | $extra > "$dst"
-            execute(
-                "--totals",
-                "-cpf",
-                "-",
-                "-T",
-                SymbolUtil.shellQuote(listFile),
-                "|",
-                extra,
-                ">",
-                SymbolUtil.shellQuote(dst),
-            )
+        return try {
+            if (extra.isEmpty()) {
+                // tar --totals -cpf - -T "$listFile" > "$dst"
+                execute(
+                    "--totals",
+                    "-cpf",
+                    "-",
+                    "-T",
+                    SymbolUtil.shellQuote(listFile),
+                    ">",
+                    SymbolUtil.shellQuote(dst),
+                )
+            } else {
+                // tar --totals -cpf - -T "$listFile" | $extra > "$dst"
+                execute(
+                    "--totals",
+                    "-cpf",
+                    "-",
+                    "-T",
+                    SymbolUtil.shellQuote(listFile),
+                    "|",
+                    extra,
+                    ">",
+                    SymbolUtil.shellQuote(dst),
+                )
+            }
+        } finally {
+            // `cd` 改的是进程级 root shell 的 cwd；异常时也必须复位，
+            // 否则后续所有命令都会在错误目录执行。
+            BaseUtil.execute("cd", "/")
         }
-        BaseUtil.execute("cd", "/")
-        return result
     }
 
     suspend fun compress(exclusionList: List<String>, h: String, srcDir: String, src: String, dst: String, extra: String): ShellResult =

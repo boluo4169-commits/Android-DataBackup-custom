@@ -12,6 +12,7 @@ import com.xayah.core.rootservice.service.RemoteRootService
 import com.xayah.core.util.LogUtil
 import com.xayah.core.util.PathUtil
 import com.xayah.core.util.SplitUtil
+import com.xayah.core.util.filesDir
 import com.xayah.core.util.model.ShellResult
 import com.xayah.core.util.withLog
 import dagger.hilt.android.qualifiers.ApplicationContext
@@ -120,7 +121,18 @@ class CloudRepository @Inject constructor(
                 if (result.not()) out.add(log { "Failed to delete $src." })
             }
         } else {
-            out.add(log { "Upload failed, kept local archive for retry: $src" })
+            // 云端 Service 的 clear() 会删掉整个 mRootDir，而 mFilesDir 正是其子目录：
+            // 只把归档留在原地等于没留。搬到 app 私有目录，clear() 碰不到，重试/排查才拿得到。
+            val retryDir = "${context.filesDir()}/failed_uploads"
+            rootService.mkdirs(retryDir)
+            val stamp = System.currentTimeMillis()
+            var kept = 0
+            (parts + listOf(src)).forEach { path ->
+                val target = "$retryDir/${stamp}_${File(path).name}"
+                if (rootService.renameTo(path, target)) kept++
+                else out.add(log { "Failed to preserve $path under $retryDir" })
+            }
+            out.add(log { "Upload failed, kept $kept archive(s) under $retryDir for retry: $src" })
         }
 
         ShellResult(code = if (isSuccess) 0 else -1, input = listOf(), out = out)

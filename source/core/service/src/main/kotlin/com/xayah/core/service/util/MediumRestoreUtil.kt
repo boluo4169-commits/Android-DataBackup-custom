@@ -114,7 +114,7 @@ class MediumRestoreUtil @Inject constructor(
             // 必须在算预览之前判断：没冲突的目录也要跳过，否则取消后又被恢复了一半。
             if (configuredStrategy == RestoreConflictStrategy.ASK
                 && cleanRestoring.not()
-                && RestorePreviewConfirmation.isAskCancelled()
+                && (RestorePreviewConfirmation.isAskCancelled() || RestorePreviewConfirmation.isCancelled())
             ) {
                 RestorePreviewConfirmation.markSkipped()
                 out.add(log { "Restore skipped by user (ask cancelled earlier): ${m.name}" })
@@ -193,7 +193,6 @@ class MediumRestoreUtil @Inject constructor(
                 )
             }
             if (finalPreview != null) {
-                RestorePreviewConfirmation.accumulate(finalPreview)
                 out.add(log { "Conflict preview: $finalPreview" })
             }
 
@@ -206,9 +205,9 @@ class MediumRestoreUtil @Inject constructor(
             val snapshotPaths = computeSnapshotPaths(archiveEntries, previewData.existingRelativePaths)
             // 超过预览上限时只能看到前 MAX_PREVIEW_ENTRIES 条，部分打包会让后面的旧文件
             // 被覆盖却没进快照（用户以为「两份都留」实际丢了一半）。这种目录整体降级。
-            val entriesTruncated = archiveEntries.size > MAX_PREVIEW_ENTRIES
+            val entriesTruncated = archiveEntries.size > MAX_PREVIEW_ENTRIES || previewData.existingTruncated
             if (entriesTruncated && shouldCreateLocalSnapshot(effectiveStrategy, cleanRestoring, snapshotPaths)) {
-                out.add(log { "Archive exceeds $MAX_PREVIEW_ENTRIES entries; skip local snapshot to avoid partial capture, fallback to --backup=numbered" })
+                out.add(log { "Archive or local dir exceeds $MAX_PREVIEW_ENTRIES entries; skip local snapshot to avoid partial capture, fallback to --backup=numbered" })
             }
             if (shouldCreateLocalSnapshot(effectiveStrategy, cleanRestoring, snapshotPaths) && entriesTruncated.not()) {
                 if (createLocalSnapshot(m = m, dstDir = dstDir, snapshotPaths = snapshotPaths, out = out)) {
@@ -237,6 +236,9 @@ class MediumRestoreUtil @Inject constructor(
                 isSuccess = result.isSuccess
                 out.addAll(result.out)
             }
+            // 统计只在解压成功后累加：解压失败（空间不足 / 归档损坏 / 权限）时不虚报
+            // 「覆盖 N、新增 M」，完成页汇总只反映真正落盘的结果。
+            if (isSuccess && finalPreview != null) RestorePreviewConfirmation.accumulate(finalPreview)
             // 恢复的是 Pictures/DCIM/Music 等媒体目录，文件落盘后 MediaStore 数据库并没有
             // 索引，相册/图库读不到。恢复成功后触发一次媒体扫描，让系统重新入库。
             if (isSuccess) {
@@ -257,6 +259,8 @@ class MediumRestoreUtil @Inject constructor(
     private data class PreviewData(
         val preview: ConflictPreview?,
         val existingRelativePaths: Set<String>,
+        /** 本机文件数超过预览上限：快照清单会漏条目，必须整体降级。 */
+        val existingTruncated: Boolean = false,
     )
 
     /**
@@ -273,8 +277,12 @@ class MediumRestoreUtil @Inject constructor(
         cleanRestoring: Boolean,
     ): PreviewData = runCatching {
         if (archiveEntries.isEmpty()) return@runCatching PreviewData(null, emptySet())
-        val existing = rootService.walkFileTree(dst)
-            .take(MAX_PREVIEW_ENTRIES)
+        // 多取一条来判断本机条目是否超限。本机超限而归档未超限时，快照清单只会看到前
+        // MAX_PREVIEW_ENTRIES 个旧文件，后面的冲突旧文件会被覆盖却没进快照 —— 必须和
+        // 「归档条目超限」一样整体降级，否则用户选「两份都留」仍会静默丢数据。
+        val walked = rootService.walkFileTree(dst).take(MAX_PREVIEW_ENTRIES + 1).toList()
+        val existingTruncated = walked.size > MAX_PREVIEW_ENTRIES
+        val existing = walked.take(MAX_PREVIEW_ENTRIES)
             .map { it.pathString.removePrefix("$dstDir/") }
             .toSet()
         PreviewData(
@@ -285,6 +293,7 @@ class MediumRestoreUtil @Inject constructor(
                 cleanRestoring = cleanRestoring,
             ),
             existingRelativePaths = existing,
+            existingTruncated = existingTruncated,
         )
     }.onFailure {
         log { "Failed to build conflict preview: ${it.message}" }
@@ -338,7 +347,7 @@ class MediumRestoreUtil @Inject constructor(
         var snapshotDir = "$localFilesDir/${snapshot.archivesRelativeDir}"
         // 同一秒内连续恢复同一目录会撞名，照抄保护逻辑递增
         while (rootService.exists(snapshotDir)) {
-            preserveId++
+            preserveId = DateUtil.nextPreserveTimestamp(preserveId)
             snapshot = snapshot.copy(indexInfo = snapshot.indexInfo.copy(preserveId = preserveId))
             snapshotDir = "$localFilesDir/${snapshot.archivesRelativeDir}"
         }
@@ -361,7 +370,12 @@ class MediumRestoreUtil @Inject constructor(
                 out.add(log { "Local snapshot archive invalid: $archive" })
                 return@runCatching false
             }
-            rootService.writeJson(data = snapshot, dst = PathUtil.getMediaRestoreConfigDst(snapshotDir))
+            // writeJson 失败只返回 ShellResult(code=-1)，不抛异常，runCatching 捕不到；
+            // 必须先判成败再写 DB，否则会登记一个没有 config 的护盾版本。
+            if (rootService.writeJson(data = snapshot, dst = PathUtil.getMediaRestoreConfigDst(snapshotDir)).isSuccess.not()) {
+                out.add(log { "Failed to write snapshot config: $snapshotDir; fallback to --backup=numbered" })
+                return@runCatching false
+            }
             mediaRepository.upsert(snapshot)
             val seconds = (System.currentTimeMillis() - started) / 1000.0
             out.add(log { "Local snapshot created: ${snapshot.archivesRelativeDir} (${snapshotPaths.size} file(s), ${seconds}s). Switch restore source to Local to see the shield version." })

@@ -35,4 +35,18 @@ class DateUtilPreserveTimestampTest {
     fun zero_isSafe() {
         assertEquals(DateUtil.formatTimestamp(0L, DateUtil.PATTERN_YMD_HMS), DateUtil.formatPreserveTimestamp(0L))
     }
+
+    @Test
+    fun nextPreserveTimestamp_rollsOverSecond59WithoutIllegalValue() {
+        // 直接 +1 会得到 ...60（秒 60）这种非法时间，并与真实备份撞名。
+        val next = DateUtil.nextPreserveTimestamp(20261112125959L)
+        assertEquals(20261112130000L, next)
+        assertEquals(14, next.toString().length)
+        assertEquals("2026-11-12 13:00:00", DateUtil.formatPreserveTimestamp(next))
+    }
+
+    @Test
+    fun nextPreserveTimestamp_fallsBackForLegacyLength() {
+        assertEquals(1762764000001L, DateUtil.nextPreserveTimestamp(1762764000000L))
+    }
 }

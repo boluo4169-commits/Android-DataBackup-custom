@@ -119,7 +119,7 @@ internal class BackupServiceCloudImpl @Inject constructor() : AbstractBackupServ
             )
             var dst = getRemoteFileDir(archived.archivesRelativeDir)
             while (mClient.exists(dst)) {
-                preserveId++
+                preserveId = DateUtil.nextPreserveTimestamp(preserveId)
                 archived = archived.copy(indexInfo = archived.indexInfo.copy(preserveId = preserveId))
                 dst = getRemoteFileDir(archived.archivesRelativeDir)
             }
@@ -127,6 +127,8 @@ internal class BackupServiceCloudImpl @Inject constructor() : AbstractBackupServ
             mCloudRepo.upload(client = mClient, src = tmpJsonPath, dstDir = src)
             mClient.renameTo(src, dst)
             renamed = true
+            // 归档已生效：后续任一步（重建主目录 / 打包 / 上传）失败都要能搬回来。
+            mLastArchive = ArchiveRollback(original = existingMain, archived = archived, src = src, dst = dst)
             // rename 后主目录消失，重建供后续 upload() / onConfigSaved() 使用
             mClient.mkdirRecursively(src)
             mMediaDao.upsert(archived)
@@ -146,16 +148,39 @@ internal class BackupServiceCloudImpl @Inject constructor() : AbstractBackupServ
         return result
     }
 
+    override suspend fun rollbackLastArchive(): Boolean = runCatching {
+        val a = mLastArchive ?: return@runCatching true
+        // 上传失败可能在重建的主目录里留下半包/分卷，先清空再把旧主版本搬回来。
+        if (mClient.exists(a.src)) mClient.deleteRecursively(a.src)
+        mClient.renameTo(a.dst, a.src)
+        val tmpJsonPath = PathUtil.getMediaRestoreConfigDst(mRootDir)
+        mRootService.writeJson(data = a.original, dst = tmpJsonPath)
+        mCloudRepo.upload(client = mClient, src = tmpJsonPath, dstDir = a.src)
+        mRootService.deleteRecursively(tmpJsonPath)
+        mMediaDao.delete(a.archived.id)
+        log { "Rolled back archived cloud media backup: ${a.dst} -> ${a.src}" }
+        true
+    }.onFailure {
+        log { "Failed to roll back archived cloud media backup: ${it.message}" }
+    }.getOrDefault(false)
+
     override suspend fun deleteMediaArchiveDir(old: MediaEntity) {
         val dir = getRemoteFileDir(old.archivesRelativeDir)
         // afterPostProcessing() 排在 clear()（mClient.disconnect()）之后，那时 mClient 已断连；
         // 而 FTPClientImpl.exists() 是 runCatching{...}.isSuccess，断连会静默返回 false，
         // 结果是远端旧目录没删、数据库记录却被删掉 → 下次扫描又把该目录当成新版本读回来，
         // 上限永远清不掉。这里按本次任务选中的账号重建一条短连接，与调用时机解耦。
+        var removed = false
         mCloudRepo.withClient(name = mCloudEntity.name) { client, _ ->
             if (client.exists(dir)) client.deleteRecursively(dir)
+            removed = client.exists(dir).not()
         }
-        mMediaDao.delete(old.id)
+        // 删除没成功就保留 DB 记录，避免目录还在、记录先没了的幽灵版本。
+        if (removed) {
+            mMediaDao.delete(old.id)
+        } else {
+            log { "Failed to delete preserved cloud media backup, keeping DB record: $dir" }
+        }
     }
 
     override suspend fun onConfigSaved(path: String, archivesRelativeDir: String) {

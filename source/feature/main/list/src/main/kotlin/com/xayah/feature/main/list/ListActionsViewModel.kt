@@ -146,9 +146,10 @@ class ListActionsViewModel @Inject constructor(
             when (uiState.value) {
                 is Success.Apps -> {
                     val state = uiState.value.castTo<Success.Apps>()
-                    // 与 activateAllForBackup 同口径：批量选择跳过系统应用（单个手动勾选不受影响），
-                    // 否则「加载系统应用」开着时一次全选就是几百个系统应用。
-                    appsRepo.selectAll(state.appList.filter { it.isSystemApp.not() }.map { it.id })
+                    // 只有 BACKUP 侧需要跳过系统应用；RESTORE 记录本来就来自用户备份过的归档，
+                    // 一键恢复全选若仍排除系统应用，顶部计数会永远差一个（N-1/N）。
+                    val candidates = if (opType == OpType.BACKUP) state.appList.filter { it.isSystemApp.not() } else state.appList
+                    appsRepo.selectAll(candidates.map { it.id })
                 }
 
                 is Success.Files -> {

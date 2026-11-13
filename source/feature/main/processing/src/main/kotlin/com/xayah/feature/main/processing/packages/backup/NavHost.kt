@@ -12,6 +12,7 @@ import com.xayah.core.model.OperationState
 import com.xayah.core.ui.component.AnimatedNavHost
 import com.xayah.core.ui.route.MainRoutes
 import com.xayah.core.ui.util.LocalNavController
+import com.xayah.core.util.ifEmptyEncodeURLWithSpace
 import com.xayah.core.util.maybePopBackAndNavigateSingle
 import com.xayah.core.util.navigateSingle
 import com.xayah.feature.main.processing.PageProcessing
@@ -51,7 +52,15 @@ fun PackagesBackupProcessingGraph() {
                     // skipSetup = 文件勾选已确认，直达文件处理页；先弹掉应用备份图，
                     // 文件备份完成后「完成」直接返回数据迁移页，不会弹回空的引导页。
                     if (viewModel.chainFileBackup) {
-                        navController.maybePopBackAndNavigateSingle(MainRoutes.MediumBackupProcessingGraph.getRoute(skipSetup = true))
+                        // 把引导页选中的源编码进路由：一键文件图跳过 Setup，medium 侧靠它补 storageType。
+                        val (name, remote) = viewModel.cloudRouteArgs()
+                        navController.maybePopBackAndNavigateSingle(
+                            MainRoutes.MediumBackupProcessingGraph.getRoute(
+                                cloudName = name.ifEmptyEncodeURLWithSpace(),
+                                backupDir = remote.ifEmptyEncodeURLWithSpace(),
+                                skipSetup = true,
+                            )
+                        )
                     }
                 },
             )

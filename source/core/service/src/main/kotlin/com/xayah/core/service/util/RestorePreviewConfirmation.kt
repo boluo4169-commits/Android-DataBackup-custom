@@ -3,9 +3,16 @@ package com.xayah.core.service.util
 import kotlinx.coroutines.CompletableDeferred
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.withTimeoutOrNull
 import com.xayah.core.model.ConflictPreview
 import com.xayah.core.model.RestoreAskDecision
 import com.xayah.core.model.RestoreConflictStrategy
+
+/**
+ * 弹窗前用户可能要看很长的冲突清单；超过该时长按「跳过整单」兜底，
+ * 保证前台 Service 不会因为锁屏 / 系统 dismiss 弹窗 / 进程重建而永久挂起。
+ */
+private const val CONFIRM_TIMEOUT_MS = 300_000L
 
 /** 恢复前预览弹窗要展示的一次请求。 */
 data class RestorePreviewRequest(
@@ -38,7 +45,8 @@ data class RestoreAskRequest(
  *
  * ASK（「逐个问」）走 [askRequest] / [awaitStrategyDecision] / [decideStrategy] 这条独立通道：
  * 它与上面的预览确认**互斥**（同一时刻只会有一个生效），但共用 [total] / [skippedDirs] / [reset]，
- * 保证完成页统计与跳过计数不会因为两套机制而漏记。
+ * 保证完成页统计与跳过计数不会因为两套机制而漏记。两条通道的「取消」互相可见：
+ * 无论在哪一边点取消，本次任务剩余目录一律跳过。
  */
 object RestorePreviewConfirmation {
     private val _request = MutableStateFlow<RestorePreviewRequest?>(null)
@@ -76,10 +84,12 @@ object RestorePreviewConfirmation {
 
     fun reset() {
         rememberedChoice = null
-        deferred?.cancel()
+        // 用 complete 而不是 cancel：await() 的 CancellationException 会击穿
+        // executeAtLeast 的裸 block()，把整个 onProcessing 一起取消掉。
+        deferred?.complete(false)
         deferred = null
         _request.value = null
-        askDeferred?.cancel()
+        askDeferred?.complete(null)
         askDeferred = null
         _askRequest.value = null
         rememberedStrategy = null
@@ -109,16 +119,23 @@ object RestorePreviewConfirmation {
      * 返回 true = 继续解压，false = 取消（跳过该目录）。
      */
     suspend fun awaitConfirm(request: RestorePreviewRequest): Boolean {
+        if (askCancelled) return false
         rememberedChoice?.let { return it }
         val d = CompletableDeferred<Boolean>()
         deferred = d
         _request.value = request
-        return d.await()
+        // 超时按「取消整单」处理：清掉弹窗与 deferred，剩余目录一律跳过。
+        return withTimeoutOrNull(CONFIRM_TIMEOUT_MS) { d.await() } ?: run {
+            decide(false)
+            false
+        }
     }
 
     /** UI 层回传用户决定，并记住，本次任务内不再弹窗。 */
     fun decide(confirmed: Boolean) {
         rememberedChoice = confirmed
+        // 两条通道共用一个「整单已取消」语义，避免在预览处取消后又被 ASK 通道恢复。
+        if (confirmed.not()) askCancelled = true
         _request.value = null
         deferred?.complete(confirmed)
         deferred = null
@@ -130,12 +147,15 @@ object RestorePreviewConfirmation {
      * 若用户此前勾过「全部应用」，直接沿用该策略、不再弹窗。
      */
     suspend fun awaitStrategyDecision(request: RestoreAskRequest): RestoreAskDecision? {
-        if (askCancelled) return null
+        if (askCancelled || rememberedChoice == false) return null
         rememberedStrategy?.let { return RestoreAskDecision(it, applyToAll = true) }
         val d = CompletableDeferred<RestoreAskDecision?>()
         askDeferred = d
         _askRequest.value = request
-        return d.await()
+        return withTimeoutOrNull(CONFIRM_TIMEOUT_MS) { d.await() } ?: run {
+            decideStrategy(null)
+            null
+        }
     }
 
     /** UI 层回传「逐个问」的决定；[decision] 为 null 表示取消。 */
@@ -143,6 +163,7 @@ object RestorePreviewConfirmation {
         _askRequest.value = null
         if (decision == null) {
             askCancelled = true
+            rememberedChoice = false
         } else {
             lastStrategy = decision.strategy
             if (decision.applyToAll) rememberedStrategy = decision.strategy

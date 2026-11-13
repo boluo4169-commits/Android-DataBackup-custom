@@ -108,11 +108,21 @@ internal abstract class AbstractRestoreService : AbstractMediumService() {
                 val srcDir = "${mFilesDir}/${m.archivesRelativeDir}"
                 restore(m = m, t = media, srcDir = srcDir)
 
-                if (media.isSuccess) {
-                    media.update(mediaEntity = m)
-                    mTaskEntity.update(successCount = mTaskEntity.successCount + 1)
-                } else {
-                    mTaskEntity.update(failureCount = mTaskEntity.failureCount + 1)
+                // 用户取消 / ASK 取消 / 云端下载失败都会把 mediaInfo 置 SKIP。
+                // 既不算成功也不算失败：完成页按 totalCount - successCount - failureCount
+                // 推导跳过数，避免「0 个文件落盘却显示全部成功」（TaskDetailMediaEntity.isSuccess
+                // 只看 mediaInfo.state != ERROR，SKIP 会被它判成 true）。
+                when {
+                    media.mediaInfo.state == OperationState.SKIP -> {
+                        log { "Skipped media: ${media.mediaEntity.name}" }
+                    }
+                    media.isSuccess -> {
+                        media.update(mediaEntity = m)
+                        mTaskEntity.update(successCount = mTaskEntity.successCount + 1)
+                    }
+                    else -> {
+                        mTaskEntity.update(failureCount = mTaskEntity.failureCount + 1)
+                    }
                 }
                 // 预览处用户取消 → mediaInfo.state = SKIP；不算失败也不算「成功恢复」，
                 // 卡片保持 SKIP 状态，避免完成页把「跳过」误显示成「已恢复」。

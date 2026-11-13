@@ -2,6 +2,7 @@ package com.xayah.feature.main.processing.medium.backup
 
 import android.content.Context
 import androidx.compose.material3.ExperimentalMaterial3Api
+import androidx.lifecycle.SavedStateHandle
 import com.xayah.core.data.repository.CloudRepository
 import com.xayah.core.data.repository.MediaRepository
 import com.xayah.core.data.repository.TaskRepository
@@ -19,6 +20,7 @@ import com.xayah.core.ui.material3.SnackbarType
 import com.xayah.core.ui.model.DialogRadioItem
 import com.xayah.core.ui.route.MainRoutes
 import com.xayah.core.ui.viewmodel.IndexUiEffect
+import com.xayah.core.util.decodeURL
 import com.xayah.core.util.navigateSingle
 import com.xayah.feature.main.processing.AbstractMediumProcessingViewModel
 import com.xayah.feature.main.processing.FinishSetup
@@ -47,7 +49,34 @@ class BackupViewModelImpl @Inject constructor(
     private val mCloudRepo: CloudRepository,
     mLocalService: ProcessingServiceProxyLocalImpl,
     mCloudService: ProcessingServiceProxyCloudImpl,
+    private val args: SavedStateHandle,
 ) : AbstractMediumProcessingViewModel(mContext, mRootService, mTaskRepo, mLocalService, mCloudService) {
+    /**
+     * 一键备份的文件图带 `skipSetup=true`，Setup 页不执行、没人发 SetCloudEntity。
+     * 必须在绑定服务之前从路由参数把 storageType 补齐，否则云端源会被当成本地源，
+     * 文件备份静默落到本机（与恢复侧 `d98dae7` 同款缺陷）。
+     *
+     * 普通备份/恢复流程仍走 Setup 页、由用户当场选源，这里刻意不介入，避免改动既有行为。
+     */
+    override suspend fun ensureStorageSource() {
+        if (args.get<Boolean>(MainRoutes.ARG_SKIP_SETUP) == true) applyCloudSourceFromArgs()
+    }
+
+    private suspend fun applyCloudSourceFromArgs() {
+        val name = args.get<String>(MainRoutes.ARG_ACCOUNT_NAME)?.decodeURL()?.trim().orEmpty()
+        emitState(
+            if (name.isNotEmpty()) {
+                uiState.value.copy(
+                    storageIndex = 1,
+                    storageType = StorageMode.Cloud,
+                    cloudEntity = mCloudRepo.queryByName(name),
+                )
+            } else {
+                uiState.value.copy(storageIndex = 0, storageType = StorageMode.Local, cloudEntity = null)
+            }
+        )
+    }
+
     override suspend fun onOtherEvent(state: IndexUiState, intent: ProcessingUiIntent) {
         when (intent) {
             is UpdateFiles -> {

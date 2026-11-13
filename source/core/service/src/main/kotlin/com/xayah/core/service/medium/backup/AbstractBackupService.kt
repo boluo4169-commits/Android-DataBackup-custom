@@ -111,18 +111,24 @@ internal abstract class AbstractBackupService : AbstractMediumService() {
         )
         var dst = "${mFilesDir}/${archived.archivesRelativeDir}"
         while (mRootService.exists(dst)) {
-            preserveId++
+            preserveId = DateUtil.nextPreserveTimestamp(preserveId)
             archived = archived.copy(indexInfo = archived.indexInfo.copy(preserveId = preserveId))
             dst = "${mFilesDir}/${archived.archivesRelativeDir}"
         }
         val configSrc = PathUtil.getMediaRestoreConfigDst(src)
-        mRootService.writeJson(data = archived, dst = configSrc)
+        // writeJson 失败只返回 ShellResult(code=-1)，不抛异常；必须拦在 rename 之前，
+        // 否则会把一个没有 config 的目录改名成历史版本。
+        if (mRootService.writeJson(data = archived, dst = configSrc).isSuccess.not()) {
+            log { "Failed to write archived config before rename: $configSrc" }
+            return@runCatching null
+        }
         if (mRootService.renameTo(src, dst).not()) {
             mRootService.writeJson(data = existingMain, dst = configSrc)
             log { "Failed to archive media backup: $src -> $dst" }
             return@runCatching null
         }
         mMediaDao.upsert(archived)
+        mLastArchive = ArchiveRollback(original = existingMain, archived = archived, src = src, dst = dst)
         log { "Archived previous media backup: ${archived.archivesRelativeDir}" }
         dst
     }.onFailure {
@@ -131,8 +137,13 @@ internal abstract class AbstractBackupService : AbstractMediumService() {
 
     /** 删除超出上限的历史版本目录；云端子类 override 用远端删除。 */
     protected open suspend fun deleteMediaArchiveDir(old: MediaEntity) {
-        mRootService.deleteRecursively("${mFilesDir}/${old.archivesRelativeDir}")
-        mMediaDao.delete(old.id)
+        // 删除失败时保留 DB 记录，否则目录还在、记录没了，下次扫描会被当成新版本读回来。
+        val path = "${mFilesDir}/${old.archivesRelativeDir}"
+        if (mRootService.deleteRecursively(path)) {
+            mMediaDao.delete(old.id)
+        } else {
+            log { "Failed to delete preserved media backup dir, keeping DB record: $path" }
+        }
     }
 
     protected open suspend fun onConfigSaved(path: String, archivesRelativeDir: String) {}
@@ -141,6 +152,33 @@ internal abstract class AbstractBackupService : AbstractMediumService() {
     protected open suspend fun clear() {}
 
     protected abstract val mMediumBackupUtil: MediumBackupUtil
+
+    /** 本次任务生效的文件备份策略：一进 onProcessing 读一次，afterPostProcessing 复用，避免中途改设置导致不裁剪。 */
+    private var mStrategy: MediaBackupStrategy = MediaBackupStrategy.REPLACE
+
+    /** 本次目录把旧主备份归档成历史版本的结果，供压缩/上传失败时回滚。 */
+    protected data class ArchiveRollback(
+        val original: MediaEntity,
+        val archived: MediaEntity,
+        val src: String,
+        val dst: String,
+    )
+
+    /** 每个目录开始前清空；只有「本次备份失败」才用它回滚。 */
+    protected var mLastArchive: ArchiveRollback? = null
+
+    /** 本地回滚：清掉失败的新包，把历史版本搬回主目录，恢复 config 与 DB。云端子类 override。 */
+    protected open suspend fun rollbackLastArchive(): Boolean = runCatching {
+        val a = mLastArchive ?: return@runCatching true
+        mRootService.deleteRecursively(a.src)
+        if (mRootService.renameTo(a.dst, a.src).not()) return@runCatching false
+        mRootService.writeJson(data = a.original, dst = PathUtil.getMediaRestoreConfigDst(a.src))
+        mMediaDao.delete(a.archived.id)
+        log { "Rolled back archived media backup: ${a.dst} -> ${a.src}" }
+        true
+    }.onFailure {
+        log { "Failed to roll back archived media backup: ${it.message}" }
+    }.getOrDefault(false)
 
     override suspend fun onPreprocessing(entity: ProcessingInfoEntity) {
         when (entity.infoType) {
@@ -159,10 +197,12 @@ internal abstract class AbstractBackupService : AbstractMediumService() {
         // createTargetDirs() before readStatFs().
         mTaskEntity.update(rawBytes = mTaskRepo.getRawBytes(TaskType.MEDIA), availableBytes = mTaskRepo.getAvailableBytes(OpType.BACKUP), totalBytes = mTaskRepo.getTotalBytes(OpType.BACKUP), totalCount = mMediaEntities.size)
         log { "Task count: ${mMediaEntities.size}." }
-        val strategy = mContext.readMediaBackupStrategy().first()
+        mStrategy = mContext.readMediaBackupStrategy().first()
+        val strategy = mStrategy
         log { "Media backup strategy: $strategy" }
 
         mMediaEntities.forEachIndexed { index, media ->
+            mLastArchive = null
             executeAtLeast {
                 NotificationUtil.notify(
                     mContext,
@@ -200,6 +240,13 @@ internal abstract class AbstractBackupService : AbstractMediumService() {
                         Unit
                     }
                     backup(m = m, r = restoreEntity, t = media, dstDir = dstDir, beforeCompress = beforeCompress)
+
+                    // 归档发生在压缩/上传之前：只要新包没成功，就把旧主版本搬回来，
+                    // 否则主记录（preserveId=0）会指向刚被搬空的目录，默认恢复不可用。
+                    if (media.isSuccess.not() && mLastArchive != null) {
+                        if (rollbackLastArchive()) log { "Rollback done for ${m.name}" }
+                        else log { "Rollback FAILED for ${m.name}; previous main backup is kept as archived version" }
+                    }
 
                     if (media.isSuccess) {
                         // Save config
@@ -295,7 +342,7 @@ internal abstract class AbstractBackupService : AbstractMediumService() {
         // 文件「保留历史备份」：按上限清理最旧的历史版本（本地 / 云端由子类分流）。
         // 单个目录清理失败只记日志，不影响其它目录与本次备份结果。
         // 只有「复制」策略会产生历史版本；替换 / 跳过都没必要跑一次清理。
-        if (mContext.readMediaBackupStrategy().first() == MediaBackupStrategy.COPY) {
+        if (mStrategy == MediaBackupStrategy.COPY) {
             val maxCount = sanitizeMaxPreserveMediaCount(mContext.readMaxPreserveMediaCount().first())
             mMediaEntities.forEach { media ->
                 val m = media.mediaEntity

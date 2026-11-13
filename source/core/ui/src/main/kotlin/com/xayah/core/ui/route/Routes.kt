@@ -103,9 +103,13 @@ sealed class MainRoutes(val route: String) {
 
     data object MediumBackupProcessing : MainRoutes(route = "main_medium_backup_processing")
     data object MediumBackupProcessingSetup : MainRoutes(route = "main_medium_backup_processing_setup")
-    data object MediumBackupProcessingGraph : MainRoutes(route = "main_medium_backup_processing_graph?$ARG_SKIP_SETUP={$ARG_SKIP_SETUP}") {
-        fun getRoute(skipSetup: Boolean = false) =
-            "main_medium_backup_processing_graph" + if (skipSetup) "?$ARG_SKIP_SETUP=true" else ""
+    data object MediumBackupProcessingGraph : MainRoutes(route = "main_medium_backup_processing_graph/{$ARG_ACCOUNT_NAME}/{$ARG_ACCOUNT_REMOTE}?$ARG_SKIP_SETUP={$ARG_SKIP_SETUP}") {
+        /**
+         * 一键备份 `skipSetup=true` 时 Setup 页不执行、没人发 SetCloudEntity，
+         * 必须由调用方把选中的源编码进路由，medium 侧据此补 storageType。
+         */
+        fun getRoute(cloudName: String = encodedURLWithSpace, backupDir: String = encodedURLWithSpace, skipSetup: Boolean = false) =
+            "main_medium_backup_processing_graph/${cloudName}/${backupDir}" + if (skipSetup) "?$ARG_SKIP_SETUP=true" else ""
     }
 
     data object MediumRestoreProcessing : MainRoutes(route = "main_medium_restore_processing")

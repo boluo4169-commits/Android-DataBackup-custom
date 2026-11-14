@@ -156,7 +156,13 @@ internal abstract class AbstractBackupService : AbstractMediumService() {
     /** 本次任务生效的文件备份策略：一进 onProcessing 读一次，afterPostProcessing 复用，避免中途改设置导致不裁剪。 */
     private var mStrategy: MediaBackupStrategy = MediaBackupStrategy.REPLACE
 
-    /** 本次目录把旧主备份归档成历史版本的结果，供压缩/上传失败时回滚。 */
+    /**
+     * 本次目录把旧主备份归档成历史版本的结果，供压缩/上传失败时回滚。
+     *
+     * 注意 `archived.id` 恒为 0：归档实体是 `existingMain.copy(id = 0)`，
+     * Room `@Upsert` 返回 Unit，落库生成的新 id 不会回填到内存对象。
+     * 删库一律走 [deleteArchivedMediaRecord]，不要直接 `delete(archived.id)`。
+     */
     protected data class ArchiveRollback(
         val original: MediaEntity,
         val archived: MediaEntity,
@@ -167,13 +173,37 @@ internal abstract class AbstractBackupService : AbstractMediumService() {
     /** 每个目录开始前清空；只有「本次备份失败」才用它回滚。 */
     protected var mLastArchive: ArchiveRollback? = null
 
+    /**
+     * 删除归档时插入的历史版本 DB 记录。
+     *
+     * 归档实体 id 是 0，直接 `delete(0)` 什么也删不掉，会在恢复列表留下指向
+     * 已不存在目录的幽灵版本（真机复验第 3 轮证实）。这里按业务键回查真实 id
+     * 再删；`preserveId` 非 0 保证不会命中主版本。查不到只记日志，
+     * 不把「目录已搬回、config 已恢复」的回滚判成失败。
+     */
+    protected suspend fun deleteArchivedMediaRecord(archived: MediaEntity) {
+        val stored = if (archived.id > 0) archived else mMediaDao.query(
+            archived.indexInfo.opType,
+            archived.preserveId,
+            archived.name,
+            archived.indexInfo.compressionType,
+            archived.indexInfo.cloud,
+            archived.indexInfo.backupDir,
+        )
+        if (stored == null) {
+            log { "Archived media DB record not found, skip delete: ${archived.archivesRelativeDir}" }
+            return
+        }
+        mMediaDao.delete(stored.id)
+    }
+
     /** 本地回滚：清掉失败的新包，把历史版本搬回主目录，恢复 config 与 DB。云端子类 override。 */
     protected open suspend fun rollbackLastArchive(): Boolean = runCatching {
         val a = mLastArchive ?: return@runCatching true
         mRootService.deleteRecursively(a.src)
         if (mRootService.renameTo(a.dst, a.src).not()) return@runCatching false
         mRootService.writeJson(data = a.original, dst = PathUtil.getMediaRestoreConfigDst(a.src))
-        mMediaDao.delete(a.archived.id)
+        deleteArchivedMediaRecord(a.archived)
         log { "Rolled back archived media backup: ${a.dst} -> ${a.src}" }
         true
     }.onFailure {

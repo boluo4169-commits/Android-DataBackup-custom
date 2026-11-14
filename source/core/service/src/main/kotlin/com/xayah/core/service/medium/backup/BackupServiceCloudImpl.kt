@@ -157,7 +157,7 @@ internal class BackupServiceCloudImpl @Inject constructor() : AbstractBackupServ
         mRootService.writeJson(data = a.original, dst = tmpJsonPath)
         mCloudRepo.upload(client = mClient, src = tmpJsonPath, dstDir = a.src)
         mRootService.deleteRecursively(tmpJsonPath)
-        mMediaDao.delete(a.archived.id)
+        deleteArchivedMediaRecord(a.archived)
         log { "Rolled back archived cloud media backup: ${a.dst} -> ${a.src}" }
         true
     }.onFailure {

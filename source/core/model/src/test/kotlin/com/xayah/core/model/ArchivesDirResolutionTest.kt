@@ -30,7 +30,7 @@ class ArchivesDirResolutionTest {
             compressionType = CompressionType.ZSTD,
             preserveId = preserveId,
             cloud = "",
-            backupDir = "pad",
+            backupDir = "remote",
         ),
         packageInfo = PackageInfo(
             label = label,

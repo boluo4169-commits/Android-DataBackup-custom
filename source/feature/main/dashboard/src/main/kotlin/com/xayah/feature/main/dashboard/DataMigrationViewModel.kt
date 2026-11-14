@@ -66,7 +66,7 @@ class DataMigrationViewModel @Inject constructor(
             // 云端恢复服务 RestoreServiceCloudImpl.getMedium() 走 CloudRepository.getClient()，
             // 读的是 DataStore 里的「全局激活账号」，而不是一键恢复弹窗选中的源。恢复主页
             // 手动选账号时 SetCloudEntity 会同步这个值，一键恢复绕过了那一页，必须在这里补上，
-            // 否则多账号场景下会连到上一个账号（本轮只有一个「家」所以没暴露）。
+            // 否则多账号场景下会连到上一个账号（本轮只有一个测试账号所以没暴露）。
             // 本地源传空串，与恢复主页选「本地」的口径一致。
             runCatching { context.saveCloudActivatedAccountName(cloudName) }
             // 云端/本地备份清单可能还没扫进数据库：此时下面的「全选」是对着空表执行，

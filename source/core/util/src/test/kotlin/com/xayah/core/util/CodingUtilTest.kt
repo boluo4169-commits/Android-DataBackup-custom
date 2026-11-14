@@ -21,14 +21,14 @@ class CodingUtilTest {
         assertEquals("+cloud", "+cloud".decodeURL())
         // 孤立的 % 不能让 URLDecoder 抛异常
         assertEquals("100%DCIM", "100%DCIM".decodeURL())
-        assertEquals("家", "家".decodeURL())
+        assertEquals("中文账号", "中文账号".decodeURL())
         assertEquals(" ", " ".decodeURL())
         assertEquals("/storage/emulated/0/DCIM", "/storage/emulated/0/DCIM".decodeURL())
     }
 
     @Test
     fun roundTripAfterOneNavigationDecode() {
-        listOf("家", "100%DCIM", "+cloud", "a b", "pad/files").forEach { raw ->
+        listOf("中文账号", "100%DCIM", "+cloud", "a b", "remote/files").forEach { raw ->
             val encoded = raw.encodeURL()
             // Navigation 对 path 参数只做一次 %XX 解码，用 URLDecoder 近似
             val decodedOnce = java.net.URLDecoder.decode(encoded, "UTF-8")

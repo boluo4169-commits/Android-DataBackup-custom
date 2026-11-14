@@ -43,7 +43,7 @@ class PreserveIndexTest {
     @Test
     fun differentGroups_areIndependent() {
         val a = listOf("DCIM", "/sdcard/DCIM", "", "")
-        val b = listOf("DCIM", "/sdcard/DCIM", "家", "pad")
+        val b = listOf("DCIM", "/sdcard/DCIM", "云端账号", "remote")
         val map = buildPreserveIndexMap(
             listOf(
                 item(1, a, 20261110120000L),

@@ -43,7 +43,7 @@ class SelectedDisplayStatsTest {
             compressionType = CompressionType.ZSTD,
             preserveId = 0L,
             cloud = "",
-            backupDir = "pad",
+            backupDir = "remote",
         ),
         packageInfo = PackageInfo(
             label = "酷安",

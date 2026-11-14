@@ -182,13 +182,22 @@ class MediumBackupUtil @Inject constructor(
                 isSuccess = isSuccess && result.isSuccess
                 out.addAll(result.out)
                 if (result.isSuccess) {
-                    m.setDataBytes(sizeBytes)
-                    m.setDisplayBytes(rootService.calculateSize(dst))
-                    ChecksumUtil.write(rootService = rootService, src = dst)?.let { md5 ->
-                        out.add(log { "Checksum: $md5" })
+                    // testArchive 只判 tar -tf 的退出码：tar 返回 0 却没写出归档时会误判成功
+                    // （真机第 7 轮 B2 抓到 0 字节主版本 + 完成页谎报成功）。必须再校验
+                    // 归档真实存在且非空，判失败才能让 COPY 归档回滚、不留下残缺主版本。
+                    val archiveBytes = if (rootService.exists(dst)) rootService.calculateSize(dst) else 0L
+                    if (archiveBytes <= 0L) {
+                        isSuccess = false
+                        out.add(log { "Archive is empty after compression: $dst" })
+                    } else {
+                        m.setDataBytes(sizeBytes)
+                        m.setDisplayBytes(archiveBytes)
+                        ChecksumUtil.write(rootService = rootService, src = dst)?.let { md5 ->
+                            out.add(log { "Checksum: $md5" })
+                        }
+                        // 增量清单随归档落盘：下次备份据此判定「未变化」跳过 tar。
+                        if (allowIncremental && srcHash != null) IncrementalBackupUtil.write(rootService, dst, srcHash, params)
                     }
-                    // 增量清单随归档落盘：下次备份据此判定「未变化」跳过 tar。
-                    if (allowIncremental && srcHash != null) IncrementalBackupUtil.write(rootService, dst, srcHash, params)
                 }
             }
         }

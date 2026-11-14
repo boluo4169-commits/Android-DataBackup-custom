@@ -71,6 +71,16 @@ class CloudRepository @Inject constructor(
         val out = mutableListOf<String>()
         PathUtil.setFilesDirSELinux(context)
 
+        // 归档缺失/空文件绝不能上传：tar 返回 0 却没写出文件（磁盘满、重定向失败、
+        // 外部 tar 被替换）时，旧值会被当成新备份传上去，而主版本目录已被 COPY 归档搬走，
+        // 结果「完成页显示成功、默认恢复拿到空包/旧包」（真机第 7 轮 B2 实测 0 字节）。
+        // 这里判失败会让调用方置 ERROR 并触发归档回滚，不留下残缺主版本。
+        val srcFile = File(src)
+        if (srcFile.exists().not() || srcFile.length() <= 0L) {
+            out.add(log { "Upload aborted: archive missing or empty: $src" })
+            return@run ShellResult(code = -1, input = listOf(), out = out)
+        }
+
         // 云端分卷：只在「上传」这一层生效 —— 归档本身与本地文件都不动，
         // 所有备份（APK/USER/USER_DE/DATA/OBB/MEDIA）与迁移导出都走这里，一处改动全覆盖。
         val splitBytes = context.readCloudSplitSize().first().bytes
